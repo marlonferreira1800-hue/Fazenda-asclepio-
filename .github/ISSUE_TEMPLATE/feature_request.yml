@@ -1,0 +1,39 @@
+name: ✨ Nova Funcionalidade / Melhoria
+description: Sugira ou registre uma nova mecânica, melhoria de UI/UX, áudio ou automação para a Fazendinha 2D.
+title: "feat: "
+labels: ["enhancement"]
+body:
+  - type: dropdown
+    id: target_version
+    attributes:
+      label: Versão alvo
+      description: Para qual versão esta melhoria está planejada?
+      options:
+        - v1.3.0 (Próxima)
+        - v1.2.0
+        - v1.1.0
+        - v1.0.0
+        - Backlog
+    validations:
+      required: true
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Resumo da funcionalidade
+      description: Qual problema esta melhoria resolve ou qual mecânica adiciona ao jogo?
+      placeholder: Ex.: Adicionar sistema de chuva que rega automaticamente os canteiros arados.
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Critérios de aceite / Escopo técnico
+      description: O que precisa funcionar para considerar esta Issue concluída?
+      value: |
+        - [ ] Implementação em GDScript (Godot 4.7) sem erros no `--check-only`
+        - [ ] Sem sobreposição na HUD (`640x360`)
+        - [ ] Documentado no `CHANGELOG.md` e `VersionData`
+    validations:
+      required: true
