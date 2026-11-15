@@ -1,5 +1,12 @@
 # Fazendinha 2D (Godot 4.7.2)
 
+## 🎮 Jogar online
+
+- **Jogar no navegador (GitHub Pages):** https://marlonferreira1800-hue.github.io/Fazenda-asclepio-/
+- **Repositório no GitHub:** https://github.com/marlonferreira1800-hue/Fazenda-asclepio-
+
+> **Nota:** O primeiro carregamento baixa cerca de **40 MB** (runtime WebAssembly). Para assistir ao fazendeiro automático em ação, pressione **`P`** ou clique no botão **Auto (P)** na HUD.
+
 Jogo 2D pixel art estilo *cozy farming* desenvolvido para **Godot 4.7.2-stable** (renderizador `GL Compatibility`, resolução base `640x360` com filtro *nearest-neighbor* para pixel art nítida, compatível com Desktop e Web HTML5).
 
 ---
