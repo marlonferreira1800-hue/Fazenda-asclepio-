@@ -2,6 +2,44 @@ extends CanvasLayer
 ## Cozy pixel-art HUD & Shop UI for Fazendinha 2D (640x360 viewport).
 
 const UI_ICONS_PATH := "res://assets/sprites/ui_icons.png"
+const VERSION_DATA_PATH := "res://scripts/data/version_data.gd"
+
+const FALLBACK_VERSION := "v1.2.0"
+const FALLBACK_AUTHOR := "@marlonferreira1800-hue (Marlon Ferreira)"
+const FALLBACK_RELEASES_URL := "https://github.com/marlonferreira1800-hue/Fazenda-asclepio-/releases"
+const FALLBACK_ISSUES_URL := "https://github.com/marlonferreira1800-hue/Fazenda-asclepio-/issues"
+const FALLBACK_CHANGELOG_URL := "https://github.com/marlonferreira1800-hue/Fazenda-asclepio-/blob/main/CHANGELOG.md"
+const FALLBACK_HISTORY: Array[Dictionary] = [
+	{
+		"version": "v1.2.0",
+		"title": "Versionamento, Releases & Auto Farmer ao Vivo",
+		"date": "2026-11-15",
+		"author": "@marlonferreira1800-hue",
+		"highlights": [
+			"Badge v1.2.0 (V) no HUD e modal de histórico/releases (Issue #4)",
+			"Modo Auto Farmer ao vivo com tecla P e botão Auto (Issue #3)",
+		],
+	},
+	{
+		"version": "v1.1.0",
+		"title": "Áudio Procedural, Save/Load, Animais & Contraste UI",
+		"date": "2026-11-15",
+		"author": "@marlonferreira1800-hue",
+		"highlights": [
+			"Contraste corrigido nas barras, hotbar e rodapé (Issue #1)",
+			"SFX procedurais, Save/Load, Ovo/Leite e botões Salvar/Som (Issue #2)",
+		],
+	},
+	{
+		"version": "v1.0.0",
+		"title": "Fazendinha 2D — MVP Jogável Inicial",
+		"date": "2026-11-15",
+		"author": "@marlonferreira1800-hue",
+		"highlights": [
+			"Loop completo de fazenda em 640x360: arar, plantar, regar, colher e vender",
+		],
+	},
+]
 
 const DEFAULT_HOTBAR_SLOTS: Array[Dictionary] = [
 	{"id": "hoe", "name": "Enxada", "type": "tool", "icon_col": 0},
@@ -40,12 +78,22 @@ const COL_SHADOW_DARK := Color(0.05, 0.03, 0.02, 0.85)
 var _icons_texture: Texture2D = null
 var _icons_cols: int = 0
 var _shop_open: bool = false
+var _changelog_open: bool = false
 var _toast_tween: Tween = null
+var _open_external_links: bool = true
+
+var _current_version: String = FALLBACK_VERSION
+var _version_author: String = FALLBACK_AUTHOR
+var _releases_url: String = FALLBACK_RELEASES_URL
+var _issues_url: String = FALLBACK_ISSUES_URL
+var _changelog_url: String = FALLBACK_CHANGELOG_URL
+var _version_history: Array[Dictionary] = []
 
 # UI references
 var _ui_root: Control
 var _day_time_label: Label
 var _money_label: Label
+var _version_button: Button
 var _stamina_bar: ProgressBar
 var _stamina_fill_style: StyleBoxFlat
 var _stamina_value_label: Label
@@ -77,8 +125,15 @@ var _shop_harvest_label: Label
 var _shop_crop_info_labels: Dictionary = {}
 var _shop_buy_buttons: Dictionary = {}
 
+var _changelog_backdrop: ColorRect
+var _changelog_panel: PanelContainer
+var _changelog_title_label: Label
+var _changelog_author_label: Label
+
 
 func _ready() -> void:
+	_load_version_metadata()
+
 	if ResourceLoader.exists(UI_ICONS_PATH):
 		_icons_texture = load(UI_ICONS_PATH) as Texture2D
 	if _icons_texture == null and FileAccess.file_exists(UI_ICONS_PATH):
@@ -101,9 +156,37 @@ func _unhandled_input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 			return
 
-	if event is InputEventKey and event.pressed and not event.echo:
-		var key_event := event as InputEventKey
-		match key_event.keycode:
+	var key_event := event as InputEventKey
+	var key_pressed: bool = key_event != null and key_event.pressed and not key_event.echo
+	var keycode: Key = key_event.keycode if key_pressed else KEY_NONE
+
+	if (InputMap.has_action("toggle_changelog") and event.is_action_pressed("toggle_changelog")) or (key_pressed and keycode == KEY_V):
+		_play_click()
+		toggle_changelog()
+		get_viewport().set_input_as_handled()
+		return
+
+	if (InputMap.has_action("ui_cancel") and event.is_action_pressed("ui_cancel")) or (key_pressed and keycode == KEY_ESCAPE):
+		if _changelog_open:
+			_play_click()
+			_set_changelog_open(false)
+			get_viewport().set_input_as_handled()
+			return
+		if _shop_open:
+			_play_click()
+			_set_shop_open(false)
+			get_viewport().set_input_as_handled()
+			return
+
+	if _changelog_open and (
+		(InputMap.has_action("toggle_demo") and event.is_action_pressed("toggle_demo")) or (key_pressed and keycode == KEY_P)
+	):
+		# Close changelog before farm_world handles toggle_demo so _is_shop_open() won't trigger Shop.
+		_set_changelog_open(false)
+		return
+
+	if key_pressed:
+		match keycode:
 			KEY_1, KEY_KP_1:
 				_select_slot(0)
 				get_viewport().set_input_as_handled()
@@ -119,14 +202,28 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_5, KEY_KP_5:
 				_select_slot(4)
 				get_viewport().set_input_as_handled()
-			KEY_ESCAPE:
-				if _shop_open:
-					toggle_shop()
-					get_viewport().set_input_as_handled()
 
 
 func toggle_shop() -> void:
-	_shop_open = not _shop_open
+	_set_shop_open(not _shop_open)
+
+
+func is_shop_open() -> bool:
+	return _shop_open or _changelog_open
+
+
+func toggle_changelog() -> void:
+	_set_changelog_open(not _changelog_open)
+
+
+func is_changelog_open() -> bool:
+	return _changelog_open
+
+
+func _set_shop_open(open: bool) -> void:
+	if open and _changelog_open:
+		_set_changelog_open(false)
+	_shop_open = open
 	if _shop_backdrop != null:
 		_shop_backdrop.visible = _shop_open
 	if _shop_panel != null:
@@ -135,8 +232,49 @@ func toggle_shop() -> void:
 		_refresh_shop()
 
 
-func is_shop_open() -> bool:
-	return _shop_open
+func _set_changelog_open(open: bool) -> void:
+	if open and _shop_open:
+		_set_shop_open(false)
+	_changelog_open = open
+	if _changelog_backdrop != null:
+		_changelog_backdrop.visible = _changelog_open
+	if _changelog_panel != null:
+		_changelog_panel.visible = _changelog_open
+
+
+func _load_version_metadata() -> void:
+	_version_history.clear()
+	if ResourceLoader.exists(VERSION_DATA_PATH):
+		var version_script := load(VERSION_DATA_PATH) as Script
+		if version_script != null:
+			var consts := version_script.get_script_constant_map()
+			if not str(consts.get("CURRENT_VERSION", "")).is_empty():
+				_current_version = str(consts["CURRENT_VERSION"])
+			if not str(consts.get("AUTHOR", "")).is_empty():
+				_version_author = str(consts["AUTHOR"])
+			if not str(consts.get("RELEASES_URL", "")).is_empty():
+				_releases_url = str(consts["RELEASES_URL"])
+			if not str(consts.get("ISSUES_URL", "")).is_empty():
+				_issues_url = str(consts["ISSUES_URL"])
+			if not str(consts.get("CHANGELOG_URL", "")).is_empty():
+				_changelog_url = str(consts["CHANGELOG_URL"])
+			var raw_history: Variant = consts.get("HISTORY", [])
+			if raw_history is Array:
+				for item in raw_history:
+					if item is Dictionary:
+						_version_history.append((item as Dictionary).duplicate(true))
+
+	if _version_history.is_empty():
+		for item in FALLBACK_HISTORY:
+			_version_history.append(item.duplicate(true))
+
+
+func _emit_toast(text: String) -> void:
+	var gs := _get_game_state()
+	if gs != null and gs.has_method("emit_toast"):
+		gs.call("emit_toast", text)
+	else:
+		_on_toast_message(text)
 
 
 func _get_game_state() -> Node:
@@ -235,6 +373,7 @@ func _build_ui() -> void:
 	_build_hotbar_section()
 	_build_controls_hint()
 	_build_shop_modal()
+	_build_changelog_modal()
 	_build_toast_panel()
 
 
@@ -250,9 +389,9 @@ func _build_stats_panel() -> void:
 	vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.add_child(vbox)
 
-	# Row 1: Day/Time + Money
+	# Row 1: Day/Time + Money + Version badge
 	var top_row := HBoxContainer.new()
-	top_row.add_theme_constant_override("separation", 10)
+	top_row.add_theme_constant_override("separation", 6)
 	top_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	vbox.add_child(top_row)
 
@@ -271,6 +410,22 @@ func _build_stats_panel() -> void:
 	_money_label = _make_label("$100", 9, COL_GOLD_TEXT)
 	money_row.add_child(_money_label)
 
+	_version_button = _make_colored_button(
+		"%s (V)" % _current_version,
+		Vector2(48, 15),
+		7,
+		Color("#5a442d"),
+		Color("#72583b"),
+		Color("#453321"),
+		COL_WOOD_BORDER,
+		Color("#fff1cc")
+	)
+	_version_button.name = "VersionButton"
+	_version_button.tooltip_text = "Histórico de versões e links (V)"
+	_version_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_version_button.pressed.connect(_on_version_button_pressed)
+	top_row.add_child(_version_button)
+
 	# Row 2: Stamina bar
 	var stamina_row := HBoxContainer.new()
 	stamina_row.add_theme_constant_override("separation", 4)
@@ -284,6 +439,7 @@ func _build_stats_panel() -> void:
 	_stamina_fill_style = _make_bar_fill_style(Color("#5ab549"))
 	var stamina_built := _make_progress_bar(Vector2(108, 12), _stamina_fill_style)
 	_stamina_bar = stamina_built["bar"]
+	_stamina_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_stamina_value_label = stamina_built["label"]
 	stamina_row.add_child(_stamina_bar)
 
@@ -300,6 +456,7 @@ func _build_stats_panel() -> void:
 	var water_fill := _make_bar_fill_style(Color("#3a9be0"))
 	var water_built := _make_progress_bar(Vector2(108, 12), water_fill)
 	_water_bar = water_built["bar"]
+	_water_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_water_value_label = water_built["label"]
 	water_row.add_child(_water_bar)
 
@@ -477,7 +634,7 @@ func _build_controls_hint() -> void:
 	_ui_root.add_child(panel)
 
 	var lbl := _make_label(
-		"WASD: Mover | Espaço/Clique: Usar | F: Interagir | 1-5: Slot | B: Loja | N: Dormir | P: Auto",
+		"WASD: Mover | Espaço/Clique: Usar | F: Interagir | 1-5: Slot | B: Loja | N: Dormir | P: Auto | V: Versão",
 		8,
 		Color(0.96, 0.93, 0.84)
 	)
@@ -613,6 +770,191 @@ func _build_shop_modal() -> void:
 		Color.WHITE
 	)
 	close_btn.pressed.connect(_on_close_shop_pressed)
+	footer.add_child(close_btn)
+
+
+func _format_author_badge(author: String) -> String:
+	var handle := author.strip_edges()
+	var space_idx := handle.find(" ")
+	if space_idx > 0:
+		handle = handle.substr(0, space_idx)
+	return "Autor: %s" % handle
+
+
+func _build_changelog_modal() -> void:
+	_changelog_backdrop = ColorRect.new()
+	_changelog_backdrop.name = "ChangelogBackdrop"
+	_changelog_backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_changelog_backdrop.color = Color(0.08, 0.05, 0.03, 0.55)
+	_changelog_backdrop.mouse_filter = Control.MOUSE_FILTER_STOP
+	_changelog_backdrop.visible = false
+	_ui_root.add_child(_changelog_backdrop)
+
+	_changelog_panel = PanelContainer.new()
+	_changelog_panel.name = "ChangelogPanel"
+	_changelog_panel.anchor_left = 0.5
+	_changelog_panel.anchor_right = 0.5
+	_changelog_panel.anchor_top = 0.5
+	_changelog_panel.anchor_bottom = 0.5
+	_changelog_panel.offset_left = -196
+	_changelog_panel.offset_right = 196
+	_changelog_panel.offset_top = -110
+	_changelog_panel.offset_bottom = 80
+	_changelog_panel.visible = false
+	_changelog_panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	_changelog_panel.add_theme_stylebox_override("panel", _make_flat_style(COL_PARCHMENT, COL_WOOD_BORDER, 3, 9, 6, 3))
+	_changelog_backdrop.add_child(_changelog_panel)
+
+	var main_vbox := VBoxContainer.new()
+	main_vbox.add_theme_constant_override("separation", 4)
+	main_vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_changelog_panel.add_child(main_vbox)
+
+	# Header
+	var header := HBoxContainer.new()
+	header.add_theme_constant_override("separation", 6)
+	header.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	main_vbox.add_child(header)
+
+	_changelog_title_label = _make_label("Atualizações (%s)" % _current_version, 10, COL_WOOD_DARK)
+	_changelog_title_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header.add_child(_changelog_title_label)
+
+	var author_badge := PanelContainer.new()
+	author_badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	author_badge.add_theme_stylebox_override(
+		"panel",
+		_make_flat_style(Color(0.92, 0.85, 0.69, 0.96), Color("#b89563"), 1, 5, 1, 2)
+	)
+	header.add_child(author_badge)
+
+	_changelog_author_label = _make_label(_format_author_badge(_version_author), 7, COL_GOLD_TEXT)
+	author_badge.add_child(_changelog_author_label)
+
+	main_vbox.add_child(_make_separator())
+
+	# Scrollable release history list
+	var scroll := ScrollContainer.new()
+	scroll.name = "ChangelogScroll"
+	scroll.custom_minimum_size = Vector2(0, 108)
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.clip_contents = true
+	main_vbox.add_child(scroll)
+
+	var history_vbox := VBoxContainer.new()
+	history_vbox.name = "ChangelogEntries"
+	history_vbox.add_theme_constant_override("separation", 4)
+	history_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	history_vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	scroll.add_child(history_vbox)
+
+	for entry in _version_history:
+		var ver_str := str(entry.get("version", ""))
+		var title_str := str(entry.get("title", ""))
+		var date_str := str(entry.get("date", ""))
+		var entry_author := str(entry.get("author", _version_author))
+		var is_current := (ver_str == _current_version)
+
+		var card := PanelContainer.new()
+		card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		card.add_theme_stylebox_override(
+			"panel",
+			_make_flat_style(
+				Color(0.95, 0.89, 0.75, 0.98) if is_current else COL_PARCHMENT_ALT,
+				Color("#9c6c2e") if is_current else Color("#b89563"),
+				1,
+				6,
+				4,
+				2
+			)
+		)
+		history_vbox.add_child(card)
+
+		var card_vbox := VBoxContainer.new()
+		card_vbox.add_theme_constant_override("separation", 2)
+		card_vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		card.add_child(card_vbox)
+
+		var card_top := HBoxContainer.new()
+		card_top.add_theme_constant_override("separation", 6)
+		card_top.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		card_vbox.add_child(card_top)
+
+		var heading_text := "%s — %s" % [ver_str, title_str] if not title_str.is_empty() else ver_str
+		var heading_lbl := _make_label(heading_text, 8, COL_WOOD_DARK)
+		heading_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		heading_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		card_top.add_child(heading_lbl)
+
+		var meta_text := "%s · %s" % [date_str, _format_author_badge(entry_author).replace("Autor: ", "")] if not date_str.is_empty() else entry_author
+		var meta_lbl := _make_label(meta_text, 7, COL_INK_MUTED)
+		meta_lbl.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+		card_top.add_child(meta_lbl)
+
+		var highlights: Variant = entry.get("highlights", [])
+		if highlights is Array:
+			for h in highlights:
+				var bullet_lbl := _make_label("• %s" % str(h), 7, COL_INK)
+				bullet_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+				bullet_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+				card_vbox.add_child(bullet_lbl)
+
+	main_vbox.add_child(_make_separator())
+
+	# Footer buttons
+	var footer := HBoxContainer.new()
+	footer.add_theme_constant_override("separation", 6)
+	footer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	main_vbox.add_child(footer)
+
+	var releases_btn := _make_colored_button(
+		"Releases (GitHub)",
+		Vector2(98, 20),
+		8,
+		Color("#466f8f"),
+		Color("#5686ab"),
+		Color("#375973"),
+		Color("#233c4f"),
+		Color.WHITE
+	)
+	releases_btn.name = "ReleasesButton"
+	releases_btn.pressed.connect(_on_open_releases_pressed)
+	footer.add_child(releases_btn)
+
+	var issues_btn := _make_colored_button(
+		"Issues / Bugs",
+		Vector2(82, 20),
+		8,
+		Color("#8b5a2b"),
+		Color("#a36b35"),
+		Color("#704721"),
+		Color("#4a2d13"),
+		Color.WHITE
+	)
+	issues_btn.name = "IssuesButton"
+	issues_btn.pressed.connect(_on_open_issues_pressed)
+	footer.add_child(issues_btn)
+
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	footer.add_child(spacer)
+
+	var close_btn := _make_colored_button(
+		"Fechar (V)",
+		Vector2(66, 20),
+		8,
+		Color("#b84b3e"),
+		Color("#cf5a4c"),
+		Color("#94392e"),
+		Color("#61231c"),
+		Color.WHITE
+	)
+	close_btn.name = "CloseChangelogButton"
+	close_btn.pressed.connect(_on_close_changelog_pressed)
 	footer.add_child(close_btn)
 
 
@@ -780,6 +1122,8 @@ func _on_auto_button_pressed() -> void:
 
 
 func _on_demo_mode_changed(active: bool) -> void:
+	if active and _changelog_open:
+		_set_changelog_open(false)
 	_apply_auto_button_state(active)
 
 
@@ -790,13 +1134,40 @@ func _on_shop_button_pressed() -> void:
 
 func _on_close_shop_pressed() -> void:
 	_play_click()
-	toggle_shop()
+	_set_shop_open(false)
+
+
+func _on_version_button_pressed() -> void:
+	_play_click()
+	toggle_changelog()
+
+
+func _on_close_changelog_pressed() -> void:
+	_play_click()
+	_set_changelog_open(false)
+
+
+func _open_external_url(url: String, toast_text: String) -> void:
+	_play_click()
+	_emit_toast(toast_text)
+	if _open_external_links and not url.is_empty():
+		OS.shell_open(url)
+
+
+func _on_open_releases_pressed() -> void:
+	_open_external_url(_releases_url, "Abrindo Releases no GitHub...")
+
+
+func _on_open_issues_pressed() -> void:
+	_open_external_url(_issues_url, "Abrindo Issues no GitHub...")
 
 
 func _on_sleep_button_pressed() -> void:
 	_play_click()
 	if _shop_open:
-		toggle_shop()
+		_set_shop_open(false)
+	if _changelog_open:
+		_set_changelog_open(false)
 	var gs := _get_game_state()
 	if gs != null:
 		gs.advance_day()

@@ -1,0 +1,55 @@
+name: 🐛 Relato de Bug
+description: Relate um erro visual, falha de gameplay ou problema técnico na Fazendinha 2D.
+title: "fix: "
+labels: ["bug"]
+body:
+  - type: dropdown
+    id: version
+    attributes:
+      label: Versão afetada
+      description: Em qual versão do jogo o problema ocorreu?
+      options:
+        - v1.2.0 (Atual)
+        - v1.1.0
+        - v1.0.0
+        - Outra / Branch main
+    validations:
+      required: true
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Plataforma
+      options:
+        - Web (GitHub Pages / HTML5)
+        - Windows (Godot 4.7 Desktop)
+        - Outra
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Descrição do bug
+      description: O que aconteceu de errado e o que era esperado?
+      placeholder: Descreva de forma clara e objetiva o comportamento observado.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Passos para reproduzir
+      description: Como podemos reproduzir o problema?
+      value: |
+        1. Abra o jogo na tela '...'
+        2. Clique em '...' ou pressione a tecla '...'
+        3. Observe o erro '...'
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Capturas de tela / Logs (opcional)
+      description: Se houver mensagens no console ou prints da HUD (640x360), cole abaixo.

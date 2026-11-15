@@ -40,6 +40,7 @@ Jogo 2D pixel art estilo *cozy farming* desenvolvido para **Godot 4.7.2-stable**
 | Abrir / Fechar Loja de Sementes | `B` |
 | Dormir / Avançar para o próximo dia | `N` (ou interagir com a porta da casinha) |
 | Ligar/Desligar Fazendeiro Automático (Demo IA) | `P` (ou botão **Auto (P)** na HUD) |
+| Ver Atualizações / Changelog e Versão atual | `V` (ou botão **v1.2.0 (V)** na HUD) |
 | Salvar progresso manualmente | Botão **Salvar** na HUD |
 | Ligar / Desligar efeitos sonoros | Botão **Som: ON / OFF** na HUD |
 
@@ -86,16 +87,92 @@ Jogo 2D pixel art estilo *cozy farming* desenvolvido para **Godot 4.7.2-stable**
 
 ## Estrutura Principal do Projeto
 
-- `project.godot` — Configurações de entrada, viewport (`640x360` -> janela `1280x720`), filtro pixel art e Autoloads (`GameState`, `AudioManager`).
+- `project.godot` — Configurações de entrada, viewport (`640x360` -> janela `1280x720`), filtro pixel art, versão (`1.2.0`) e Autoloads (`GameState`, `AudioManager`).
 - `scripts/data/crop_data.gd` — Definições e recurso `CropData` dos cultivos.
+- `scripts/data/version_data.gd` — Versão atual (`v1.2.0`), histórico de versões (`v1.0.0`, `v1.1.0`, `v1.2.0`), autoria e URLs de Releases/Issues.
 - `scripts/autoload/game_state.gd` — Estado global (`GameState`), inventário, economia, energia, regador, save/load JSON, sinais e relógio diário.
 - `scripts/autoload/audio_manager.gd` — Sintetizador procedural de efeitos sonoros (`AudioManager`) com pool de `AudioStreamPlayer` e controle de mudo.
 - `scripts/world/` e `scenes/` — Mundo da fazenda, jogador, animais e interface/HUD.
 - `assets/sprites/` — Spritesheets 16x16 de terreno, cultivos, personagens, construções e ícones (`ui_icons.png` 128x16).
 - `tools/import_pack.py` — Ferramenta CLI para importar pacotes externos (como *Sprout Lands* ou *Kenney Tiny Town*) para `assets/sprites/` com backup automático em `assets/sprites_backup/`.
+- `tools/auto_release_bot.py` e `Robozinho_Release.bat` — Robô automatizador de auditoria das 5 Barreiras e publicação de Releases (`Antes vs. Depois`).
+- `RELEASE_RULES.md` — Critérios obrigatórios verificados pelo robô antes de subir qualquer nova versão.
+- `CHANGELOG.md` — Registro completo de releases, quadro *Antes vs. Depois* e issues resolvidas.
+
+---
+
+## 📋 Histórico de Versões, Issues & Como Atualizar (Fluxo Solo GitHub)
+
+- **Versão atual:** `v1.2.0` (mantida em `project.godot` e `scripts/data/version_data.gd`)
+- **Changelog completo:** [CHANGELOG.md](CHANGELOG.md)
+- **Releases no GitHub:** https://github.com/marlonferreira1800-hue/Fazenda-asclepio-/releases
+- **Issues & Bugs:** https://github.com/marlonferreira1800-hue/Fazenda-asclepio-/issues?q=is%3Aissue
+
+Para registrar novos bugs, melhorias, Pull Requests e novas versões no seu perfil do GitHub trabalhando solo:
+
+```powershell
+# 1. Abrir uma Issue descrevendo o bug ou melhoria (retorna o número #N)
+gh issue create --title "fix(ui): descrever correção" --label "bug"
+
+# 2. Criar uma branch limpa a partir da main atualizada
+git checkout main
+git pull origin main
+git checkout -b fix/issue-N-breve-descricao
+
+# 3. Após editar e validar no Godot 4.7.2, atualizar version_data.gd, CHANGELOG.md e project.godot
+git add -A
+git commit -m "fix: descrição objetiva da correção (#N)"
+git push -u origin fix/issue-N-breve-descricao
+
+# 4. Abrir e concluir o Pull Request fechando a Issue #N automaticamente
+gh pr create --title "fix: descrição objetiva (#N)" --body "Closes #N"
+gh pr merge --squash --delete-branch
+
+# 5. Publicar nova Release (dispara .github/workflows/release.yml e Pages)
+git checkout main
+git pull origin main
+gh release create v1.3.0 --title "v1.3.0" --generate-notes
+```
+
+### 🤖 Robô Automatizador de Release (`Robozinho_Release.bat`)
+
+Para validar, versionar e publicar correções automaticamente sem risco de subir código quebrado, utilize o **Robô Agente de Release** (`tools/auto_release_bot.py` ou `Robozinho_Release.bat`), que exige aprovação nas **5 Barreiras** descritas em [RELEASE_RULES.md](RELEASE_RULES.md):
+
+1. **Sintaxe Godot 4.7.2:** `--check-only` em todos os `.gd` (`EXIT=0`, zero `SCRIPT ERROR`).
+2. **Assets & Grade RGBA:** Dimensões exatas dos 5 spritesheets em `assets/sprites/` (`64x32`, `80x48`, `64x64`, `96x48`, `128x16`).
+3. **Boot & Higiene:** Boot headless de `scenes/main.tscn` (`EXIT=0`), zero arquivos temporários (`test_*`, `verify_*`, `*.tmp`) e zero segredos expostos.
+4. **Mudança Real & Antes vs. Depois:** Consistência de versão, bloqueio de release sem diff real em `--publish`, incremento semântico (`patch`/`minor`/`major`) e quadro obrigatório **Antes vs. Depois**.
+5. **Web Sincronizado & Rastreabilidade GitHub:** Re-export automático de `build/web/index.html`, Issue criada/fechada via `gh`, commit/push e Release publicada.
+
+```powershell
+# Auditar o projeto agora (somente leitura)
+python tools/auto_release_bot.py --check
+
+# Simular nova versão patch com Antes vs. Depois (dry-run)
+python tools/auto_release_bot.py --dry-run --bump patch --title "Exemplo" --before "Estado anterior" --after "Estado corrigido"
+
+# Publicar correção completa (ou clique duplo em Robozinho_Release.bat)
+python tools/auto_release_bot.py --publish --bump patch --title "Correção X" --before "Como estava antes" --after "Como ficou depois" --fixes "Detalhe do ajuste"
+```
 
 ---
 
 ## Assets Gratuitos e Substituição de Sprites
 
 Para informações sobre pacotes gratuitos (CC0 / Free) recomendados, licenças, uso do importador `tools/import_pack.py` e substituição direta dos spritesheets em `assets/sprites/` mantendo exatamente as mesmas dimensões de grade, consulte [ASSETS_GRATUITOS.md](ASSETS_GRATUITOS.md).
+
+---
+
+## 🤖 Engenharia com Enxame de Agentes de IA & Curadoria de Recursos
+
+Este projeto foi concebido, dirigido e arquitetado por **Marlon Ferreira ([@marlonferreira1800-hue](https://github.com/marlonferreira1800-hue))** utilizando **Engenharia e Orquestração de Enxame de Agentes de IA Estruturados (Multi-Agent Swarm)** com separação estrita de propriedade de arquivos e validação automatizada ponta a ponta:
+
+- **Arquitetura do Enxame (Swarm):**
+  - `assets-scout` — Curadoria de pacotes CC0/gratuitos, geração programática dos spritesheets 16x16 (`tools/generate_sprites.py`) e importador CLI (`tools/import_pack.py`).
+  - `core-dev` — Autoloads (`GameState`, `AudioManager` SFX procedural), persistência JSON, definição de cultivos/versões (`CropData`, `VersionData`), `CHANGELOG.md`, regras de release e robô gatekeeper.
+  - `world-dev` — Mapa `TileMapLayer`, física/colisões, cultivos em 5 estágios, animais produtores, ciclo dia/noite e máquina de estados do Fazendeiro Automático (`Auto / P`).
+  - `ui-dev` — HUD responsiva em `640x360`, loja de sementes, hotbar, contraste acessível, toasts e painel de atualizações in-game (`v1.2.0 / V`).
+  - `verifier` — Auditoria independente em Godot 4.7.2 (`--import`, `--check-only`, boot headless, suítes de integração e export Web HTML5/WASM).
+  - `publisher` — Templates de Issues/PRs, GitHub Actions (`Pages` e `Release`), versionamento em tags e publicação contínua.
+- **Curadoria Integrada nos 6 Portais de Assets Gratuitos:** Levantamento estruturado em [ASSETS_GRATUITOS.md](ASSETS_GRATUITOS.md) cobrindo **itch.io**, **Kenney**, **CraftPix**, **OpenGameArt**, **GameDev Market** e **Game Developer Studio**, com integração direta de ícones CC0 e compatibilidade de grade para substituição de pacotes.
+- **Automação de Qualidade & Versionamento (`tools/auto_release_bot.py`):** Robô de release com **5 Barreiras de Critério** ([RELEASE_RULES.md](RELEASE_RULES.md)) que bloqueia qualquer publicação sem sintaxe limpa no Godot 4.7.2, integridade RGBA dos sprites, boot sem erros/lixo/segredos, quadro obrigatório **Antes vs. Depois** com diff real e build Web sincronizado.
