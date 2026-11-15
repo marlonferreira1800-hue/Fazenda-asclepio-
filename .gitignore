@@ -1,0 +1,15 @@
+# Godot 4 cache / editor data
+.godot/
+
+# Temporary files
+*.tmp
+
+# Local sprite backups
+assets/sprites_backup/
+
+# Python
+__pycache__/
+*.pyc
+
+# Export credentials (never commit)
+export_credentials.cfg
