@@ -2,7 +2,7 @@ class_name VersionData
 extends RefCounted
 ## Metadados de versão, autoria, links do repositório e histórico de atualizações da Fazendinha 2D.
 
-const CURRENT_VERSION := "v1.5.0"
+const CURRENT_VERSION := "v1.5.1"
 const REPO_URL := "https://github.com/marlonferreira1800-hue/Fazenda-asclepio-"
 const RELEASES_URL := "https://github.com/marlonferreira1800-hue/Fazenda-asclepio-/releases"
 const ISSUES_URL := "https://github.com/marlonferreira1800-hue/Fazenda-asclepio-/issues?q=is%3Aissue"
@@ -10,6 +10,19 @@ const CHANGELOG_URL := "https://github.com/marlonferreira1800-hue/Fazenda-asclep
 const AUTHOR := "@marlonferreira1800-hue (Marlon Ferreira)"
 
 const HISTORY: Array[Dictionary] = [
+	{
+		"version": "v1.5.1",
+		"title": "Corrigir cache do navegador no GitHub Pages (cache-busting do index.pck)",
+		"date": "2026-11-20",
+		"author": "@marlonferreira1800-hue",
+		"tag_url": "https://github.com/marlonferreira1800-hue/Fazenda-asclepio-/releases/tag/v1.5.1",
+		"before": "O navegador reutilizava index.js e index.pck antigos em cache do GitHub Pages, mantendo a versão anterior ao abrir a URL.",
+		"after": "Adicionado cache-busting automático (?v=1.5.1) no carregamento de index.js e no fetch de index.pck/index.wasm para forçar o download imediato da versão nova.",
+		"highlights": [
+			"Antes -> Depois: O navegador reutilizava index.js e index.pck antigos em cache do GitHub Pages, mantendo a versão anterior ao abrir a URL. -> Adicionado cache-busting automático (?v=1.5.1) no carregamento de index.js e no fetch de index.pck/index.wasm para forçar o download imediato da versão nova.",
+			"Issue #13: Cache-busting automático em build/web/index.html e build/web/index.js durante a exportação Web no auto_release_bot.py",
+		],
+	},
 	{
 		"version": "v1.5.0",
 		"title": "Acesso ao interior da casa e móveis interativos CC0",

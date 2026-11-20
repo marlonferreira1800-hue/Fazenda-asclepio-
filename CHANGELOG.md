@@ -9,6 +9,21 @@ Todas as alterações relevantes do projeto **Fazendinha 2D** estão documentada
 
 ---
 
+## [v1.5.1] — 2026-11-20
+
+**Corrigir cache do navegador no GitHub Pages (cache-busting do index.pck)**
+- **Release:** [v1.5.1](https://github.com/marlonferreira1800-hue/Fazenda-asclepio-/releases/tag/v1.5.1)
+- **Contribuidor:** [@marlonferreira1800-hue](https://github.com/marlonferreira1800-hue)
+
+### 🔄 Antes vs. Depois
+- **Antes:** O navegador reutilizava index.js e index.pck antigos em cache do GitHub Pages, mantendo a versão anterior ao abrir a URL.
+- **Depois:** Adicionado cache-busting automático (?v=1.5.1) no carregamento de index.js e no fetch de index.pck/index.wasm para forçar o download imediato da versão nova.
+
+### Bugs Resolvidos e Melhorias
+- **Issue [#13](https://github.com/marlonferreira1800-hue/Fazenda-asclepio-/issues/13):** Cache-busting automático em build/web/index.html e build/web/index.js durante a exportação Web no auto_release_bot.py
+
+---
+
 ## [v1.5.0] — 2026-11-20
 
 **Acesso ao interior da casa e móveis interativos CC0**

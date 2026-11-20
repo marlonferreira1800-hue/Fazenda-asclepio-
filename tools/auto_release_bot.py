@@ -567,7 +567,23 @@ def publish_release(
     if exp_res.returncode != 0:
         print(f"[ERRO] Export Web falhou: {exp_res.stdout}\n{exp_res.stderr}")
         return 1
-    print("[OK] Build Web atualizado em build/web/index.html")
+
+    # Cache-busting para evitar que o navegador reutilize index.pck / index.js antigos do GitHub Pages
+    web_js = REPO_ROOT / "build" / "web" / "index.js"
+    if WEB_INDEX.is_file():
+        html_txt = WEB_INDEX.read_text(encoding="utf-8", errors="replace")
+        html_txt = html_txt.replace('<script src="index.js"></script>', f'<script src="index.js?v={next_ver}"></script>')
+        WEB_INDEX.write_text(html_txt, encoding="utf-8")
+    if web_js.is_file():
+        js_txt = web_js.read_text(encoding="utf-8", errors="replace")
+        js_txt = re.sub(
+            r"return fetch\(file(?:\+\(\(file\.endsWith\('\.pck'\)\|\|file\.endsWith\('\.wasm'\)\)\?'\?v=[^']*':''\))?\)\.then",
+            f"return fetch(file+((file.endsWith('.pck')||file.endsWith('.wasm'))?'?v={next_ver}' :'')).then",
+            js_txt,
+        )
+        web_js.write_text(js_txt, encoding="utf-8")
+
+    print("[OK] Build Web atualizado em build/web/index.html (com cache-busting)")
 
     print("[PUBLISH] 4/5 Executando git add, commit e push (sem --force)...")
     run_cmd(["git", "add", "-A"])
