@@ -40,10 +40,10 @@ REPO_URL = f"https://github.com/{REPO_SLUG}"
 
 EXPECTED_SPRITES: dict[str, tuple[int, int]] = {
     "assets/sprites/terrain_tileset.png": (64, 32),
-    "assets/sprites/crops_sheet.png": (80, 48),
+    "assets/sprites/crops_sheet.png": (80, 96),
     "assets/sprites/farmer_sheet.png": (64, 64),
-    "assets/sprites/props_buildings.png": (96, 48),
-    "assets/sprites/ui_icons.png": (128, 16),
+    "assets/sprites/props_buildings.png": (96, 64),
+    "assets/sprites/ui_icons.png": (256, 16),
 }
 
 FORBIDDEN_TEMP_PATTERNS = [

@@ -15,10 +15,10 @@ Se qualquer uma das 5 regras falhar, o robô **REJEITA** a publicação (`STATUS
 ### Regra 2 — Barreira de Assets & Grade RGBA
 - **Critério:** Os 5 spritesheets principais em `assets/sprites/` devem existir, estar no modo `RGBA`, conter pixels visíveis (não vazios) e manter exatamente as dimensões esperadas pelo código:
   - `assets/sprites/terrain_tileset.png` -> `64x32` RGBA
-  - `assets/sprites/crops_sheet.png` -> `80x48` RGBA
+  - `assets/sprites/crops_sheet.png` -> `80x96` RGBA
   - `assets/sprites/farmer_sheet.png` -> `64x64` RGBA
-  - `assets/sprites/props_buildings.png` -> `96x48` RGBA
-  - `assets/sprites/ui_icons.png` -> `128x16` RGBA
+  - `assets/sprites/props_buildings.png` -> `96x64` RGBA
+  - `assets/sprites/ui_icons.png` -> `256x16` RGBA
 - **Verificação automática:** Inspeciona todos os PNGs via Python Pillow (`PIL.Image`).
 
 ### Regra 3 — Barreira de Boot & Higiene do Repositório

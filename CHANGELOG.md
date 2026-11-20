@@ -9,6 +9,26 @@ Todas as alterações relevantes do projeto **Fazendinha 2D** estão documentada
 
 ---
 
+## [v1.3.0] — 2026-11-19
+
+**Novos Cultivos, Upgrades 3x3, Aspersores, Clima Chuvoso, BGM Procedural, Ovelha/Porco & Mobile**
+- **Release:** [v1.3.0](https://github.com/marlonferreira1800-hue/Fazenda-asclepio-/releases/tag/v1.3.0)
+- **Issue:** [#7](https://github.com/marlonferreira1800-hue/Fazenda-asclepio-/issues/7)
+- **Contribuidor:** [@marlonferreira1800-hue](https://github.com/marlonferreira1800-hue)
+
+### 🔄 Antes vs. Depois
+- **Antes:** Apenas 3 cultivos, ferramentas sem evolução, clima sempre ensolarado, sem música de fundo, apenas galinha/vaca, sem controles touch na tela nem opção na interface para reiniciar o progresso.
+- **Depois:** 6 cultivos (Trigo, Cenoura, Morango, Milho, Tomate e Abóbora), upgrades de Enxada/Regador (`3x1`/`3x3`) e Resistência, Aspersor automático `3x3`, clima Sol/Chuva com previsão e rega automática, música cozy procedural em loop, Ovelha (`Lã $60`) e Porco (`Trufa $80`), controles touch na tela, Menu (`Esc`) com Reiniciar Fazenda e Auto-Farmer expandido para 12 canteiros.
+
+### Bugs Resolvidos e Melhorias
+- **Issue [#7](https://github.com/marlonferreira1800-hue/Fazenda-asclepio-/issues/7):**
+  - **Gameplay & Economia:** Adicionados **Milho** (`3d`, `$30`/`$90`), **Tomate** (`4d`, `$45`/`$145`) e **Abóbora** (`5d`, `$65`/`$220`) em `CropData`, hotbar expandida para 9 slots (`1-9` + roda do mouse), Loja (`B`) redesenhada com abas (**Sementes** `1x`/`+5` e **Upgrades**) e **Aspersor Automático (`3x3`)** recolhível com `F`.
+  - **Clima & Atmosfera:** Sistema diário de clima (**Sol / Chuva**) com previsão para o dia seguinte na HUD, gotas de chuva pixeladas em movimento, fumaça na chaminé, brilhos no lago e rega automática de todo o canteiro quando chove.
+  - **Áudio & Animais:** Música de fundo *cozy* sintetizada proceduralmente em loop (`AudioStreamWAV`), novos timbres para **Ovelha**, **Porco** e **Upgrade**, e produção diária de **Lã (`$60`)** e **Trufa (`$80`)**.
+  - **UX, Mobile & Auto-Farmer:** Menu (`Esc`/botão `Menu`) com toggles independentes de SFX/Música, seletor de **Controles Touch (`Auto / Sempre ON / OFF`)** com D-Pad + ações na tela, **Reiniciar Fazenda** com confirmação limpando também o mundo, e Auto-Farmer (`P`) atualizado para 12 canteiros e todas as 6 culturas.
+
+---
+
 ## [v1.2.0] — 2026-11-15
 
 **Modo Fazendeiro Automático, Painel de Atualizações & Deploy Web**

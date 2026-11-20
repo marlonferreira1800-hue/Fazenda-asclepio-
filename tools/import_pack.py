@@ -9,10 +9,10 @@ Suporta arquivos .zip ou pastas extraídas de:
 Antes de substituir qualquer arquivo em assets/sprites/, cria um backup em
 assets/sprites_backup/ e preserva as dimensões e grades exatas exigidas pelo jogo:
 - terrain_tileset.png : 64x32 RGBA
-- crops_sheet.png     : 80x48 RGBA
+- crops_sheet.png     : 80x96 RGBA
 - farmer_sheet.png    : 64x64 RGBA
-- props_buildings.png : 96x48 RGBA
-- ui_icons.png        : 128x16 RGBA
+- props_buildings.png : 96x64 RGBA
+- ui_icons.png        : 256x16 RGBA
 
 Uso:
   python tools/import_pack.py --source caminho/do/pacote.zip
@@ -39,10 +39,10 @@ BACKUP_DIR = ROOT_DIR / "assets" / "sprites_backup"
 
 EXPECTED_SIZES: dict[str, tuple[int, int]] = {
     "terrain_tileset.png": (64, 32),
-    "crops_sheet.png": (80, 48),
+    "crops_sheet.png": (80, 96),
     "farmer_sheet.png": (64, 64),
-    "props_buildings.png": (96, 48),
-    "ui_icons.png": (128, 16),
+    "props_buildings.png": (96, 64),
+    "ui_icons.png": (256, 16),
 }
 
 

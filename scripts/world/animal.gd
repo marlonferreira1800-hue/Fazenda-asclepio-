@@ -1,6 +1,6 @@
 extends CharacterBody2D
 
-@export_enum("chicken", "cow") var animal_type: String = "chicken"
+@export_enum("chicken", "cow", "sheep", "pig") var animal_type: String = "chicken"
 @export var wander_bounds: Rect2 = Rect2(456.0, 88.0, 112.0, 64.0)
 @export var move_speed: float = 18.0
 
@@ -34,7 +34,15 @@ func _ready() -> void:
 func setup(p_type: String, p_bounds: Rect2) -> void:
 	animal_type = p_type
 	wander_bounds = p_bounds
-	move_speed = 22.0 if p_type == "chicken" else 13.0
+	match p_type:
+		"chicken":
+			move_speed = 22.0
+		"pig":
+			move_speed = 18.0
+		"sheep":
+			move_speed = 16.0
+		_:
+			move_speed = 13.0
 	if is_node_ready():
 		_load_frames()
 		_update_indicator()
@@ -60,11 +68,27 @@ func collect_product() -> String:
 	collected_today = true
 	_update_indicator()
 	_play_happy_hop()
-	return "milk" if animal_type == "cow" else "egg"
+	match animal_type:
+		"cow":
+			return "milk"
+		"sheep":
+			return "wool"
+		"pig":
+			return "truffle"
+		_:
+			return "egg"
 
 
 func get_display_name() -> String:
-	return "Galinha" if animal_type == "chicken" else "Vaca"
+	match animal_type:
+		"cow":
+			return "Vaca"
+		"sheep":
+			return "Ovelha"
+		"pig":
+			return "Porco"
+		_:
+			return "Galinha"
 
 
 func _build_indicator() -> void:
@@ -95,11 +119,15 @@ func _update_indicator() -> void:
 		return
 	_indicator.visible = not collected_today
 	if _indicator_fill != null:
-		_indicator_fill.color = (
-			Color(0.84, 0.96, 1.0, 1.0)
-			if animal_type == "cow"
-			else Color(1.0, 0.92, 0.38, 1.0)
-		)
+		match animal_type:
+			"cow":
+				_indicator_fill.color = Color(0.84, 0.96, 1.0, 1.0)
+			"sheep":
+				_indicator_fill.color = Color(1.0, 1.0, 1.0, 1.0)
+			"pig":
+				_indicator_fill.color = Color(1.0, 0.68, 0.80, 1.0)
+			_:
+				_indicator_fill.color = Color(1.0, 0.92, 0.38, 1.0)
 
 
 func _play_happy_hop() -> void:
@@ -137,10 +165,15 @@ func _load_frames() -> void:
 		return
 
 	var regions: Array[Rect2]
-	if animal_type == "cow":
-		regions = [Rect2(32, 32, 16, 16), Rect2(48, 32, 16, 16)]
-	else:
-		regions = [Rect2(0, 32, 16, 16), Rect2(16, 32, 16, 16)]
+	match animal_type:
+		"cow":
+			regions = [Rect2(32, 32, 16, 16), Rect2(48, 32, 16, 16)]
+		"sheep":
+			regions = [Rect2(64, 32, 16, 16), Rect2(80, 32, 16, 16)]
+		"pig":
+			regions = [Rect2(0, 48, 16, 16), Rect2(16, 48, 16, 16)]
+		_:
+			regions = [Rect2(0, 32, 16, 16), Rect2(16, 32, 16, 16)]
 
 	for r in regions:
 		var atlas := AtlasTexture.new()
