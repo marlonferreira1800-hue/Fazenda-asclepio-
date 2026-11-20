@@ -34,14 +34,15 @@ Jogo 2D pixel art estilo *cozy farming* desenvolvido para **Godot 4.7.2-stable**
 | Ação | Tecla / Entrada |
 | :--- | :--- |
 | Mover personagem | `W`, `A`, `S`, `D`, `Setas Direcionais` ou **D-Pad Touch** (mobile) |
-| Usar ferramenta / Plantar / Instalar Aspersor / Colher | `Espaço`, `E`, `Clique do Mouse` ou botão **Usar** (touch) |
-| Interagir (Animais, Caixa de Venda, Loja, Poço, Porta da Casa, Recolher Aspersor, Colheita) | `F` ou botão **Interagir** (touch) |
-| Selecionar slot da Hotbar (1 a 9) | `1`–`9`, **Roda do Mouse** ou clique na Hotbar |
-| Abrir / Fechar Loja da Fazenda (Sementes e Upgrades) | `B` |
+| Usar ferramenta / Plantar / Pescar / Instalar Aspersor / Colher | `Espaço`, `E`, `Clique do Mouse` ou botão **Usar** (touch) |
+| Interagir (Animais, Máquinas, Caixa de Venda, Loja, Encomendas, Poço, Porta, Recolher Aspersor, Colheita) | `F` ou botão **Interagir** (touch) |
+| Selecionar slot da Hotbar (11 slots) | `1`–`9`, `0`, `-`, **Roda do Mouse** ou clique na Hotbar |
+| Abrir / Fechar Loja da Fazenda (Sementes, Upgrades e Fazenda) | `B` |
+| Abrir / Fechar Diário da Fazenda (Pedidos e Álbum) | `J` |
 | Dormir / Avançar para o próximo dia | `N` (ou interagir com a porta da casinha) |
 | Ligar/Desligar Fazendeiro Automático (Demo IA) | `P` (ou botão **Auto (P)** na HUD) |
-| Abrir Menu & Opções (Som, Música, Touch, Reiniciar) | `Esc` (ou botão **Menu** na HUD) |
-| Ver Atualizações / Changelog e Versão atual | `V` (ou botão **v1.3.0 (V)** na HUD) |
+| Abrir Menu & Opções (Som, Música, Touch, Velocidade, Reiniciar) | `Esc` (ou botão **Menu** na HUD) |
+| Ver Atualizações / Changelog e Versão atual | `V` (ou botão **v1.4.0 (V)** na HUD) |
 | Salvar progresso manualmente | Botão **Salvar** na HUD |
 | Ligar / Desligar efeitos sonoros | Botão **Som: ON / OFF** na HUD (ou no Menu) |
 
@@ -49,12 +50,13 @@ Jogo 2D pixel art estilo *cozy farming* desenvolvido para **Godot 4.7.2-stable**
 
 ## Como Jogar (Ciclo da Fazenda)
 
-1. **Arar a terra:** Selecione a **Enxada** (`1`) e use (`Espaço`/`E`/clique) na área arável para preparar o solo (evoluindo a Enxada na Loja libera áreas `3x1` e `3x3`).
-2. **Plantar:** Selecione uma semente (`3`–`8`) e plante sobre a terra arada.
-3. **Regar, Aspersores e Chuva:** Selecione o **Regador** (`2`) e molhe os canteiros (reabasteça no **lago** ou **poço**). Você também pode comprar **Aspersores Automáticos (`9`)** na aba *Upgrades* da Loja (`B`) para regar `3x3` todo amanhecer — e em **dias de Chuva**, todos os canteiros são regados automaticamente!
-4. **Cuidar dos Animais:** Entre no cercado pelo portão e interaja (`F` ou clique) perto das **galinhas** (**Ovo**), **vaca** (**Leite**), **ovelha** (**Lã**) e **porco** (**Trufa**), uma coleta por animal por dia.
-5. **Avançar os dias:** O relógio começa às `06:00` e avança automaticamente até a meia-noite (`24:00`), ou você pode dormir a qualquer momento pressionando `N` (ou interagindo com a porta da casinha). Cultivos regados crescem ao virar o dia, a energia é restaurada e o clima segue a previsão exibida na HUD.
-6. **Colher e Vender:** Quando o cultivo atingir o estágio maduro, colha com `Espaço`/`E`/`F` e venda cultivos e produtos animais na **Caixa de Venda** (`F`) ou pelo botão **Vender Tudo** na Loja (`B`).
+1. **Arar e Fertilizar:** Selecione a **Enxada** (`1`) e use (`Espaço`/`E`/clique) na área arável para preparar o solo (evoluindo a Enxada na Loja libera áreas `3x1` e `3x3`). Opcionalmente aplique **Fertilizante (`0`)** para aumentar a chance de colheitas **Ouro ★ (`1.5x`)**.
+2. **Plantar (com Rebrota):** Selecione uma semente (`4`–`9`) e plante sobre a terra arada. **Morango, Milho e Tomate** rebrotam a cada 2 dias após a colheita sem gastar nova semente!
+3. **Regar, Aspersores e Chuva:** Selecione o **Regador** (`2`) e molhe os canteiros (reabasteça no **lago** ou **poço**). Você também pode comprar **Aspersores Automáticos (`-`)** na aba *Upgrades* da Loja (`B`) para regar `3x3` todo amanhecer — e em **dias de Chuva**, todos os canteiros são regados automaticamente!
+4. **Pescar no Lago:** Selecione a **Vara de Pesca (`3`)** perto do lago e acerte a zona verde no minigame para pescar **Tilápia**, **Camarão**, **Truta** e **Carpa Dourada**.
+5. **Cuidar dos Animais & Carinho:** Entre no cercado pelo portão e interaja (`F` ou clique) com **galinhas**, **vacas**, **ovelhas** e **porcos** para coletar **Ovo/Ovo Azul**, **Leite**, **Lã** e **Trufa**, aumentar corações de amizade (`♥ 0..5`) e comprar mais animais na aba *Fazenda* da Loja (`B`).
+6. **Máquinas Artesanais, Encomendas & Álbum:** Instale **Queijeira**, **Forno de Pão** e **Apiário** na aba *Fazenda* da Loja (`B`) para produzir **Queijo**, **Pão** e **Mel**, entregue pedidos no **Quadro / Diário (`J`)** e complete o **Álbum** para liberar bônus permanentes!
+7. **Avançar os dias e Vender:** O relógio começa às `06:00` e avança até `24:00` (ajuste `0.5x/1x/1.5x` no Menu `Esc`), ou durma com `N` / na porta da casinha. Venda na **Caixa de Venda** (`F`) ou via **Vender Tudo** na Loja (`B`).
 
 ---
 

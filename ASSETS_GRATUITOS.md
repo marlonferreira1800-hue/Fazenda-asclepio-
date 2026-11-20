@@ -14,6 +14,8 @@ Todos os sprites em jogo já estão gerados em estética *cozy pastel* (inspirad
 - `assets/sprites/farmer_sheet.png` (`64x64 px`)
 - `assets/sprites/props_buildings.png` (`96x64 px`)
 - `assets/sprites/ui_icons.png` (`256x16 px` — 16 ícones incluindo novas sementes, aspersor, lã, trufa e clima)
+- `assets/sprites/v13_props_sheet.png` (`112x32 px` — Queijeira, Forno de Pão, Apiário, Quadro de Encomendas, Fertilizante no solo, Boia e Badges)
+- `assets/sprites/v13_icons.png` (`256x16 px` — Vara de Pesca, Fertilizante, Queijo, Pão, Mel, Ovo Azul e peixes com assets CC0)
 
 Para regenerar todos os arquivos padrão a qualquer momento:
 ```bash

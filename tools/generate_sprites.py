@@ -1800,6 +1800,525 @@ def build_ui_icons() -> Image.Image:
     return sheet
 
 
+def _load_oga_food_16(filename: str) -> Image.Image | None:
+    path = OGA_FOOD_DIR / filename
+    if not path.is_file():
+        return None
+    img = Image.open(path).convert("RGBA")
+    if img.size != (16, 16):
+        img = img.resize((16, 16), Image.Resampling.NEAREST)
+    return img
+
+
+
+
+def build_v13_props_sheet() -> Image.Image:
+    sheet = Image.new("RGBA", (112, 32), TRANSPARENT)
+
+    sheep_0 = [
+        "................",
+        "................",
+        "....kkkkkk......",
+        "...kwwwwwwkk....",
+        "..kwwWWWWwwwk...",
+        ".kJJkwwWWwwwwk..",
+        ".kJJKkwwwwWWWk..",
+        ".kJJkkwwwwWWWk..",
+        "..kkwwwwwwWWWk..",
+        "...kwwwwWWWWk...",
+        "....kkkkkkkk....",
+        "....kJJk..kJJk..",
+        "....kKKk..kKKk..",
+        "................",
+        "................",
+        "................",
+    ]
+    sheep_1 = [
+        "................",
+        "................",
+        "................",
+        "....kkkkkk......",
+        "...kwwwwwwkk....",
+        "..kwwWWWWwwwk...",
+        ".kJJkwwWWwwwwk..",
+        ".kJJKkwwwwWWWk..",
+        ".kJJkkwwwwWWWk..",
+        "..kkwwwwwwWWWk..",
+        "...kwwwwWWWWk...",
+        "....kkkkkkkk....",
+        "...kJJk...kJJk..",
+        "...kKKk...kKKk..",
+        "................",
+        "................",
+    ]
+
+    cheese_press_idle = [
+        "................",
+        "......BBBB......",
+        ".....BOEEOB.....",
+        "......BJJB......",
+        "...BBBBJJBBBB...",
+        "..BOEEEEEEEEOB..",
+        "..BJJIIIIIIJJB..",
+        "..BOooooooooOB..",
+        "..BOoOOOOooOOB..",
+        "..BOoeeeeooeeB..",
+        "..BJJIIIIIIJJB..",
+        "..BOooooooooOB..",
+        "..BeeeeeeeeeeB..",
+        "...BBBBBBBBBB...",
+        "................",
+        "................",
+    ]
+    cheese_press_ready = [
+        ".....kkkkkk.....",
+        "....kyyyyyyk....",
+        "....kyYYYY0k....",
+        ".....kkkkkk.....",
+        "...BBBBJJBBBB...",
+        "..BOEEEEEEEEOB..",
+        "..BJJIIIIIIJJB..",
+        "..BOooooooooOB..",
+        "..BOoOOOOooOOB..",
+        "..BOoeeeeooeeB..",
+        "..BJJIIIIIIJJB..",
+        "..BOooooooooOB..",
+        "..BeeeeeeeeeeB..",
+        "...BBBBBBBBBB...",
+        "................",
+        "................",
+    ]
+
+    oven_idle = [
+        "................",
+        ".....kkkkkk.....",
+        "...kkIIIIIIkk...",
+        "..kIIiiiiiiIIk..",
+        ".kIiiIIIIiiiijk.",
+        ".kIiiiiiiiiiijk.",
+        "kIiiiBBBBBBiiijk",
+        "kiiiBJJJJJJBiiik",
+        "kiiiBJ7777JBiiik",
+        "kjjjBJ7887JBjjjk",
+        "kjjjBJJJJJJBjjjk",
+        ".kJJJJiiiiJJJJk.",
+        ".kJJJJJJJJJJJJk.",
+        "..kkkkkkkkkkkk..",
+        "................",
+        "................",
+    ]
+    oven_ready = [
+        ".....kk..kk.....",
+        "....kwwk.kwwk...",
+        "...kkIIIIIIkk...",
+        "..kIIiiiiiiIIk..",
+        ".kIiiIIIIiiiijk.",
+        ".kIiiiiiiiiiijk.",
+        "kIiiiBBBBBBiiijk",
+        "kiiiBJJJJJJBiiik",
+        "kiiiBJHyyHJBiiik",
+        "kjjjBJyOOyJBjjjk",
+        "kjjjBJJJJJJBjjjk",
+        ".kJJJJiiiiJJJJk.",
+        ".kJJJJJJJJJJJJk.",
+        "..kkkkkkkkkkkk..",
+        "................",
+        "................",
+    ]
+
+    bee_hive = [
+        "................",
+        "......kkkk......",
+        "....kkyyyyk.....",
+        "...kHHyyyyHHk...",
+        "..k0000000000k..",
+        "..kHHyyyyyyHHk..",
+        ".k000000000000k.",
+        ".kHHyykkkkuyHHk.",
+        ".k000kJJJJk000k.",
+        ".kHHykJJJJkyHHk.",
+        "..k000kkkk000k..",
+        "..kBBBBBBBBBBk..",
+        "...BOooBBOooB...",
+        "...BeeeBBeeeB...",
+        "................",
+        "................",
+    ]
+
+    sprinkler = [
+        "................",
+        "......kkkk......",
+        "....kkIIIIkk....",
+        "...kIibbbbiIk...",
+        "....kkIaaIkk....",
+        "......kJJk......",
+        "......kIIk......",
+        "......kjjk......",
+        ".....kIjjIk.....",
+        "....kjjJJjjk....",
+        ".....kJJJJk.....",
+        "......kkkk......",
+        "................",
+        "................",
+        "................",
+        "................",
+    ]
+
+    order_board = [
+        "................",
+        "..BBBBBBBBBBBB..",
+        ".BOEEEEEEEEEEOB.",
+        ".BOoowwwwwwoooB.",
+        ".BOowww11wwwooB.",
+        ".BOowwWWWWwwooB.",
+        ".BOoooooooooooB.",
+        ".BOowwwwwoowwwB.",
+        ".BOowWWwwoowWWB.",
+        ".BBBBBBBBBBBBBB.",
+        "....BOo..OoB....",
+        "....BOe..eeB....",
+        "....BOe..eeB....",
+        "....BBB..BBB....",
+        "................",
+        "................",
+    ]
+
+    fertilizer_ground = [
+        "................",
+        "................",
+        "...ll......yy...",
+        "..lLLl....yYYy..",
+        "...ll......yy...",
+        ".......ll.......",
+        "......lLLl......",
+        ".......ll.......",
+        "..yy........ll..",
+        ".yYYy......lLLl.",
+        "..yy........ll..",
+        "................",
+        "................",
+        "................",
+        "................",
+        "................",
+    ]
+
+    gold_star = [
+        ".......kk.......",
+        "......kyyk......",
+        "......kyyk......",
+        ".kkkkkyYYykkkkk.",
+        "kyyyyYYYYYYyyyyk",
+        ".kYYYYYYYYYYYYk.",
+        "..kYYYY00YYYYk..",
+        "...kYYY00YYYk...",
+        "..kYY00kk00YYk..",
+        "..kY0k....k0Yk..",
+        "...kk......kk...",
+        "................",
+        "................",
+        "................",
+        "................",
+        "................",
+    ]
+
+    bobber = [
+        "................",
+        "................",
+        "......kkkk......",
+        ".....k1111k.....",
+        "....k122111k....",
+        "....k111111k....",
+        "....kwwwwwwk....",
+        "....kwWWWWwk....",
+        ".....kWWWWk.....",
+        "......kkkk......",
+        ".....c.cc.c.....",
+        "....a..aa..a....",
+        "................",
+        "................",
+        "................",
+        "................",
+    ]
+
+    rain_drop = [
+        ".......cc.......",
+        "......cbb.......",
+        "......bba.......",
+        ".....baaa.......",
+        ".....aaAA.......",
+        "....aAAA........",
+        "....AAA.........",
+        "...AA...........",
+        "................",
+        "................",
+        "................",
+        "................",
+        "................",
+        "................",
+        "................",
+        "................",
+    ]
+
+    ready_badge = [
+        ".....kkkkkk.....",
+        "....kyyyyyyk....",
+        "...kyyykkyyyk...",
+        "...kyykYYkyyk...",
+        "...kyykYYkyyk...",
+        "...kyykYYkyyk...",
+        "...kyyykkyyyk...",
+        "...kyyykkyyyk...",
+        "....kykYYkyk....",
+        "....kyyY0yyk....",
+        ".....kkkkkk.....",
+        ".......kk.......",
+        "................",
+        "................",
+        "................",
+        "................",
+    ]
+
+    row0 = [sheep_0, sheep_1, cheese_press_idle, cheese_press_ready, oven_idle, oven_ready, bee_hive]
+    row1 = [sprinkler, order_board, fertilizer_ground, gold_star, bobber, rain_drop, ready_badge]
+    for col_idx, grid in enumerate(row0):
+        paste_tile(sheet, render_grid(grid, 16, 16), col_idx * 16, 0)
+    for col_idx, grid in enumerate(row1):
+        paste_tile(sheet, render_grid(grid, 16, 16), col_idx * 16, 16)
+
+    return sheet
+
+
+# ==============================================================================
+# 8. V1.3.0 UI ICONS (256x16 px = 16 ícones de 16x16)
+# ==============================================================================
+def build_v13_icons() -> Image.Image:
+    sheet = Image.new("RGBA", (256, 16), TRANSPARENT)
+
+    fishing_rod = [
+        "................",
+        "..........kkkk..",
+        ".........kOEEOk.",
+        "........kOek.kIk",
+        ".......kOek...kc",
+        "......kOek....kc",
+        ".....kOek.....kc",
+        "....kOek......kc",
+        "...kOek.......k1",
+        "..kOek........k1",
+        ".kOek..........k",
+        ".kOek...........",
+        ".kkk............",
+        "................",
+        "................",
+        "................",
+    ]
+    seed_corn = [
+        "................",
+        "...kkkkkkkkkk...",
+        "..kEEEEEEEEEEk..",
+        "..kOooooooooOk..",
+        "...kkkkkkkkkk...",
+        "..kwwwwwwwwwwk..",
+        "..kwWWGGGGWWwk..",
+        "..kwwkHyyHkwwk..",
+        "..kwwkyYYykwwk..",
+        "..kwwk0YY0kwwk..",
+        "..kwwwkGGkwwwk..",
+        "..kwWWwkkwWWwk..",
+        "..kWWWWWWWWWWk..",
+        "...kkkkkkkkkk...",
+        "................",
+        "................",
+    ]
+    seed_tomato = [
+        "................",
+        "...kkkkkkkkkk...",
+        "..kEEEEEEEEEEk..",
+        "..kOooooooooOk..",
+        "...kkkkkkkkkk...",
+        "..kwwwwwwwwwwk..",
+        "..kwWWGGGGWWwk..",
+        "..kwwk1111kwwk..",
+        "..kwwk2111kwwk..",
+        "..kwwk1113kwwk..",
+        "..kwwwk33kwwwk..",
+        "..kwWWwkkwWWwk..",
+        "..kWWWWWWWWWWk..",
+        "...kkkkkkkkkk...",
+        "................",
+        "................",
+    ]
+    seed_pumpkin = [
+        "................",
+        "...kkkkkkkkkk...",
+        "..kEEEEEEEEEEk..",
+        "..kOooooooooOk..",
+        "...kkkkkkkkkk...",
+        "..kwwwwwwwwwwk..",
+        "..kwWWGGGGWWwk..",
+        "..kwwk8779kwwk..",
+        "..kwwk7779kwwk..",
+        "..kwwk7999kwwk..",
+        "..kwwwkkkkwwwk..",
+        "..kwWWWWWWWWwk..",
+        "..kWWWWWWWWWWk..",
+        "...kkkkkkkkkk...",
+        "................",
+        "................",
+    ]
+    fertilizer_bag = [
+        "................",
+        ".....kkkkkk.....",
+        "....kEEEEEEk....",
+        ".....kBBBBk.....",
+        "...kksssssskk...",
+        "..kssGGLLGGssk..",
+        "..ksGLhffhLGsk..",
+        "..kssGffffGssk..",
+        "..ksszzGGzzssk..",
+        "..ksszzzzzzssk..",
+        "..kssZZZZZZssk..",
+        "...kkZZZZZZkk...",
+        ".....kkkkkk.....",
+        "................",
+        "................",
+        "................",
+    ]
+    sprinkler_icon = [
+        "................",
+        "......kkkk......",
+        "....kkIIIIkk....",
+        "...kIibbbbiIk...",
+        "....kkIaaIkk....",
+        "......kJJk......",
+        ".....ckIIkc.....",
+        "....a.kjjk.a....",
+        ".....kIjjIk.....",
+        "....kjjJJjjk....",
+        ".....kJJJJk.....",
+        "......kkkk......",
+        "................",
+        "................",
+        "................",
+        "................",
+    ]
+    wool_icon = [
+        "................",
+        ".....kkkkkk.....",
+        "...kkwwwwwwkk...",
+        "..kwwWWWWwwwwk..",
+        ".kwwWWkkkkWWwwk.",
+        ".kwwWkwWWwkWWwk.",
+        ".kwwWkwWWwkWWwk.",
+        ".kWWWWkkkkWWWWk.",
+        "..kWWWWWWWWWWk..",
+        "...kkWWWWWWkk...",
+        ".....kkkkkk.....",
+        "................",
+        "................",
+        "................",
+        "................",
+        "................",
+    ]
+    tilapia_icon = [
+        "................",
+        "................",
+        ".....kkkkkk.....",
+        "...kkaaaaAAkk...",
+        "..kaabccbaaaAk..",
+        ".kNabaaaKaaaAk.k",
+        ".kNaaaaaaaaAAkAk",
+        "..kAAaaaaaAAkkAk",
+        "...kkAAAAAkk.kAk",
+        ".....kkkkk....kk",
+        "................",
+        "................",
+        "................",
+        "................",
+        "................",
+        "................",
+    ]
+    trout_icon = [
+        "................",
+        "................",
+        ".....kkkkkk.....",
+        "...kkggggmmkk...",
+        "..kggLppggmmpk..",
+        ".kGggpppKggmmk.k",
+        ".kGggmmppmmmGkmk",
+        "..kmmppppmmGkkGk",
+        "...kkGGGGGGk.kGk",
+        ".....kkkkkk...kk",
+        "................",
+        "................",
+        "................",
+        "................",
+        "................",
+        "................",
+    ]
+    golden_carp_icon = [
+        "................",
+        "................",
+        ".....kkkkkk.....",
+        "...kkHyyyy0kk...",
+        "..kHywYYYYY0yk..",
+        ".k0yyYYYKYYY0k.k",
+        ".k0YYYYYYYYY0k0k",
+        "..k00YYYYY00kk0k",
+        "...kk00000kk.k0k",
+        ".....kkkkk....kk",
+        "................",
+        "................",
+        "................",
+        "................",
+        "................",
+        "................",
+    ]
+    order_scroll = [
+        "................",
+        "...kkkkkkkkkk...",
+        "..kEEEEEEEEEEk..",
+        "..kEwwwwwwwwEk..",
+        "...kkwwwwwwkk...",
+        "...kww1111wwk...",
+        "...kwwwwwwwwk...",
+        "...kwwMMMMwwk...",
+        "...kwwwwwwwwk...",
+        "...kwwMMMMwwk...",
+        "..kEwwwwwwwwEk..",
+        "..kEEEEEEEEEEk..",
+        "...kkkkkkkkkk...",
+        "................",
+        "................",
+        "................",
+    ]
+
+    manual_icons = {
+        0: render_grid(fishing_rod, 16, 16),
+        1: render_grid(seed_corn, 16, 16),
+        2: render_grid(seed_tomato, 16, 16),
+        3: render_grid(seed_pumpkin, 16, 16),
+        4: render_grid(fertilizer_bag, 16, 16),
+        5: render_grid(sprinkler_icon, 16, 16),
+        6: _load_oga_food_16("cheese.png") or render_grid(wool_icon, 16, 16),
+        7: _load_oga_food_16("bread_loaf_brown.png") or render_grid(wool_icon, 16, 16),
+        8: _load_oga_food_16("honey_pot.png") or render_grid(wool_icon, 16, 16),
+        9: _load_oga_food_16("egg_whole_blue.png") or render_grid(wool_icon, 16, 16),
+        10: render_grid(wool_icon, 16, 16),
+        11: render_grid(tilapia_icon, 16, 16),
+        12: _load_oga_food_16("shrimp.png") or render_grid(tilapia_icon, 16, 16),
+        13: render_grid(trout_icon, 16, 16),
+        14: render_grid(golden_carp_icon, 16, 16),
+        15: render_grid(order_scroll, 16, 16),
+    }
+
+    for col_idx, icon_img in manual_icons.items():
+        paste_tile(sheet, icon_img, col_idx * 16, 0)
+
+    return sheet
+
+
+
 def main() -> None:
     SPRITES_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -1809,6 +2328,8 @@ def main() -> None:
         ("farmer_sheet.png", build_farmer_sheet(), (64, 64)),
         ("props_buildings.png", build_props_buildings(), (96, 64)),
         ("ui_icons.png", build_ui_icons(), (256, 16)),
+        ("v13_props_sheet.png", build_v13_props_sheet(), (112, 32)),
+        ("v13_icons.png", build_v13_icons(), (256, 16)),
     ]
 
     for filename, img, expected_size in outputs:

@@ -2,7 +2,7 @@ class_name VersionData
 extends RefCounted
 ## Metadados de versão, autoria, links do repositório e histórico de atualizações da Fazendinha 2D.
 
-const CURRENT_VERSION := "v1.3.0"
+const CURRENT_VERSION := "v1.4.0"
 const REPO_URL := "https://github.com/marlonferreira1800-hue/Fazenda-asclepio-"
 const RELEASES_URL := "https://github.com/marlonferreira1800-hue/Fazenda-asclepio-/releases"
 const ISSUES_URL := "https://github.com/marlonferreira1800-hue/Fazenda-asclepio-/issues?q=is%3Aissue"
@@ -10,6 +10,21 @@ const CHANGELOG_URL := "https://github.com/marlonferreira1800-hue/Fazenda-asclep
 const AUTHOR := "@marlonferreira1800-hue (Marlon Ferreira)"
 
 const HISTORY: Array[Dictionary] = [
+	{
+		"version": "v1.4.0",
+		"title": "Pesca no Lago, Máquinas Artesanais, Rebrota, Fertilizante, Encomendas & Álbum",
+		"date": "2026-11-20",
+		"author": "@marlonferreira1800-hue",
+		"tag_url": "https://github.com/marlonferreira1800-hue/Fazenda-asclepio-/releases/tag/v1.4.0",
+		"before": "Sem minigame de pesca, sem máquinas artesanais, sem rebrota ou qualidade Ouro, sem carinho em animais e sem pedidos diários ou álbum de coleções.",
+		"after": "Pesca no lago (4 peixes), Queijeira/Forno/Apiário, rebrota (Morango/Milho/Tomate), Fertilizante Ouro (1.5x), carinho (♥ 0..5) + Ovo Azul, compra de animais e Diário (J) com Encomendas e Álbum.",
+		"highlights": [
+			"Antes -> Depois: Fazenda v1.3.0 sem pesca/máquinas/álbum -> Pesca, Máquinas Artesanais, Rebrota, Fertilizante Ouro, Encomendas e Álbum",
+			"Minigame de pesca no lago (Tilápia, Camarão, Truta, Carpa Dourada) com suporte a teclado, mouse e touch",
+			"Queijeira (Queijo), Forno de Pão (Pão) e Apiário (Mel) + compra de até 8 animais e carinho diário (♥ 0..5 + Ovo Azul)",
+			"Rebrota em Morango/Milho/Tomate, Fertilizante para colheitas Ouro ★ (1.5x) e Diário (J) com Encomendas e Álbum",
+		],
+	},
 	{
 		"version": "v1.3.0",
 		"title": "Novos Cultivos, Upgrades, Clima, Música, Animais & Mobile",

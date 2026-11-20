@@ -83,6 +83,10 @@ func _synthesize_all_sfx() -> void:
 	_streams["sheep"] = _make_sheep_sfx()
 	_streams["pig"] = _make_pig_sfx()
 	_streams["upgrade"] = _make_upgrade_sfx()
+	_streams["splash"] = _make_water_sfx()
+	_streams["fish_catch"] = _make_fish_catch_sfx()
+	_streams["machine"] = _make_machine_sfx()
+	_streams["order_done"] = _make_order_done_sfx()
 
 
 func toggle_mute() -> bool:
@@ -169,6 +173,22 @@ func play_click() -> void:
 
 func play_sleep() -> void:
 	_play_sfx("sleep", -5.0)
+
+
+func play_splash() -> void:
+	_play_sfx("splash", -6.0)
+
+
+func play_fish_catch() -> void:
+	_play_sfx("fish_catch", -4.0)
+
+
+func play_machine() -> void:
+	_play_sfx("machine", -5.0)
+
+
+func play_order_done() -> void:
+	_play_sfx("order_done", -4.0)
 
 
 func play_animal(animal_type: String) -> void:
@@ -529,3 +549,51 @@ func _make_cozy_bgm_loop() -> AudioStreamWAV:
 	wav.loop_begin = 0
 	wav.loop_end = total_samples
 	return wav
+
+
+func _make_fish_catch_sfx() -> AudioStreamWAV:
+	var notes: Array[float] = [587.33, 783.99, 1046.50]
+	var note_samples: int = int(0.075 * SAMPLE_RATE)
+	var samples := PackedFloat32Array()
+	samples.resize(note_samples * notes.size())
+	var idx: int = 0
+	for n in notes:
+		for j in range(note_samples):
+			var t: float = float(j) / float(SAMPLE_RATE)
+			var u: float = float(j) / float(note_samples)
+			var env: float = minf(1.0, t / 0.005) * exp(-u * 2.5)
+			samples[idx] = (0.75 * sin(TAU * n * t) + 0.25 * _triangle(n * t)) * env * 0.62
+			idx += 1
+	return _build_wav(samples)
+
+
+func _make_machine_sfx() -> AudioStreamWAV:
+	var duration: float = 0.14
+	var count: int = int(duration * SAMPLE_RATE)
+	var samples := PackedFloat32Array()
+	samples.resize(count)
+	var phase: float = 0.0
+	for i in range(count):
+		var t: float = float(i) / float(SAMPLE_RATE)
+		var u: float = float(i) / float(count)
+		var freq: float = 440.0 if u < 0.4 else 660.0
+		phase += freq / float(SAMPLE_RATE)
+		var env: float = minf(1.0, t / 0.005) * exp(-u * 3.8)
+		samples[i] = (0.7 * _triangle(phase) + 0.3 * sin(TAU * phase)) * env * 0.58
+	return _build_wav(samples)
+
+
+func _make_order_done_sfx() -> AudioStreamWAV:
+	var notes: Array[float] = [523.25, 659.25, 783.99, 1046.50]
+	var note_samples: int = int(0.08 * SAMPLE_RATE)
+	var samples := PackedFloat32Array()
+	samples.resize(note_samples * notes.size())
+	var idx: int = 0
+	for n in notes:
+		for j in range(note_samples):
+			var t: float = float(j) / float(SAMPLE_RATE)
+			var u: float = float(j) / float(note_samples)
+			var env: float = minf(1.0, t / 0.006) * exp(-u * 2.4)
+			samples[idx] = (0.7 * sin(TAU * n * t) + 0.3 * sin(TAU * n * 2.0 * t)) * env * 0.6
+			idx += 1
+	return _build_wav(samples)

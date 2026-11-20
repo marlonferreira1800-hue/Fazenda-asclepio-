@@ -5,6 +5,8 @@ extends CharacterBody2D
 @export var move_speed: float = 18.0
 
 var collected_today: bool = false
+var petted_today: bool = false
+var hearts: int = 0
 
 @onready var sprite: Sprite2D = $Sprite2D
 
@@ -52,8 +54,26 @@ func can_collect() -> bool:
 	return not collected_today
 
 
+func can_pet() -> bool:
+	return not petted_today
+
+
+func get_hearts() -> int:
+	return hearts
+
+
+func pet() -> bool:
+	if petted_today:
+		return false
+	petted_today = true
+	hearts = mini(hearts + 1, 5)
+	_play_happy_hop()
+	return true
+
+
 func reset_daily() -> void:
 	collected_today = false
+	petted_today = false
 	_update_indicator()
 
 
@@ -63,20 +83,56 @@ func set_collected_today(value: bool) -> void:
 
 
 func collect_product() -> String:
+	var info := collect_product_info()
+	return str(info.get("id", ""))
+
+
+func collect_product_info() -> Dictionary:
 	if not can_collect():
-		return ""
+		return {}
 	collected_today = true
 	_update_indicator()
 	_play_happy_hop()
+
+	var bonus_chance: float = clampf(float(hearts) * 0.14, 0.0, 0.70)
+	var prod_id: String = "egg"
+	var is_gold: bool = false
+
 	match animal_type:
 		"cow":
-			return "milk"
+			prod_id = "milk"
+			is_gold = _rng.randf() < bonus_chance
 		"sheep":
-			return "wool"
+			prod_id = "wool"
+			is_gold = _rng.randf() < bonus_chance
 		"pig":
-			return "truffle"
+			prod_id = "truffle"
+			is_gold = _rng.randf() < bonus_chance
 		_:
-			return "egg"
+			if hearts >= 2 and _rng.randf() < bonus_chance:
+				prod_id = "blue_egg"
+				is_gold = hearts >= 4 and _rng.randf() < 0.35
+			else:
+				prod_id = "egg"
+				is_gold = hearts >= 3 and _rng.randf() < (bonus_chance * 0.6)
+
+	return {"id": prod_id, "gold": is_gold}
+
+
+func export_state() -> Dictionary:
+	return {
+		"type": animal_type,
+		"collected_today": collected_today,
+		"petted_today": petted_today,
+		"hearts": hearts,
+	}
+
+
+func restore_state(data: Dictionary) -> void:
+	collected_today = bool(data.get("collected_today", false))
+	petted_today = bool(data.get("petted_today", false))
+	hearts = clampi(int(data.get("hearts", 0)), 0, 5)
+	_update_indicator()
 
 
 func get_display_name() -> String:
