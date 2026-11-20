@@ -70,7 +70,15 @@ var demo_active: bool = false
 var _game_state: Node = null
 var _props_texture: Texture2D = null
 var _crops_texture: Texture2D = null
+var _turnip_texture: Texture2D = null
 var _v13_props_texture: Texture2D = null
+var _seasonal_terrain_textures: Dictionary = {}
+var _seasonal_props_textures: Dictionary = {}
+var _shared_atlas_source: TileSetAtlasSource = null
+var _prop_atlases: Array[AtlasTexture] = []
+var _season_particles: CPUParticles2D = null
+var _firefly_particles: CPUParticles2D = null
+var _current_season_id: String = "spring"
 var _animal_scene: PackedScene = null
 var _rng := RandomNumberGenerator.new()
 
@@ -119,6 +127,7 @@ var _demo_last_pos: Vector2 = Vector2.ZERO
 
 class WeatherFxNode extends Node2D:
 	var is_rainy: bool = false
+	var is_winter: bool = false
 	var drops: Array[Dictionary] = []
 	var sparkles: Array[Vector2] = [
 		Vector2(484.0, 246.0),
@@ -144,10 +153,12 @@ class WeatherFxNode extends Node2D:
 	func _process(delta: float) -> void:
 		_time_acc += delta
 		if is_rainy:
+			var speed_mult: float = 0.42 if is_winter else 1.0
 			for d in drops:
 				var p: Vector2 = d["pos"]
-				var spd: float = float(d["speed"])
-				p += Vector2(-0.25 * spd, spd) * delta
+				var spd: float = float(d["speed"]) * speed_mult
+				var vx: float = (-0.18 * spd + sin(_time_acc * 2.4 + p.y * 0.05) * 14.0) if is_winter else (-0.25 * spd)
+				p += Vector2(vx, spd) * delta
 				if p.y > 384.0 or p.x < -8.0:
 					p = Vector2(_rng.randf_range(0.0, 656.0), _rng.randf_range(-24.0, 0.0))
 				d["pos"] = p
@@ -190,12 +201,15 @@ class WeatherFxNode extends Node2D:
 			var p: Vector2 = puff["pos"]
 			draw_rect(Rect2(p.x - sz * 0.5, p.y - sz * 0.5, sz, sz), Color(0.95, 0.95, 0.96, alpha))
 
-		# Rain droplets
+		# Rain droplets or Winter blizzard snowflakes
 		if is_rainy:
 			for d in drops:
 				var p: Vector2 = d["pos"]
-				var l: float = float(d["len"])
-				draw_line(p, p + Vector2(-0.25 * l, l), Color(0.72, 0.88, 1.0, 0.62), 1.0)
+				if is_winter:
+					draw_rect(Rect2(p.x, p.y, 2.0, 2.0), Color(0.96, 0.99, 1.0, 0.85))
+				else:
+					var l: float = float(d["len"])
+					draw_line(p, p + Vector2(-0.25 * l, l), Color(0.72, 0.88, 1.0, 0.62), 1.0)
 
 
 func _ready() -> void:
@@ -203,7 +217,16 @@ func _ready() -> void:
 	_game_state = get_node_or_null("/root/GameState")
 	_props_texture = _load_texture_safe("res://assets/sprites/props_buildings.png")
 	_crops_texture = _load_texture_safe("res://assets/sprites/crops_sheet.png")
+	_turnip_texture = _load_texture_safe("res://assets/sprites/seasons/turnip_sheet.png")
 	_v13_props_texture = _load_texture_safe("res://assets/sprites/v13_props_sheet.png")
+	for s_id in SeasonDataScript.SEASON_ORDER:
+		var s_def: Dictionary = SeasonDataScript.get_definition(s_id)
+		var t_tex: Texture2D = _load_texture_safe(str(s_def.get("terrain_path", "")))
+		if t_tex != null:
+			_seasonal_terrain_textures[s_id] = t_tex
+		var p_tex: Texture2D = _load_texture_safe(str(s_def.get("props_path", "")))
+		if p_tex != null:
+			_seasonal_props_textures[s_id] = p_tex
 	_animal_scene = load("res://scenes/animal.tscn") as PackedScene
 
 	var shared_tileset: TileSet = _build_tileset()
@@ -213,6 +236,7 @@ func _ready() -> void:
 
 	_setup_cursor()
 	_setup_prompt_label()
+	_setup_season_particles()
 	_setup_weather_fx()
 	_setup_fishing_minigame()
 	_build_farm_map()
@@ -229,6 +253,8 @@ func _ready() -> void:
 			_game_state.day_advanced.connect(_on_day_advanced)
 		if _game_state.has_signal("day_changed"):
 			_game_state.day_changed.connect(_on_day_changed)
+		if _game_state.has_signal("season_changed"):
+			_game_state.season_changed.connect(_on_season_changed)
 		if _game_state.has_signal("weather_changed"):
 			_game_state.weather_changed.connect(_on_weather_changed)
 		if _game_state.has_signal("machines_changed"):
@@ -246,6 +272,8 @@ func _ready() -> void:
 			if pending_save is Dictionary and not (pending_save as Dictionary).is_empty():
 				_restore_world_state(pending_save as Dictionary)
 
+	var init_season: String = str(_game_state.get("current_season")) if _game_state != null else "spring"
+	_apply_season_visuals(init_season if not init_season.is_empty() else "spring")
 	_refresh_machines()
 	_refresh_order_badge()
 	_sync_weather_fx()
@@ -770,7 +798,8 @@ func _spawn_prop_sprite(
 	collider_rect: Rect2,
 	atlas_tex: Texture2D = null
 ) -> StaticBody2D:
-	var use_tex: Texture2D = atlas_tex if atlas_tex != null else _props_texture
+	var seasonal_prop_tex: Texture2D = _seasonal_props_textures.get(_current_season_id, _props_texture) as Texture2D
+	var use_tex: Texture2D = atlas_tex if atlas_tex != null else seasonal_prop_tex
 	if use_tex == null:
 		return null
 	var body := StaticBody2D.new()
@@ -786,6 +815,8 @@ func _spawn_prop_sprite(
 	spr.texture = atlas
 	spr.offset = sprite_offset
 	body.add_child(spr)
+	if atlas_tex == null:
+		_prop_atlases.append(atlas)
 
 	var col := CollisionShape2D.new()
 	var shape := RectangleShape2D.new()
@@ -1808,9 +1839,17 @@ func _update_day_night_tint() -> void:
 		var t: float = clampf((mins - 1260.0) / 180.0, 0.0, 1.0)
 		color = Color(0.56, 0.58, 0.84).lerp(Color(0.42, 0.45, 0.72), t)
 
+	var season_def: Dictionary = SeasonDataScript.get_definition(_current_season_id)
+	var ambient: Color = season_def.get("ambient_tint", Color.WHITE)
+	color = color * ambient
 	if str(_game_state.get("weather")) == "rainy":
 		color = color * Color(0.84, 0.90, 1.0)
 	day_night_modulate.color = color
+
+	if _firefly_particles != null:
+		var want_fireflies: bool = (_current_season_id == "summer" and mins >= 1050.0 and str(_game_state.get("weather")) != "rainy")
+		if _firefly_particles.emitting != want_fireflies:
+			_firefly_particles.emitting = want_fireflies
 
 
 func _update_target_cursor(shop_open: bool) -> void:
@@ -2313,10 +2352,26 @@ func _execute_demo_action() -> void:
 			_game_state.call("advance_day")
 
 
+func _get_demo_seed_priority() -> Array[String]:
+	var season_def: Dictionary = SeasonDataScript.get_definition(_current_season_id)
+	var order: Array[String] = []
+	for bonus_var in season_def.get("bonus_crops", []):
+		var b_id: String = str(bonus_var)
+		if not order.has(b_id):
+			order.append(b_id)
+	for cid in ["corn", "tomato", "pumpkin", "strawberry", "turnip", "carrot", "wheat"]:
+		if not order.has(cid):
+			order.append(cid)
+	return order
+
+
 func _demo_buy_needed_seeds() -> void:
 	var seeds_dict: Dictionary = _game_state.get("seeds")
-	for crop_id in ["corn", "tomato", "pumpkin", "strawberry", "carrot", "wheat"]:
-		while int(seeds_dict.get(crop_id, 0)) < 2:
+	var priority := _get_demo_seed_priority()
+	for idx in range(priority.size()):
+		var crop_id: String = priority[idx]
+		var target_qty: int = 3 if CropDataScript.is_in_preferred_season(crop_id, _current_season_id) else 2
+		while int(seeds_dict.get(crop_id, 0)) < target_qty:
 			var crop_def: Dictionary = _game_state.CROPS.get(crop_id, {})
 			var price: int = int(crop_def.get("seed_price", 10))
 			if int(_game_state.get("money")) < price:
@@ -2327,8 +2382,9 @@ func _demo_buy_needed_seeds() -> void:
 
 
 func _needs_any_seed(seeds_dict: Dictionary, available_money: int = 999999) -> bool:
-	for crop_id in ["wheat", "carrot", "strawberry", "corn", "tomato", "pumpkin"]:
-		if int(seeds_dict.get(crop_id, 0)) < 2:
+	for crop_id in _get_demo_seed_priority():
+		var target_qty: int = 3 if CropDataScript.is_in_preferred_season(crop_id, _current_season_id) else 2
+		if int(seeds_dict.get(crop_id, 0)) < target_qty:
 			var crop_def: Dictionary = _game_state.CROPS.get(crop_id, {})
 			var price: int = int(crop_def.get("seed_price", 10))
 			if available_money >= price:
@@ -2392,14 +2448,19 @@ func _find_demo_plot_to_hoe(from_pos: Vector2, stamina: int) -> Vector2i:
 
 
 func _find_demo_plot_to_plant(from_pos: Vector2, seeds_dict: Dictionary) -> Dictionary:
-	var seed_cycle: Array[Dictionary] = [
-		{"crop_id": "wheat", "slot": 3},
-		{"crop_id": "carrot", "slot": 4},
-		{"crop_id": "strawberry", "slot": 5},
-		{"crop_id": "corn", "slot": 6},
-		{"crop_id": "tomato", "slot": 7},
-		{"crop_id": "pumpkin", "slot": 8},
-	]
+	var slot_by_crop: Dictionary = {
+		"wheat": 3,
+		"carrot": 4,
+		"strawberry": 5,
+		"corn": 6,
+		"tomato": 7,
+		"pumpkin": 8,
+		"turnip": 11,
+	}
+	var seed_cycle: Array[Dictionary] = []
+	for cid in _get_demo_seed_priority():
+		if slot_by_crop.has(cid):
+			seed_cycle.append({"crop_id": cid, "slot": int(slot_by_crop[cid])})
 	var best_tile := Vector2i(-1, -1)
 	var best_idx: int = -1
 	var best_dist: float = INF

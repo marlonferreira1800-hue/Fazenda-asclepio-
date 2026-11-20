@@ -3,9 +3,12 @@ extends CanvasLayer
 
 const UI_ICONS_PATH := "res://assets/sprites/ui_icons.png"
 const V13_ICONS_PATH := "res://assets/sprites/v13_icons.png"
+const SEASON_ICONS_PATH := "res://assets/sprites/seasons/season_icons.png"
+const TURNIP_ICON_PATH := "res://assets/sprites/seasons/turnip_icon.png"
 const VERSION_DATA_PATH := "res://scripts/data/version_data.gd"
 const CropDataScript := preload("res://scripts/data/crop_data.gd")
 const FarmCatalogScript := preload("res://scripts/data/farm_catalog.gd")
+const SeasonDataScript := preload("res://scripts/data/season_data.gd")
 
 const FALLBACK_VERSION := "v1.4.0"
 const FALLBACK_AUTHOR := "@marlonferreira1800-hue (Marlon Ferreira)"
@@ -47,18 +50,20 @@ const DEFAULT_HOTBAR_SLOTS: Array[Dictionary] = [
 	{"id": "pumpkin_seed", "name": "Sem. Abóbora", "type": "seed", "crop_id": "pumpkin", "sheet": "base", "icon_col": 10, "key_hint": "9"},
 	{"id": "fertilizer", "name": "Fertilizante", "type": "supply", "supply_id": "fertilizer", "sheet": "v13", "icon_col": 4, "key_hint": "0"},
 	{"id": "sprinkler", "name": "Aspersor", "type": "placeable", "sheet": "base", "icon_col": 11, "key_hint": "-"},
+	{"id": "turnip_seed", "name": "Sem. Nabo", "type": "seed", "crop_id": "turnip", "sheet": "turnip", "icon_col": 0, "key_hint": "="},
 ]
 
 const DEFAULT_CROPS: Dictionary = {
-	"wheat": {"name": "Trigo", "row": 0, "days_to_grow": 2, "regrow_days": 0, "seed_price": 10, "sell_price": 25},
-	"carrot": {"name": "Cenoura", "row": 1, "days_to_grow": 3, "regrow_days": 0, "seed_price": 20, "sell_price": 55},
-	"strawberry": {"name": "Morango", "row": 2, "days_to_grow": 4, "regrow_days": 2, "seed_price": 35, "sell_price": 110},
-	"corn": {"name": "Milho", "row": 3, "days_to_grow": 3, "regrow_days": 2, "seed_price": 30, "sell_price": 90},
-	"tomato": {"name": "Tomate", "row": 4, "days_to_grow": 4, "regrow_days": 2, "seed_price": 45, "sell_price": 145},
-	"pumpkin": {"name": "Abóbora", "row": 5, "days_to_grow": 5, "regrow_days": 0, "seed_price": 65, "sell_price": 220},
+	"wheat": {"name": "Trigo", "row": 0, "days_to_grow": 2, "regrow_days": 0, "seed_price": 10, "sell_price": 25, "preferred_season": "spring"},
+	"carrot": {"name": "Cenoura", "row": 1, "days_to_grow": 3, "regrow_days": 0, "seed_price": 20, "sell_price": 55, "preferred_season": "autumn"},
+	"strawberry": {"name": "Morango", "row": 2, "days_to_grow": 4, "regrow_days": 2, "seed_price": 35, "sell_price": 110, "preferred_season": "spring"},
+	"corn": {"name": "Milho", "row": 3, "days_to_grow": 3, "regrow_days": 2, "seed_price": 30, "sell_price": 90, "preferred_season": "summer"},
+	"tomato": {"name": "Tomate", "row": 4, "days_to_grow": 4, "regrow_days": 2, "seed_price": 45, "sell_price": 145, "preferred_season": "summer"},
+	"pumpkin": {"name": "Abóbora", "row": 5, "days_to_grow": 5, "regrow_days": 0, "seed_price": 65, "sell_price": 220, "preferred_season": "autumn"},
+	"turnip": {"name": "Nabo", "row": 0, "days_to_grow": 3, "regrow_days": 0, "seed_price": 25, "sell_price": 70, "preferred_season": "winter", "icon_sheet": "turnip"},
 }
 
-const CROP_ORDER: Array[String] = ["wheat", "carrot", "strawberry", "corn", "tomato", "pumpkin"]
+const CROP_ORDER: Array[String] = ["wheat", "carrot", "strawberry", "corn", "tomato", "pumpkin", "turnip"]
 const CROP_ICON_COLS: Dictionary = {
 	"wheat": 2,
 	"carrot": 3,
@@ -66,6 +71,7 @@ const CROP_ICON_COLS: Dictionary = {
 	"corn": 8,
 	"tomato": 9,
 	"pumpkin": 10,
+	"turnip": 0,
 }
 
 # Cozy wood & parchment palette
@@ -85,6 +91,8 @@ var _icons_texture: Texture2D = null
 var _icons_cols: int = 0
 var _v13_icons_texture: Texture2D = null
 var _v13_icons_cols: int = 0
+var _season_icons_texture: Texture2D = null
+var _turnip_icon_texture: Texture2D = null
 var _shop_open: bool = false
 var _shop_tab: String = "seeds"
 var _journal_open: bool = false
@@ -93,6 +101,8 @@ var _changelog_open: bool = false
 var _menu_open: bool = false
 var _touch_seen: bool = false
 var _toast_tween: Tween = null
+var _season_banner_tween: Tween = null
+var _last_banner_season_id: String = ""
 var _open_external_links: bool = true
 
 var _current_version: String = FALLBACK_VERSION
@@ -104,6 +114,13 @@ var _version_history: Array[Dictionary] = []
 
 # UI references
 var _ui_root: Control
+var _season_badge_panel: PanelContainer
+var _season_icon_rect: TextureRect
+var _season_badge_label: Label
+var _season_banner_panel: PanelContainer
+var _season_banner_icon: TextureRect
+var _season_banner_title: Label
+var _season_banner_subtitle: Label
 var _day_time_label: Label
 var _money_label: Label
 var _version_button: Button
@@ -149,6 +166,8 @@ var _shop_upgrades_scroll: ScrollContainer
 var _shop_upgrades_vbox: VBoxContainer
 var _shop_farm_scroll: ScrollContainer
 var _shop_farm_vbox: VBoxContainer
+var _shop_crop_row_panels: Dictionary = {}
+var _shop_crop_title_labels: Dictionary = {}
 var _shop_crop_info_labels: Dictionary = {}
 var _shop_buy_buttons: Dictionary = {}
 var _shop_upgrade_title_labels: Dictionary = {}
@@ -206,6 +225,9 @@ func _ready() -> void:
 	_v13_icons_texture = _load_texture_safe(V13_ICONS_PATH)
 	if _v13_icons_texture != null:
 		_v13_icons_cols = int(_v13_icons_texture.get_width() / 16.0)
+
+	_season_icons_texture = _load_texture_safe(SEASON_ICONS_PATH)
+	_turnip_icon_texture = _load_texture_safe(TURNIP_ICON_PATH)
 
 	_build_ui()
 	_connect_signals()
@@ -280,6 +302,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_9, KEY_KP_9: mapped_idx = 8
 			KEY_0, KEY_KP_0: mapped_idx = 9
 			KEY_MINUS, KEY_KP_SUBTRACT: mapped_idx = 10
+			KEY_EQUAL, KEY_KP_ADD: mapped_idx = 11
 		if mapped_idx >= 0 and mapped_idx < _slot_panels.size():
 			_select_slot(mapped_idx)
 			get_viewport().set_input_as_handled()
@@ -786,7 +809,7 @@ func _build_hotbar_section() -> void:
 	container.add_child(tray)
 
 	var hbox := HBoxContainer.new()
-	hbox.add_theme_constant_override("separation", 3)
+	hbox.add_theme_constant_override("separation", 2)
 	hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	tray.add_child(hbox)
 
@@ -798,7 +821,7 @@ func _build_hotbar_section() -> void:
 		var slot_data: Dictionary = slots[i]
 		var slot_panel := PanelContainer.new()
 		slot_panel.name = "Slot_%d" % i
-		slot_panel.custom_minimum_size = Vector2(25, 25)
+		slot_panel.custom_minimum_size = Vector2(23, 25)
 		slot_panel.mouse_filter = Control.MOUSE_FILTER_STOP
 		slot_panel.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 		slot_panel.tooltip_text = str(slot_data.get("name", ""))
@@ -861,7 +884,7 @@ func _build_controls_hint() -> void:
 	_ui_root.add_child(panel)
 
 	var lbl := _make_label(
-		"WASD: Mover | Espaço/Clique: Usar | F: Interagir | 1-0/-/Roda: Slot | B: Loja | J: Diário | N: Dormir | P: Auto | Esc: Menu",
+		"WASD: Mover | Espaço/Clique: Usar | F: Interagir | 1-0/-/=/Roda: Slot | B: Loja | J: Diário | N: Dormir | P: Auto | Esc: Menu",
 		7,
 		Color(0.96, 0.93, 0.84)
 	)
@@ -1635,6 +1658,50 @@ func _build_changelog_modal() -> void:
 	footer.add_child(close_btn)
 
 
+func _build_season_banner() -> void:
+	_season_banner_panel = PanelContainer.new()
+	_season_banner_panel.name = "SeasonBannerPanel"
+	_season_banner_panel.anchor_left = 0.5
+	_season_banner_panel.anchor_right = 0.5
+	_season_banner_panel.anchor_top = 0.0
+	_season_banner_panel.anchor_bottom = 0.0
+	_season_banner_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_season_banner_panel.offset_top = 74
+	_season_banner_panel.visible = false
+	_season_banner_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_season_banner_panel.add_theme_stylebox_override(
+		"panel",
+		_make_flat_style(Color(0.98, 0.94, 0.83, 0.96), COL_GOLD_BORDER, 2, 12, 6, 3)
+	)
+	_ui_root.add_child(_season_banner_panel)
+
+	var hbox := HBoxContainer.new()
+	hbox.add_theme_constant_override("separation", 8)
+	hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_season_banner_panel.add_child(hbox)
+
+	_season_banner_icon = TextureRect.new()
+	_season_banner_icon.custom_minimum_size = Vector2(22, 22)
+	_season_banner_icon.texture = _make_season_icon_texture(0)
+	_season_banner_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_season_banner_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_season_banner_icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	_season_banner_icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_season_banner_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hbox.add_child(_season_banner_icon)
+
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 1)
+	vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hbox.add_child(vbox)
+
+	_season_banner_title = _make_label("Primavera · Ano 1", 10, COL_WOOD_DARK)
+	vbox.add_child(_season_banner_title)
+
+	_season_banner_subtitle = _make_label("Cultivo em destaque: Morango e Trigo (+35%)", 8, COL_GOLD_TEXT)
+	vbox.add_child(_season_banner_subtitle)
+
+
 func _build_toast_panel() -> void:
 	_toast_panel = PanelContainer.new()
 	_toast_panel.name = "ToastPanel"
@@ -1674,20 +1741,92 @@ func _on_day_changed(day: int, time_minutes: float) -> void:
 	var total_mins := int(floor(time_minutes))
 	var hours := (total_mins / 60) % 24
 	var mins := total_mins % 60
-	_day_time_label.text = "Dia %d - %02d:%02d" % [day, hours, mins]
+	var day_in_season: int = SeasonDataScript.get_day_of_season(day)
+	var season_id: String = SeasonDataScript.get_season_id_for_day(day)
+	var yr: int = SeasonDataScript.get_year_for_day(day)
+	_day_time_label.text = "Dia %d/%d - %02d:%02d" % [day_in_season, SeasonDataScript.DAYS_PER_SEASON, hours, mins]
+	_refresh_season_badge(season_id, yr)
+
+
+func _on_season_changed(season_id: String, yr: int) -> void:
+	_refresh_season_badge(season_id, yr)
+	var gs := _get_game_state()
+	if gs != null:
+		_on_weather_changed(str(gs.get("weather")), str(gs.get("tomorrow_weather")))
+	_refresh_shop()
+	if not _last_banner_season_id.is_empty() and _last_banner_season_id != season_id:
+		_show_season_banner(season_id, yr)
+	_last_banner_season_id = season_id
+
+
+func _refresh_season_badge(season_id: String, yr: int) -> void:
+	var def: Dictionary = SeasonDataScript.get_definition(season_id)
+	var s_name: String = str(def.get("name", "Primavera"))
+	var icon_col: int = int(def.get("icon_col", 0))
+	var bg_col: Color = def.get("badge_bg", Color("#e8f6df"))
+	var border_col: Color = def.get("badge_border", Color("#4d9938"))
+	var text_col: Color = def.get("badge_text", Color("#235c16"))
+
+	if _season_badge_panel != null:
+		_season_badge_panel.add_theme_stylebox_override("panel", _make_flat_style(bg_col, border_col, 1, 4, 1, 2))
+	if _season_icon_rect != null:
+		_season_icon_rect.texture = _make_season_icon_texture(icon_col)
+	if _season_badge_label != null:
+		_season_badge_label.text = "%s · Ano %d" % [s_name, maxi(1, yr)]
+		_season_badge_label.add_theme_color_override("font_color", text_col)
+
+
+func _show_season_banner(season_id: String, yr: int) -> void:
+	if _season_banner_panel == null:
+		return
+	var def: Dictionary = SeasonDataScript.get_definition(season_id)
+	var s_name: String = str(def.get("name", "Primavera"))
+	var icon_col: int = int(def.get("icon_col", 0))
+	var bg_col: Color = def.get("badge_bg", Color("#e8f6df"))
+	var border_col: Color = def.get("badge_border", Color("#4d9938"))
+	var text_col: Color = def.get("badge_text", Color("#235c16"))
+	var crop_name: String = str(def.get("bonus_crop_name", "Morango"))
+
+	_season_banner_panel.add_theme_stylebox_override("panel", _make_flat_style(bg_col, border_col, 2, 12, 6, 3))
+	if _season_banner_icon != null:
+		_season_banner_icon.texture = _make_season_icon_texture(icon_col)
+	if _season_banner_title != null:
+		_season_banner_title.text = "Nova Estação: %s · Ano %d" % [s_name, maxi(1, yr)]
+		_season_banner_title.add_theme_color_override("font_color", text_col)
+	if _season_banner_subtitle != null:
+		if season_id == "winter":
+			_season_banner_subtitle.text = "Destaque: %s (+35%%) · Animais & Artesanais +20%%!" % crop_name
+		else:
+			_season_banner_subtitle.text = "Cultivos da estação: %s (-1 dia e +35%% de venda)" % crop_name
+
+	if _season_banner_tween != null and _season_banner_tween.is_valid():
+		_season_banner_tween.kill()
+	_season_banner_panel.visible = true
+	_season_banner_panel.modulate = Color(1, 1, 1, 0)
+	_season_banner_tween = create_tween()
+	_season_banner_tween.tween_property(_season_banner_panel, "modulate:a", 1.0, 0.25)
+	_season_banner_tween.tween_interval(3.4)
+	_season_banner_tween.tween_property(_season_banner_panel, "modulate:a", 0.0, 0.45)
+	_season_banner_tween.tween_callback(func() -> void:
+		if _season_banner_panel != null:
+			_season_banner_panel.visible = false
+	)
 
 
 func _on_weather_changed(weather: String, tomorrow_weather: String) -> void:
 	var today_rain := (weather == "rainy")
 	var next_rain := (tomorrow_weather == "rainy")
+	var gs := _get_game_state()
+	var is_winter := gs != null and str(gs.get("current_season")) == "winter"
+	var rain_word := "Neve" if is_winter else "Chuva"
 	if _weather_today_icon != null:
-		_weather_today_icon.texture = _make_icon_texture(15 if today_rain else 14)
+		_weather_today_icon.texture = _make_season_icon_texture(3) if (today_rain and is_winter) else _make_icon_texture(15 if today_rain else 14)
 	if _weather_today_label != null:
-		_weather_today_label.text = "Hoje: %s" % ("Chuva" if today_rain else "Sol")
+		_weather_today_label.text = "Hoje: %s" % (rain_word if today_rain else "Sol")
 	if _weather_next_icon != null:
-		_weather_next_icon.texture = _make_icon_texture(15 if next_rain else 14)
+		_weather_next_icon.texture = _make_season_icon_texture(3) if (next_rain and is_winter) else _make_icon_texture(15 if next_rain else 14)
 	if _weather_next_label != null:
-		_weather_next_label.text = "Amanhã: %s" % ("Chuva" if next_rain else "Sol")
+		_weather_next_label.text = "Amanhã: %s" % (rain_word if next_rain else "Sol")
 
 
 func _on_stamina_changed(stamina: int, max_stamina: int) -> void:
@@ -2501,7 +2640,23 @@ func _apply_tab_style(btn: Button, active: bool) -> void:
 
 # --- Style & widget factory helpers ---
 
+func _make_season_icon_texture(col: int) -> Texture2D:
+	if _season_icons_texture == null:
+		return null
+	var max_cols := int(_season_icons_texture.get_width() / 16.0)
+	if col < 0 or col >= max_cols:
+		return null
+	var atlas := AtlasTexture.new()
+	atlas.atlas = _season_icons_texture
+	atlas.region = Rect2(col * 16, 0, 16, 16)
+	return atlas
+
+
 func _make_icon_texture(col: int, sheet_name: String = "base") -> Texture2D:
+	if sheet_name == "turnip":
+		return _turnip_icon_texture
+	if sheet_name == "season":
+		return _make_season_icon_texture(col)
 	var tex := _v13_icons_texture if sheet_name == "v13" else _icons_texture
 	var max_cols := _v13_icons_cols if sheet_name == "v13" else _icons_cols
 	if tex == null or col < 0 or col >= max_cols:

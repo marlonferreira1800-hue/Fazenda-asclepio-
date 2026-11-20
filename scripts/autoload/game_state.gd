@@ -42,6 +42,7 @@ const HOTBAR_SLOTS: Array[Dictionary] = [
 	{"id": "pumpkin_seed", "name": "Sem. Abóbora", "type": "seed", "crop_id": "pumpkin", "sheet": "base", "icon_col": 10, "key_hint": "9"},
 	{"id": "fertilizer", "name": "Fertilizante", "type": "supply", "supply_id": "fertilizer", "sheet": "v13", "icon_col": 4, "key_hint": "0"},
 	{"id": "sprinkler", "name": "Aspersor", "type": "placeable", "sheet": "base", "icon_col": 11, "key_hint": "-"},
+	{"id": "turnip_seed", "name": "Sem. Nabo", "type": "seed", "crop_id": "turnip", "sheet": "turnip", "icon_col": 0, "key_hint": "="},
 ]
 
 var ANIMAL_PRODUCTS: Dictionary = FarmCatalogScript.ANIMAL_PRODUCTS
@@ -91,6 +92,11 @@ var weather: String = WEATHER_SUNNY
 var tomorrow_weather: String = WEATHER_SUNNY
 var touch_mode: String = "auto"
 
+## Calendário das 4 estações (derivado de `day`: 28 dias por estação, 112 por ano).
+var current_season: String = "spring"
+var day_of_season: int = 1
+var year: int = 1
+
 var seeds: Dictionary = {
 	"wheat": 6,
 	"carrot": 4,
@@ -98,6 +104,7 @@ var seeds: Dictionary = {
 	"corn": 0,
 	"tomato": 0,
 	"pumpkin": 0,
+	"turnip": 0,
 }
 var harvested: Dictionary = {
 	"wheat": 0,
@@ -106,6 +113,7 @@ var harvested: Dictionary = {
 	"corn": 0,
 	"tomato": 0,
 	"pumpkin": 0,
+	"turnip": 0,
 }
 var animal_products: Dictionary = {
 	"egg": 0,
@@ -153,6 +161,7 @@ var _weather_rng := RandomNumberGenerator.new()
 func _ready() -> void:
 	_weather_rng.randomize()
 	var loaded := load_game()
+	_sync_season_from_day()
 	if not loaded or daily_orders.is_empty():
 		_generate_daily_orders()
 
@@ -545,13 +554,19 @@ func consume_inventory_item(item_id: String, qty: int) -> bool:
 
 func _compute_category_value(counts: Dictionary, defs: Dictionary, is_crop: bool) -> int:
 	var crop_bonus: float = 1.15 if (is_crop and has_album_bonus("crops")) else 1.0
+	var category: String = "harvested" if is_crop else ""
+	if defs == ANIMAL_PRODUCTS:
+		category = "animal_products"
+	elif defs == ARTISAN:
+		category = "artisan"
 	var total: int = 0
 	for id_var in counts.keys():
 		var item_id: String = str(id_var)
 		var qty: int = int(counts.get(item_id, 0))
 		if qty <= 0 or not defs.has(item_id):
 			continue
-		var base_price: float = float(defs[item_id]["sell_price"]) * crop_bonus
+		var season_mult: float = get_season_sell_multiplier(item_id, category)
+		var base_price: float = float(defs[item_id]["sell_price"]) * crop_bonus * season_mult
 		var gold_qty: int = clampi(int(gold_items.get(item_id, 0)), 0, qty)
 		var normal_qty: int = qty - gold_qty
 		total += normal_qty * roundi(base_price) + gold_qty * roundi(base_price * 1.5)
@@ -761,7 +776,9 @@ func set_weather(today_w: String, next_w: String = "") -> void:
 
 
 func get_weather_label(w: String = weather) -> String:
-	return "Chuva" if w == WEATHER_RAINY else "Sol"
+	if w == WEATHER_RAINY:
+		return "Neve" if current_season == "winter" else "Chuva"
+	return "Sol"
 
 
 func set_touch_mode(mode: String) -> void:
@@ -796,7 +813,13 @@ func advance_day() -> void:
 			machine_states[m_id]["ready"] = true
 			machine_states[m_id]["remaining"] = 0.0
 
+	var previous_season: String = current_season
+	_sync_season_from_day()
+	var season_switched: bool = previous_season != current_season
+
 	_generate_daily_orders()
+	if season_switched:
+		season_changed.emit(current_season, year)
 	weather_changed.emit(weather, tomorrow_weather)
 	day_advanced.emit(day)
 	day_changed.emit(day, time_minutes)
@@ -806,12 +829,67 @@ func advance_day() -> void:
 	var audio := _get_audio()
 	if audio != null and audio.has_method("play_sleep"):
 		audio.play_sleep()
-	if weather == WEATHER_RAINY:
-		emit_toast("Dia %d começou com chuva! Canteiros regados automaticamente." % day)
+	if season_switched:
+		if audio != null and audio.has_method("play_season_change"):
+			audio.play_season_change()
+		emit_toast(str(get_season_definition().get("greeting", "Nova estação!")))
+	elif weather == WEATHER_RAINY:
+		if current_season == "winter":
+			emit_toast("Dia %d começou com neve! Canteiros umedecidos automaticamente." % day_of_season)
+		else:
+			emit_toast("Dia %d começou com chuva! Canteiros regados automaticamente." % day_of_season)
 	else:
-		emit_toast("Bom dia! Dia %d começou — energia restaurada." % day)
+		emit_toast("Bom dia! %s, dia %d/%d — energia restaurada." % [get_season_name(), day_of_season, SeasonDataScript.DAYS_PER_SEASON])
 	if auto_save_enabled:
 		save_game(false)
+
+
+# --- 4 Estações do Ano ---
+
+func _sync_season_from_day() -> void:
+	current_season = SeasonDataScript.get_season_id_for_day(day)
+	day_of_season = SeasonDataScript.get_day_of_season(day)
+	year = SeasonDataScript.get_year_for_day(day)
+
+
+func get_current_season() -> String:
+	return current_season
+
+
+func get_season_definition() -> Dictionary:
+	return SeasonDataScript.get_definition(current_season)
+
+
+func get_season_name(season_id: String = current_season) -> String:
+	return str(SeasonDataScript.get_definition(season_id).get("name", "Primavera"))
+
+
+func get_days_per_season() -> int:
+	return SeasonDataScript.DAYS_PER_SEASON
+
+
+func get_effective_days_to_grow(crop_id: String) -> int:
+	return CropDataScript.get_effective_days_to_grow(crop_id, current_season)
+
+
+func get_effective_crop_price(crop_id: String) -> int:
+	return CropDataScript.get_effective_sell_price(crop_id, current_season)
+
+
+func is_crop_in_season(crop_id: String) -> bool:
+	return CropDataScript.is_in_preferred_season(crop_id, current_season)
+
+
+## Multiplicador sazonal de venda: +35% cultivos da estação, +20% animais/artesanais no Inverno.
+func get_season_sell_multiplier(item_id: String, category: String) -> float:
+	var def := get_season_definition()
+	if category == "harvested":
+		return CropDataScript.get_season_price_multiplier(item_id, current_season)
+	if category == "animal_products":
+		return float(def.get("animal_price_mult", 1.0))
+	if category == "artisan":
+		return float(def.get("artisan_price_mult", 1.0))
+	return 1.0
 
 
 func emit_toast(msg: String) -> void:
@@ -1033,6 +1111,8 @@ func load_game() -> bool:
 	water_changed.emit(water_level, max_water)
 	tool_changed.emit(selected_slot)
 	upgrades_changed.emit()
+	_sync_season_from_day()
+	season_changed.emit(current_season, year)
 	weather_changed.emit(weather, tomorrow_weather)
 	touch_mode_changed.emit(touch_mode)
 	machines_changed.emit()
@@ -1069,6 +1149,7 @@ func reset_save() -> void:
 		"corn": 0,
 		"tomato": 0,
 		"pumpkin": 0,
+		"turnip": 0,
 	}
 	harvested = {
 		"wheat": 0,
@@ -1077,6 +1158,7 @@ func reset_save() -> void:
 		"corn": 0,
 		"tomato": 0,
 		"pumpkin": 0,
+		"turnip": 0,
 	}
 	animal_products = {
 		"egg": 0,
@@ -1108,6 +1190,7 @@ func reset_save() -> void:
 	machine_states.clear()
 	album_discovered.clear()
 	_pending_world_save.clear()
+	_sync_season_from_day()
 	_generate_daily_orders()
 
 	money_changed.emit(money)
@@ -1116,6 +1199,7 @@ func reset_save() -> void:
 	water_changed.emit(water_level, max_water)
 	tool_changed.emit(selected_slot)
 	upgrades_changed.emit()
+	season_changed.emit(current_season, year)
 	weather_changed.emit(weather, tomorrow_weather)
 	machines_changed.emit()
 	album_changed.emit()

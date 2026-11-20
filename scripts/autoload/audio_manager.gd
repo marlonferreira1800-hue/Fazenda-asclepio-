@@ -191,6 +191,10 @@ func play_order_done() -> void:
 	_play_sfx("order_done", -4.0)
 
 
+func play_season_change() -> void:
+	_play_sfx("season", -4.0)
+
+
 func play_animal(animal_type: String) -> void:
 	match animal_type:
 		"cow":
@@ -596,4 +600,24 @@ func _make_order_done_sfx() -> AudioStreamWAV:
 			var env: float = minf(1.0, t / 0.006) * exp(-u * 2.4)
 			samples[idx] = (0.7 * sin(TAU * n * t) + 0.3 * sin(TAU * n * 2.0 * t)) * env * 0.6
 			idx += 1
+	return _build_wav(samples)
+
+
+func _make_season_sfx() -> AudioStreamWAV:
+	# Carrilhão suave de troca de estação (G5 -> C6 -> E6 -> G6 com brilho de sino)
+	var notes: Array[float] = [783.99, 1046.50, 1318.51, 1567.98]
+	var note_step: int = int(0.11 * SAMPLE_RATE)
+	var tail: int = int(0.45 * SAMPLE_RATE)
+	var total: int = note_step * notes.size() + tail
+	var samples := PackedFloat32Array()
+	samples.resize(total)
+	for n_idx in range(notes.size()):
+		var n: float = notes[n_idx]
+		var start: int = n_idx * note_step
+		var ring: int = total - start
+		for j in range(ring):
+			var t: float = float(j) / float(SAMPLE_RATE)
+			var env: float = minf(1.0, t / 0.004) * exp(-t * 5.5)
+			var val: float = (0.65 * sin(TAU * n * t) + 0.25 * sin(TAU * n * 2.01 * t) + 0.10 * sin(TAU * n * 3.0 * t)) * env * 0.32
+			samples[start + j] = clampf(samples[start + j] + val, -0.95, 0.95)
 	return _build_wav(samples)
