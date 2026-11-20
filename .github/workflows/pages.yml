@@ -24,6 +24,24 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Build Web PCK with Godot 4.7.2
+        run: |
+          set -euo pipefail
+          GODOT_VER="4.7.2-stable"
+          TP_DIR="$HOME/.local/share/godot/export_templates/4.7.2.stable"
+          mkdir -p "$TP_DIR"
+          curl -fSL -o /tmp/godot.zip "https://github.com/godotengine/godot/releases/download/${GODOT_VER}/Godot_v${GODOT_VER}_linux.x86_64.zip"
+          unzip -q -o /tmp/godot.zip -d /tmp
+          chmod +x "/tmp/Godot_v${GODOT_VER}_linux.x86_64"
+          curl -fSL -o /tmp/templates.tpz "https://github.com/godotengine/godot/releases/download/${GODOT_VER}/Godot_v${GODOT_VER}_export_templates.tpz"
+          unzip -q -o /tmp/templates.tpz "templates/web_nothreads_release.zip" "templates/web_nothreads_debug.zip" -d /tmp
+          mv /tmp/templates/web_nothreads_*.zip "$TP_DIR/"
+          "/tmp/Godot_v${GODOT_VER}_linux.x86_64" --headless --path . --import || true
+          "/tmp/Godot_v${GODOT_VER}_linux.x86_64" --headless --path . --export-release "Web" build/web/index.html
+          VER="$(grep -oP 'config/version="\K[^"]+' project.godot || echo '1.6.1')"
+          sed -i "s|src=\"index.js[^\"]*\"|src=\"index.js?v=v${VER}\"|g" build/web/index.html
+          sed -i "s|return fetch(file.*).then|return fetch(file+((file.endsWith('.pck')||file.endsWith('.wasm'))?'?v=v${VER}' :'')).then|g" build/web/index.js
+
       - name: Configure Pages
         uses: actions/configure-pages@v5
 
