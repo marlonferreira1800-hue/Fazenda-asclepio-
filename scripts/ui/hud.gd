@@ -127,12 +127,17 @@ func _load_texture_safe(res_path: String) -> Texture2D:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	for i in range(5):
-		var action_name := "slot_%d" % (i + 1)
-		if InputMap.has_action(action_name) and event.is_action_pressed(action_name):
-			_select_slot(i)
-			get_viewport().set_input_as_handled()
-			return
+	var parent := get_parent()
+	if parent != null and parent.has_method("is_fishing_active") and bool(parent.call("is_fishing_active")):
+		return
+
+	if not is_shop_open():
+		for i in range(5):
+			var action_name := "slot_%d" % (i + 1)
+			if InputMap.has_action(action_name) and event.is_action_pressed(action_name):
+				_select_slot(i)
+				get_viewport().set_input_as_handled()
+				return
 
 	var key_event := event as InputEventKey
 	var key_pressed: bool = key_event != null and key_event.pressed and not key_event.echo
@@ -181,11 +186,14 @@ func toggle_shop() -> void:
 
 
 func toggle_journal(tab_idx: int = -1) -> void:
-	if tab_idx >= 0:
-		_journal_tab = clampi(tab_idx, 0, 2)
-	if _journal_open and tab_idx >= 0 and _journal_tab != tab_idx:
+	var clamped_tab: int = clampi(tab_idx, 0, 2) if tab_idx >= 0 else _journal_tab
+	if _journal_open and tab_idx >= 0 and _journal_tab != clamped_tab:
+		_journal_tab = clamped_tab
+		_reset_confirm_armed = false
 		_refresh_journal()
 		return
+	if tab_idx >= 0:
+		_journal_tab = clamped_tab
 	_set_journal_open(not _journal_open)
 
 
@@ -1655,7 +1663,10 @@ func _refresh_journal() -> void:
 			card.add_child(g_vbox)
 
 			var status_txt := "ATIVO ✓" if unlocked else "Em progresso"
-			g_vbox.add_child(_make_label("%s — %s (%s)" % [str(grp["title"]), str(grp["bonus_desc"]), status_txt], 7, COL_GOLD_TEXT if unlocked else COL_INK))
+			var grp_lbl := _make_label("%s — %s (%s)" % [str(grp["title"]), str(grp["bonus_desc"]), status_txt], 7, COL_GOLD_TEXT if unlocked else COL_INK)
+			grp_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			grp_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			g_vbox.add_child(grp_lbl)
 
 			var items_row := HBoxContainer.new()
 			items_row.add_theme_constant_override("separation", 4)
@@ -1692,9 +1703,15 @@ func _refresh_journal() -> void:
 
 		_journal_content_vbox.add_child(_make_separator())
 		_journal_content_vbox.add_child(_make_label("Dicas rápidas da v1.3.0:", 8, COL_WOOD_DARK))
-		_journal_content_vbox.add_child(_make_label("• Morango, Milho e Tomate rebrotam após a colheita sem gastar semente!", 7, COL_INK))
-		_journal_content_vbox.add_child(_make_label("• Dias de chuva regam automaticamente todo o canteiro.", 7, COL_INK))
-		_journal_content_vbox.add_child(_make_label("• Carinho diário nos animais aumenta chance de Ovo Azul e itens Ouro ★.", 7, COL_INK))
+		for tip_txt in [
+			"• Morango, Milho e Tomate rebrotam após a colheita sem gastar semente!",
+			"• Dias de chuva regam automaticamente todo o canteiro.",
+			"• Carinho diário nos animais aumenta chance de Ovo Azul e itens Ouro ★.",
+		]:
+			var tip_lbl := _make_label(tip_txt, 7, COL_INK)
+			tip_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			tip_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			_journal_content_vbox.add_child(tip_lbl)
 
 		_journal_content_vbox.add_child(_make_separator())
 		var reset_btn := _make_colored_button(

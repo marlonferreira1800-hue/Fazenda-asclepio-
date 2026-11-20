@@ -995,8 +995,8 @@ func _get_affected_tiles(center_tile: Vector2i, tool_id: String) -> Array[Vector
 		var dir_val: Variant = player.get("facing_dir") if player != null else Vector2i(0, 1)
 		var facing: Vector2i = dir_val if dir_val is Vector2i else Vector2i(0, 1)
 		var perp := Vector2i(1, 0) if absi(facing.y) >= absi(facing.x) else Vector2i(0, 1)
-		for step in [-1, 0, 1]:
-			var t := center_tile + perp * step
+		for step: int in [-1, 0, 1]:
+			var t: Vector2i = center_tile + perp * step
 			if t.x >= 0 and t.x < MAP_WIDTH and t.y >= 0 and t.y < MAP_HEIGHT:
 				result.append(t)
 		return result
@@ -1859,6 +1859,10 @@ func is_demo_active() -> bool:
 	return demo_active
 
 
+func is_fishing_active() -> bool:
+	return _fishing_active
+
+
 func set_demo_active(active: bool) -> void:
 	if demo_active == active:
 		return
@@ -2040,7 +2044,7 @@ func _plan_next_demo_task() -> void:
 		return
 
 	# 7. Buy missing seeds at Shop Sign if money >= 35
-	if money >= 35 and _needs_any_seed(seeds_dict):
+	if money >= 35 and _needs_any_seed(seeds_dict, money):
 		_demo_action = "buy_seeds"
 		_demo_target_tile = SHOP_SIGN_TILE
 		_demo_waypoints = _build_demo_path(p_pos, DEMO_SIGN_WP, "outside")
@@ -2122,10 +2126,13 @@ func _demo_buy_needed_seeds() -> void:
 			seeds_dict = _game_state.get("seeds")
 
 
-func _needs_any_seed(seeds_dict: Dictionary) -> bool:
+func _needs_any_seed(seeds_dict: Dictionary, available_money: int = 999999) -> bool:
 	for crop_id in ["wheat", "carrot", "strawberry", "corn", "tomato", "pumpkin"]:
 		if int(seeds_dict.get(crop_id, 0)) < 2:
-			return true
+			var crop_def: Dictionary = _game_state.CROPS.get(crop_id, {})
+			var price: int = int(crop_def.get("seed_price", 10))
+			if available_money >= price:
+				return true
 	return false
 
 

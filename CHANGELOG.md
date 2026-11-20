@@ -9,6 +9,25 @@ Todas as alterações relevantes do projeto **Fazendinha 2D** estão documentada
 
 ---
 
+## [v1.3.0] — 2026-11-20
+
+**Cultivos com Rebrota, Chuva, Pesca, Máquinas, Ovelha, Aspersores, Pedidos & Álbum**
+- **Release:** [v1.3.0](https://github.com/marlonferreira1800-hue/Fazenda-asclepio-/releases/tag/v1.3.0)
+- **Contribuidor:** [@marlonferreira1800-hue](https://github.com/marlonferreira1800-hue)
+
+### 🔄 Antes vs. Depois
+- **Antes:** Apenas 3 cultivos sem rebrota, sem clima, sem pesca no lago, sem máquinas artesanais, ferramentas fixas `1x1` e sem encomendas diárias ou álbum de descobertas.
+- **Depois:** 6 cultivos (Morango, Milho e Tomate com rebrota + Fertilizante Ouro `1.5x`), chuva diária com partículas, Aspersores `3x3`, upgrades de Enxada/Regador (`3x1` e `3x3`), minigame de pesca, Ovelha (Lã) + carinho/corações (`0..5`), Queijeira, Forno de Pão, Apiário e Diário (`J`) com Encomendas, Álbum e velocidade do dia.
+
+### Bugs Resolvidos e Melhorias
+- Expansão de cultivos (`crops_extra_sheet.png`) com **Milho**, **Tomate** e **Abóbora**, sistema de **rebrota** e **Fertilizante** para colheitas **Ouro ★ (`1.5x`)**.
+- **Clima chuvoso** (`30%` ao amanhecer) regando automaticamente o canteiro, **Aspersores** `3x3` e melhorias da Enxada e do Regador (`1x1` → `3x1` → `3x3`).
+- **Minigame de pesca** no lago (`Tilápia`, `Camarão`, `Truta`, `Carpa Dourada`), **Ovelha** (`Lã`), carinho diário em animais (`♥ 0..5` + `Ovo Azul`) e compra de animais na Loja.
+- **Máquinas artesanais** (**Queijeira**, **Forno de Pão**, **Apiário**) e **Diário da Fazenda (`J`)** com Encomendas diárias, Álbum com bônus passivos e controle de velocidade do relógio.
+- Correção do erro de tipagem GDScript em `farm_world.gd` (`_get_affected_tiles`), ajuste de navegação/wraps do Diário e sincronização de `.import`/`.uid` e build Web (`build/web/`).
+
+---
+
 ## [v1.2.0] — 2026-11-15
 
 **Modo Fazendeiro Automático, Painel de Atualizações & Deploy Web**

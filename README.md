@@ -41,7 +41,7 @@ Jogo 2D pixel art estilo *cozy farming* desenvolvido para **Godot 4.7.2-stable**
 | Abrir / Fechar Diário da Fazenda (Pedidos, Álbum e Opções) | `J` |
 | Dormir / Avançar para o próximo dia | `N` (ou interagir com a porta da casinha) |
 | Ligar/Desligar Fazendeiro Automático (Demo IA) | `P` (ou botão **Auto (P)** na HUD) |
-| Ver Atualizações / Changelog e Versão atual | `V` (ou botão **v1.2.0 (V)** na HUD) |
+| Ver Atualizações / Changelog e Versão atual | `V` (ou botão **v1.3.0 (V)** na HUD) |
 | Salvar progresso manualmente | Botão **Salvar** na HUD |
 | Ligar / Desligar efeitos sonoros | Botão **Som: ON / OFF** na HUD |
 
