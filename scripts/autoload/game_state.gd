@@ -2,6 +2,7 @@ extends Node
 ## Autoload global de estado de jogo, inventário, economia, persistência e relógio diário.
 
 const CropDataScript := preload("res://scripts/data/crop_data.gd")
+const FarmCatalogScript := preload("res://scripts/data/farm_catalog.gd")
 
 signal money_changed(new_money: int)
 signal day_changed(day: int, time_minutes: float)
@@ -14,6 +15,10 @@ signal day_advanced(new_day: int)
 signal upgrades_changed()
 signal weather_changed(weather: String, tomorrow_weather: String)
 signal touch_mode_changed(mode: String)
+signal orders_changed()
+signal album_changed()
+signal machines_changed()
+signal animal_purchased(animal_type: String)
 signal game_reset()
 
 const SAVE_PATH := "user://savegame.json"
@@ -26,23 +31,22 @@ const WEATHER_RAINY := "rainy"
 const SPRINKLER_PRICE: int = 180
 
 const HOTBAR_SLOTS: Array[Dictionary] = [
-	{"id": "hoe", "name": "Enxada", "type": "tool", "icon_col": 0},
-	{"id": "watering_can", "name": "Regador", "type": "tool", "icon_col": 1},
-	{"id": "wheat_seed", "name": "Sem. Trigo", "type": "seed", "crop_id": "wheat", "icon_col": 2},
-	{"id": "carrot_seed", "name": "Sem. Cenoura", "type": "seed", "crop_id": "carrot", "icon_col": 3},
-	{"id": "strawberry_seed", "name": "Sem. Morango", "type": "seed", "crop_id": "strawberry", "icon_col": 4},
-	{"id": "corn_seed", "name": "Sem. Milho", "type": "seed", "crop_id": "corn", "icon_col": 8},
-	{"id": "tomato_seed", "name": "Sem. Tomate", "type": "seed", "crop_id": "tomato", "icon_col": 9},
-	{"id": "pumpkin_seed", "name": "Sem. Abóbora", "type": "seed", "crop_id": "pumpkin", "icon_col": 10},
-	{"id": "sprinkler", "name": "Aspersor", "type": "placeable", "icon_col": 11},
+	{"id": "hoe", "name": "Enxada", "type": "tool", "sheet": "base", "icon_col": 0, "key_hint": "1"},
+	{"id": "watering_can", "name": "Regador", "type": "tool", "sheet": "base", "icon_col": 1, "key_hint": "2"},
+	{"id": "fishing_rod", "name": "Vara de Pesca", "type": "tool", "sheet": "v13", "icon_col": 0, "key_hint": "3"},
+	{"id": "wheat_seed", "name": "Sem. Trigo", "type": "seed", "crop_id": "wheat", "sheet": "base", "icon_col": 2, "key_hint": "4"},
+	{"id": "carrot_seed", "name": "Sem. Cenoura", "type": "seed", "crop_id": "carrot", "sheet": "base", "icon_col": 3, "key_hint": "5"},
+	{"id": "strawberry_seed", "name": "Sem. Morango", "type": "seed", "crop_id": "strawberry", "sheet": "base", "icon_col": 4, "key_hint": "6"},
+	{"id": "corn_seed", "name": "Sem. Milho", "type": "seed", "crop_id": "corn", "sheet": "base", "icon_col": 8, "key_hint": "7"},
+	{"id": "tomato_seed", "name": "Sem. Tomate", "type": "seed", "crop_id": "tomato", "sheet": "base", "icon_col": 9, "key_hint": "8"},
+	{"id": "pumpkin_seed", "name": "Sem. Abóbora", "type": "seed", "crop_id": "pumpkin", "sheet": "base", "icon_col": 10, "key_hint": "9"},
+	{"id": "fertilizer", "name": "Fertilizante", "type": "supply", "supply_id": "fertilizer", "sheet": "v13", "icon_col": 4, "key_hint": "0"},
+	{"id": "sprinkler", "name": "Aspersor", "type": "placeable", "sheet": "base", "icon_col": 11, "key_hint": "-"},
 ]
 
-const ANIMAL_PRODUCTS: Dictionary = {
-	"egg": {"name": "Ovo", "sell_price": 30},
-	"milk": {"name": "Leite", "sell_price": 45},
-	"wool": {"name": "Lã", "sell_price": 60},
-	"truffle": {"name": "Trufa", "sell_price": 80},
-}
+var ANIMAL_PRODUCTS: Dictionary = FarmCatalogScript.ANIMAL_PRODUCTS
+var FISH: Dictionary = FarmCatalogScript.FISH
+var ARTISAN: Dictionary = FarmCatalogScript.ARTISAN
 
 const UPGRADE_DEFS: Dictionary = {
 	"hoe": {
@@ -71,6 +75,7 @@ var money: int = 100
 var day: int = 1
 var time_minutes: float = START_OF_DAY_MINUTES
 var time_paused: bool = false
+var time_speed_multiplier: float = 1.0
 var stamina: int = 100
 var max_stamina: int = 100
 var water_level: int = 20
@@ -104,10 +109,38 @@ var harvested: Dictionary = {
 }
 var animal_products: Dictionary = {
 	"egg": 0,
+	"blue_egg": 0,
 	"milk": 0,
 	"wool": 0,
 	"truffle": 0,
 }
+var fish: Dictionary = {
+	"tilapia": 0,
+	"shrimp": 0,
+	"trout": 0,
+	"golden_carp": 0,
+}
+var artisan: Dictionary = {
+	"cheese": 0,
+	"bread": 0,
+	"honey": 0,
+}
+var supplies: Dictionary = {
+	"fertilizer": 2,
+}
+var gold_items: Dictionary = {}
+
+var owned_machines: Dictionary = {
+	"cheese_press": false,
+	"bakery_oven": false,
+	"bee_hive": false,
+}
+# machine_id -> {"busy": bool, "ready": bool, "remaining": float, "output_id": String}
+var machine_states: Dictionary = {}
+
+var daily_orders: Array[Dictionary] = []
+var album_discovered: Dictionary = {}
+var animal_count: int = 5
 
 var auto_save_enabled: bool = true
 
@@ -119,7 +152,9 @@ var _weather_rng := RandomNumberGenerator.new()
 
 func _ready() -> void:
 	_weather_rng.randomize()
-	load_game()
+	var loaded := load_game()
+	if not loaded or daily_orders.is_empty():
+		_generate_daily_orders()
 
 
 func _process(delta: float) -> void:
@@ -142,7 +177,9 @@ func _sync_caps_from_levels() -> void:
 func tick_time(delta: float) -> void:
 	if time_paused or delta <= 0.0:
 		return
-	time_minutes += delta * TIME_SCALE_MINUTES_PER_SECOND
+	var adv_minutes: float = delta * TIME_SCALE_MINUTES_PER_SECOND * time_speed_multiplier
+	time_minutes += adv_minutes
+	_tick_machines(adv_minutes)
 	if time_minutes >= MINUTES_PER_DAY:
 		advance_day()
 		return
@@ -150,6 +187,35 @@ func tick_time(delta: float) -> void:
 	if current_minute != _last_emitted_minute:
 		_last_emitted_minute = current_minute
 		day_changed.emit(day, time_minutes)
+
+
+func _tick_machines(adv_minutes: float) -> void:
+	var speed_mult: float = 1.3 if has_album_bonus("artisan") else 1.0
+	var changed: bool = false
+	for machine_id_var in machine_states.keys():
+		var machine_id: String = str(machine_id_var)
+		var st: Dictionary = machine_states[machine_id]
+		if bool(st.get("busy", false)) and not bool(st.get("ready", false)):
+			var rem: float = float(st.get("remaining", 0.0)) - adv_minutes * speed_mult
+			if rem <= 0.0:
+				st["remaining"] = 0.0
+				st["busy"] = false
+				st["ready"] = true
+				changed = true
+			else:
+				st["remaining"] = rem
+	if changed:
+		machines_changed.emit()
+
+
+func set_time_speed_multiplier(mult: float) -> void:
+	time_speed_multiplier = clampf(mult, 0.5, 2.0)
+	if auto_save_enabled:
+		save_game(false)
+
+
+func is_raining() -> bool:
+	return weather == WEATHER_RAINY
 
 
 func select_slot(idx: int) -> void:
@@ -274,7 +340,79 @@ func buy_sprinkler(qty: int = 1) -> bool:
 	inventory_changed.emit()
 	if audio != null and audio.has_method("play_coin"):
 		audio.play_coin()
-	emit_toast("Comprou %dx Aspersor (-$%d)! Selecione o slot 9." % [qty, cost])
+	emit_toast("Comprou %dx Aspersor (-$%d)! Selecione o slot '-'." % [qty, cost])
+	if auto_save_enabled:
+		save_game(false)
+	return true
+
+
+func _spend_money(cost: int) -> bool:
+	var audio := _get_audio()
+	if money < cost:
+		if audio != null and audio.has_method("play_error"):
+			audio.play_error()
+		emit_toast("Moedas insuficientes! Precisa de $%d." % cost)
+		return false
+	money -= cost
+	money_changed.emit(money)
+	if audio != null and audio.has_method("play_coin"):
+		audio.play_coin()
+	return true
+
+
+func buy_supply(supply_id: String, qty: int = 1) -> bool:
+	if qty <= 0 or not FarmCatalogScript.SUPPLIES.has(supply_id):
+		return false
+	var info: Dictionary = FarmCatalogScript.SUPPLIES[supply_id]
+	var cost: int = int(info.get("buy_price", 15)) * qty
+	if not _spend_money(cost):
+		return false
+	supplies[supply_id] = int(supplies.get(supply_id, 0)) + qty
+	inventory_changed.emit()
+	emit_toast("Comprou %dx %s (-$%d)" % [qty, str(info.get("name", supply_id)), cost])
+	if auto_save_enabled:
+		save_game(false)
+	return true
+
+
+func buy_machine(machine_id: String) -> bool:
+	if not FarmCatalogScript.MACHINES.has(machine_id):
+		return false
+	if bool(owned_machines.get(machine_id, false)):
+		emit_toast("Você já instalou esta máquina!")
+		return false
+	var m_def: Dictionary = FarmCatalogScript.MACHINES[machine_id]
+	var cost: int = int(m_def.get("buy_price", 150))
+	if not _spend_money(cost):
+		return false
+	owned_machines[machine_id] = true
+	if machine_id == "bee_hive":
+		machine_states[machine_id] = {"busy": false, "ready": true, "remaining": 0.0, "output_id": "honey"}
+	else:
+		machine_states[machine_id] = {"busy": false, "ready": false, "remaining": 0.0, "output_id": str(m_def.get("output_id", ""))}
+	machines_changed.emit()
+	emit_toast("%s instalada na fazenda!" % str(m_def.get("name", machine_id)))
+	if auto_save_enabled:
+		save_game(false)
+	return true
+
+
+func buy_animal(animal_type: String) -> bool:
+	if not FarmCatalogScript.ANIMAL_SHOP.has(animal_type):
+		return false
+	if animal_count >= FarmCatalogScript.MAX_FARM_ANIMALS:
+		var audio := _get_audio()
+		if audio != null and audio.has_method("play_error"):
+			audio.play_error()
+		emit_toast("Cercado cheio! (Máx. %d animais)" % FarmCatalogScript.MAX_FARM_ANIMALS)
+		return false
+	var def: Dictionary = FarmCatalogScript.ANIMAL_SHOP[animal_type]
+	var cost: int = int(def.get("buy_price", 100))
+	if not _spend_money(cost):
+		return false
+	animal_count += 1
+	animal_purchased.emit(animal_type)
+	emit_toast("Novo animal (%s) chegou ao cercado!" % str(def.get("name", animal_type)))
 	if auto_save_enabled:
 		save_game(false)
 	return true
@@ -295,39 +433,133 @@ func consume_sprinkler_item() -> bool:
 	return true
 
 
-func add_harvested(crop_id: String, qty: int = 1) -> void:
+func add_harvested(crop_id: String, qty: int = 1, is_gold: bool = false) -> void:
 	if qty <= 0 or not CROPS.has(crop_id):
 		return
 	harvested[crop_id] = int(harvested.get(crop_id, 0)) + qty
+	if is_gold:
+		gold_items[crop_id] = int(gold_items.get(crop_id, 0)) + qty
+	discover_item(crop_id)
 	inventory_changed.emit()
+	orders_changed.emit()
 
 
-func add_animal_product(product_id: String, qty: int = 1) -> void:
+func add_animal_product(product_id: String, qty: int = 1, is_gold: bool = false) -> void:
 	if qty <= 0 or not ANIMAL_PRODUCTS.has(product_id):
 		return
 	animal_products[product_id] = int(animal_products.get(product_id, 0)) + qty
+	if is_gold:
+		gold_items[product_id] = int(gold_items.get(product_id, 0)) + qty
+	discover_item(product_id)
 	inventory_changed.emit()
+	orders_changed.emit()
+
+
+func add_fish(fish_id: String, qty: int = 1, is_gold: bool = false) -> void:
+	if qty <= 0 or not FISH.has(fish_id):
+		return
+	fish[fish_id] = int(fish.get(fish_id, 0)) + qty
+	if is_gold:
+		gold_items[fish_id] = int(gold_items.get(fish_id, 0)) + qty
+	discover_item(fish_id)
+	inventory_changed.emit()
+	orders_changed.emit()
+
+
+func add_artisan(artisan_id: String, qty: int = 1, is_gold: bool = false) -> void:
+	if qty <= 0 or not ARTISAN.has(artisan_id):
+		return
+	artisan[artisan_id] = int(artisan.get(artisan_id, 0)) + qty
+	if is_gold:
+		gold_items[artisan_id] = int(gold_items.get(artisan_id, 0)) + qty
+	discover_item(artisan_id)
+	inventory_changed.emit()
+	orders_changed.emit()
+
+
+func discover_item(item_id: String) -> void:
+	if item_id.is_empty():
+		return
+	if not bool(album_discovered.get(item_id, false)):
+		album_discovered[item_id] = true
+		album_changed.emit()
+
+
+func has_album_bonus(group_id: String) -> bool:
+	if not FarmCatalogScript.ALBUM_GROUPS.has(group_id):
+		return false
+	var items: Array = FarmCatalogScript.ALBUM_GROUPS[group_id].get("items", [])
+	for id_var in items:
+		if not bool(album_discovered.get(str(id_var), false)):
+			return false
+	return not items.is_empty()
+
+
+func get_album_progress() -> Dictionary:
+	var total: int = 0
+	var found: int = 0
+	for group_id in FarmCatalogScript.ALBUM_GROUPS.keys():
+		var items: Array = FarmCatalogScript.ALBUM_GROUPS[group_id].get("items", [])
+		for id_var in items:
+			total += 1
+			if bool(album_discovered.get(str(id_var), false)):
+				found += 1
+	return {"found": found, "total": total}
+
+
+func get_item_count(item_id: String) -> int:
+	if harvested.has(item_id):
+		return int(harvested.get(item_id, 0))
+	if animal_products.has(item_id):
+		return int(animal_products.get(item_id, 0))
+	if fish.has(item_id):
+		return int(fish.get(item_id, 0))
+	if artisan.has(item_id):
+		return int(artisan.get(item_id, 0))
+	return 0
+
+
+func consume_inventory_item(item_id: String, qty: int) -> bool:
+	if qty <= 0 or get_item_count(item_id) < qty:
+		return false
+	var target_dict: Dictionary
+	if harvested.has(item_id):
+		target_dict = harvested
+	elif animal_products.has(item_id):
+		target_dict = animal_products
+	elif fish.has(item_id):
+		target_dict = fish
+	elif artisan.has(item_id):
+		target_dict = artisan
+	else:
+		return false
+
+	var new_total: int = maxi(0, int(target_dict.get(item_id, 0)) - qty)
+	target_dict[item_id] = new_total
+	if gold_items.has(item_id):
+		gold_items[item_id] = mini(int(gold_items[item_id]), new_total)
+	inventory_changed.emit()
+	orders_changed.emit()
+	return true
+
+
+func _compute_category_value(counts: Dictionary, defs: Dictionary, is_crop: bool) -> int:
+	var crop_bonus: float = 1.15 if (is_crop and has_album_bonus("crops")) else 1.0
+	var total: int = 0
+	for id_var in counts.keys():
+		var item_id: String = str(id_var)
+		var qty: int = int(counts.get(item_id, 0))
+		if qty <= 0 or not defs.has(item_id):
+			continue
+		var base_price: float = float(defs[item_id]["sell_price"]) * crop_bonus
+		var gold_qty: int = clampi(int(gold_items.get(item_id, 0)), 0, qty)
+		var normal_qty: int = qty - gold_qty
+		total += normal_qty * roundi(base_price) + gold_qty * roundi(base_price * 1.5)
+	return total
 
 
 func sell_all_harvested() -> int:
-	var total_profit: int = 0
-	var total_items: int = 0
-	for crop_id_var in harvested.keys():
-		var crop_id: String = str(crop_id_var)
-		var qty: int = int(harvested.get(crop_id, 0))
-		if qty > 0 and CROPS.has(crop_id):
-			total_profit += qty * int(CROPS[crop_id]["sell_price"])
-			total_items += qty
-		harvested[crop_id] = 0
-
-	for prod_id_var in animal_products.keys():
-		var prod_id: String = str(prod_id_var)
-		var qty: int = int(animal_products.get(prod_id, 0))
-		if qty > 0 and ANIMAL_PRODUCTS.has(prod_id):
-			total_profit += qty * int(ANIMAL_PRODUCTS[prod_id]["sell_price"])
-			total_items += qty
-		animal_products[prod_id] = 0
-
+	var total_items: int = get_total_basket_count()
 	var audio := _get_audio()
 	if total_items <= 0:
 		if audio != null and audio.has_method("play_error"):
@@ -335,15 +567,153 @@ func sell_all_harvested() -> int:
 		emit_toast("Cesta vazia! Nada para vender.")
 		return 0
 
+	var total_profit: int = get_total_basket_value()
+	for k in harvested.keys():
+		harvested[k] = 0
+	for k in animal_products.keys():
+		animal_products[k] = 0
+	for k in fish.keys():
+		fish[k] = 0
+	for k in artisan.keys():
+		artisan[k] = 0
+	gold_items.clear()
+
 	money += total_profit
 	money_changed.emit(money)
 	inventory_changed.emit()
+	orders_changed.emit()
 	if audio != null and audio.has_method("play_coin"):
 		audio.play_coin()
 	emit_toast("Vendeu %d item(ns) por +$%d!" % [total_items, total_profit])
 	if auto_save_enabled:
 		save_game(false)
 	return total_profit
+
+
+func start_machine(machine_id: String) -> String:
+	if not bool(owned_machines.get(machine_id, false)) or not FarmCatalogScript.MACHINES.has(machine_id):
+		return "not_owned"
+	var m_def: Dictionary = FarmCatalogScript.MACHINES[machine_id]
+	var st: Dictionary = machine_states.get(machine_id, {"busy": false, "ready": false, "remaining": 0.0, "output_id": str(m_def.get("output_id", ""))})
+
+	if bool(st.get("ready", false)):
+		var out_id: String = str(st.get("output_id", m_def.get("output_id", "")))
+		add_artisan(out_id, 1, false)
+		st["ready"] = false
+		st["busy"] = false
+		st["remaining"] = 0.0
+		machine_states[machine_id] = st
+		machines_changed.emit()
+		if auto_save_enabled:
+			save_game(false)
+		return "collected:" + out_id
+
+	if bool(st.get("busy", false)):
+		return "busy"
+
+	var input_id: String = str(m_def.get("input_id", ""))
+	var input_qty: int = int(m_def.get("input_qty", 0))
+	if input_id.is_empty() or input_qty <= 0:
+		return "idle_auto"
+
+	if not consume_inventory_item(input_id, input_qty):
+		return "missing_input"
+
+	st["busy"] = true
+	st["ready"] = false
+	st["remaining"] = float(m_def.get("duration_minutes", 180.0))
+	st["output_id"] = str(m_def.get("output_id", ""))
+	machine_states[machine_id] = st
+	machines_changed.emit()
+	if auto_save_enabled:
+		save_game(false)
+	return "started"
+
+
+func can_deliver_order(index: int) -> bool:
+	if index < 0 or index >= daily_orders.size():
+		return false
+	var ord: Dictionary = daily_orders[index]
+	if bool(ord.get("completed", false)):
+		return false
+	return get_item_count(str(ord.get("item_id", ""))) >= int(ord.get("qty", 1))
+
+
+func has_deliverable_order() -> bool:
+	for i in range(daily_orders.size()):
+		if can_deliver_order(i):
+			return true
+	return false
+
+
+func deliver_order(index: int) -> bool:
+	if not can_deliver_order(index):
+		var audio_err := _get_audio()
+		if audio_err != null and audio_err.has_method("play_error"):
+			audio_err.play_error()
+		return false
+	var ord: Dictionary = daily_orders[index]
+	var item_id: String = str(ord["item_id"])
+	var qty: int = int(ord["qty"])
+	var reward: int = int(ord["reward"])
+	if not consume_inventory_item(item_id, qty):
+		return false
+
+	ord["completed"] = true
+	daily_orders[index] = ord
+	money += reward
+	money_changed.emit(money)
+	orders_changed.emit()
+	var audio := _get_audio()
+	if audio != null and audio.has_method("play_order_done"):
+		audio.play_order_done()
+	elif audio != null and audio.has_method("play_coin"):
+		audio.play_coin()
+	emit_toast("Encomenda entregue! +$%d" % reward)
+	if auto_save_enabled:
+		save_game(false)
+	return true
+
+
+func _generate_daily_orders() -> void:
+	daily_orders.clear()
+	var pool: Array[String] = ["wheat", "carrot", "egg", "milk", "tilapia"]
+	if day >= 2:
+		pool.append_array(["strawberry", "tomato", "wool", "truffle", "shrimp", "trout"])
+	if day >= 3:
+		pool.append_array(["corn", "pumpkin", "blue_egg", "golden_carp"])
+	if bool(owned_machines.get("cheese_press", false)):
+		pool.append("cheese")
+	if bool(owned_machines.get("bakery_oven", false)):
+		pool.append("bread")
+	if bool(owned_machines.get("bee_hive", false)):
+		pool.append("honey")
+
+	var picked: Array[String] = []
+	var attempts: int = 0
+	while picked.size() < 3 and attempts < 30:
+		attempts += 1
+		var candidate: String = pool[_weather_rng.randi_range(0, pool.size() - 1)]
+		if not picked.has(candidate):
+			picked.append(candidate)
+
+	for item_id in picked:
+		var info := FarmCatalogScript.get_item_info(item_id, CROPS)
+		if info.is_empty():
+			continue
+		var unit_price: int = int(info.get("sell_price", 25))
+		var qty: int = 2 if unit_price <= 45 else 1
+		if item_id == "wheat" or item_id == "tomato":
+			qty = _weather_rng.randi_range(2, 3)
+		var reward: int = roundi(float(unit_price * qty) * 1.45) + 15
+		daily_orders.append({
+			"item_id": item_id,
+			"name": str(info.get("name", item_id)),
+			"qty": qty,
+			"reward": reward,
+			"completed": false,
+		})
+	orders_changed.emit()
 
 
 func refill_water() -> void:
@@ -415,10 +785,24 @@ func advance_day() -> void:
 	var rain_chance: float = 0.14 if weather == WEATHER_RAINY else 0.30
 	tomorrow_weather = WEATHER_RAINY if _weather_rng.randf() < rain_chance else WEATHER_SUNNY
 
+	for m_id_var in owned_machines.keys():
+		var m_id: String = str(m_id_var)
+		if not bool(owned_machines[m_id]):
+			continue
+		if m_id == "bee_hive":
+			machine_states[m_id] = {"busy": false, "ready": true, "remaining": 0.0, "output_id": "honey"}
+		elif machine_states.has(m_id) and bool(machine_states[m_id].get("busy", false)):
+			machine_states[m_id]["busy"] = false
+			machine_states[m_id]["ready"] = true
+			machine_states[m_id]["remaining"] = 0.0
+
+	_generate_daily_orders()
 	weather_changed.emit(weather, tomorrow_weather)
 	day_advanced.emit(day)
 	day_changed.emit(day, time_minutes)
 	stamina_changed.emit(stamina, max_stamina)
+	machines_changed.emit()
+
 	var audio := _get_audio()
 	if audio != null and audio.has_method("play_sleep"):
 		audio.play_sleep()
@@ -452,21 +836,19 @@ func get_total_basket_count() -> int:
 	var total: int = get_total_harvested()
 	for qty_var in animal_products.values():
 		total += int(qty_var)
+	for qty_var in fish.values():
+		total += int(qty_var)
+	for qty_var in artisan.values():
+		total += int(qty_var)
 	return total
 
 
 func get_total_basket_value() -> int:
 	var total: int = 0
-	for crop_id_var in harvested.keys():
-		var crop_id: String = str(crop_id_var)
-		var qty: int = int(harvested.get(crop_id, 0))
-		if qty > 0 and CROPS.has(crop_id):
-			total += qty * int(CROPS[crop_id]["sell_price"])
-	for prod_id_var in animal_products.keys():
-		var prod_id: String = str(prod_id_var)
-		var qty: int = int(animal_products.get(prod_id, 0))
-		if qty > 0 and ANIMAL_PRODUCTS.has(prod_id):
-			total += qty * int(ANIMAL_PRODUCTS[prod_id]["sell_price"])
+	total += _compute_category_value(harvested, CROPS, true)
+	total += _compute_category_value(animal_products, ANIMAL_PRODUCTS, false)
+	total += _compute_category_value(fish, FISH, false)
+	total += _compute_category_value(artisan, ARTISAN, false)
 	return total
 
 
@@ -500,6 +882,7 @@ func save_game(show_toast: bool = true) -> bool:
 		"money": money,
 		"day": day,
 		"time_minutes": time_minutes,
+		"time_speed_multiplier": time_speed_multiplier,
 		"stamina": stamina,
 		"water_level": water_level,
 		"selected_slot": selected_slot,
@@ -515,6 +898,15 @@ func save_game(show_toast: bool = true) -> bool:
 		"seeds": seeds.duplicate(true),
 		"harvested": harvested.duplicate(true),
 		"animal_products": animal_products.duplicate(true),
+		"fish": fish.duplicate(true),
+		"artisan": artisan.duplicate(true),
+		"supplies": supplies.duplicate(true),
+		"gold_items": gold_items.duplicate(true),
+		"owned_machines": owned_machines.duplicate(true),
+		"machine_states": machine_states.duplicate(true),
+		"daily_orders": daily_orders.duplicate(true),
+		"album_discovered": album_discovered.duplicate(true),
+		"animal_count": animal_count,
 		"world": world_data,
 	}
 
@@ -529,6 +921,15 @@ func save_game(show_toast: bool = true) -> bool:
 	if show_toast:
 		emit_toast("Jogo salvo! (Dia %d)" % day)
 	return true
+
+
+func _load_dict_int_keys(target: Dictionary, raw: Variant) -> void:
+	if not (raw is Dictionary):
+		return
+	for key_var in target.keys():
+		var k: String = str(key_var)
+		if (raw as Dictionary).has(k):
+			target[k] = maxi(0, int(raw[k]))
 
 
 func load_game() -> bool:
@@ -549,6 +950,7 @@ func load_game() -> bool:
 	day = maxi(1, int(data.get("day", 1)))
 	time_minutes = clampf(float(data.get("time_minutes", START_OF_DAY_MINUTES)), 0.0, MINUTES_PER_DAY - 1.0)
 	_last_emitted_minute = int(floor(time_minutes))
+	time_speed_multiplier = clampf(float(data.get("time_speed_multiplier", 1.0)), 0.5, 2.0)
 
 	hoe_level = clampi(int(data.get("hoe_level", 1)), 1, 3)
 	can_level = clampi(int(data.get("can_level", 1)), 1, 3)
@@ -559,6 +961,7 @@ func load_game() -> bool:
 	stamina = clampi(int(data.get("stamina", max_stamina)), 0, max_stamina)
 	water_level = clampi(int(data.get("water_level", max_water)), 0, max_water)
 	selected_slot = clampi(int(data.get("selected_slot", 0)), 0, HOTBAR_SLOTS.size() - 1)
+	animal_count = clampi(int(data.get("animal_count", 5)), 1, FarmCatalogScript.MAX_FARM_ANIMALS)
 
 	var loaded_weather: String = str(data.get("weather", WEATHER_SUNNY))
 	weather = WEATHER_RAINY if loaded_weather == WEATHER_RAINY else WEATHER_SUNNY
@@ -576,26 +979,47 @@ func load_game() -> bool:
 		if data.has("music_muted") and audio.has_method("set_music_muted"):
 			audio.call("set_music_muted", bool(data["music_muted"]))
 
-	var loaded_seeds = data.get("seeds", {})
-	if loaded_seeds is Dictionary:
-		for crop_id_var in seeds.keys():
-			var crop_id: String = str(crop_id_var)
-			if loaded_seeds.has(crop_id):
-				seeds[crop_id] = maxi(0, int(loaded_seeds[crop_id]))
+	_load_dict_int_keys(seeds, data.get("seeds", {}))
+	_load_dict_int_keys(harvested, data.get("harvested", {}))
+	_load_dict_int_keys(animal_products, data.get("animal_products", {}))
+	_load_dict_int_keys(fish, data.get("fish", {}))
+	_load_dict_int_keys(artisan, data.get("artisan", {}))
+	_load_dict_int_keys(supplies, data.get("supplies", {}))
 
-	var loaded_harvested = data.get("harvested", {})
-	if loaded_harvested is Dictionary:
-		for crop_id_var in harvested.keys():
-			var crop_id: String = str(crop_id_var)
-			if loaded_harvested.has(crop_id):
-				harvested[crop_id] = maxi(0, int(loaded_harvested[crop_id]))
+	gold_items.clear()
+	var loaded_gold = data.get("gold_items", {})
+	if loaded_gold is Dictionary:
+		for g_k in loaded_gold.keys():
+			var g_qty := maxi(0, int(loaded_gold[g_k]))
+			if g_qty > 0:
+				gold_items[str(g_k)] = g_qty
 
-	var loaded_animals = data.get("animal_products", {})
-	if loaded_animals is Dictionary:
-		for prod_id_var in animal_products.keys():
-			var prod_id: String = str(prod_id_var)
-			if loaded_animals.has(prod_id):
-				animal_products[prod_id] = maxi(0, int(loaded_animals[prod_id]))
+	var loaded_owned = data.get("owned_machines", {})
+	if loaded_owned is Dictionary:
+		for m_k in owned_machines.keys():
+			if (loaded_owned as Dictionary).has(m_k):
+				owned_machines[m_k] = bool(loaded_owned[m_k])
+
+	machine_states.clear()
+	var loaded_m_states = data.get("machine_states", {})
+	if loaded_m_states is Dictionary:
+		for m_k in loaded_m_states.keys():
+			if loaded_m_states[m_k] is Dictionary:
+				machine_states[str(m_k)] = (loaded_m_states[m_k] as Dictionary).duplicate(true)
+
+	daily_orders.clear()
+	var loaded_orders = data.get("daily_orders", [])
+	if loaded_orders is Array:
+		for o_var in loaded_orders:
+			if o_var is Dictionary:
+				daily_orders.append((o_var as Dictionary).duplicate(true))
+
+	album_discovered.clear()
+	var loaded_album = data.get("album_discovered", {})
+	if loaded_album is Dictionary:
+		for a_k in loaded_album.keys():
+			if bool(loaded_album[a_k]):
+				album_discovered[str(a_k)] = true
 
 	var world_dict = data.get("world", {})
 	if world_dict is Dictionary:
@@ -611,6 +1035,9 @@ func load_game() -> bool:
 	upgrades_changed.emit()
 	weather_changed.emit(weather, tomorrow_weather)
 	touch_mode_changed.emit(touch_mode)
+	machines_changed.emit()
+	orders_changed.emit()
+	album_changed.emit()
 	inventory_changed.emit()
 	return true
 
@@ -623,6 +1050,7 @@ func reset_save() -> void:
 	day = 1
 	time_minutes = START_OF_DAY_MINUTES
 	_last_emitted_minute = int(START_OF_DAY_MINUTES)
+	time_speed_multiplier = 1.0
 	hoe_level = 1
 	can_level = 1
 	stamina_level = 1
@@ -631,6 +1059,7 @@ func reset_save() -> void:
 	stamina = max_stamina
 	water_level = max_water
 	selected_slot = 0
+	animal_count = 5
 	weather = WEATHER_SUNNY
 	tomorrow_weather = WEATHER_SUNNY
 	seeds = {
@@ -651,11 +1080,35 @@ func reset_save() -> void:
 	}
 	animal_products = {
 		"egg": 0,
+		"blue_egg": 0,
 		"milk": 0,
 		"wool": 0,
 		"truffle": 0,
 	}
+	fish = {
+		"tilapia": 0,
+		"shrimp": 0,
+		"trout": 0,
+		"golden_carp": 0,
+	}
+	artisan = {
+		"cheese": 0,
+		"bread": 0,
+		"honey": 0,
+	}
+	supplies = {
+		"fertilizer": 2,
+	}
+	gold_items.clear()
+	owned_machines = {
+		"cheese_press": false,
+		"bakery_oven": false,
+		"bee_hive": false,
+	}
+	machine_states.clear()
+	album_discovered.clear()
 	_pending_world_save.clear()
+	_generate_daily_orders()
 
 	money_changed.emit(money)
 	day_changed.emit(day, time_minutes)
@@ -664,6 +1117,8 @@ func reset_save() -> void:
 	tool_changed.emit(selected_slot)
 	upgrades_changed.emit()
 	weather_changed.emit(weather, tomorrow_weather)
+	machines_changed.emit()
+	album_changed.emit()
 	inventory_changed.emit()
 	game_reset.emit()
 	emit_toast("Fazenda reiniciada para o Dia 1!")

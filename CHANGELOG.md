@@ -9,6 +9,25 @@ Todas as alterações relevantes do projeto **Fazendinha 2D** estão documentada
 
 ---
 
+## [v1.4.0] — 2026-11-20
+
+**Pesca no Lago, Máquinas Artesanais, Rebrota, Fertilizante Ouro, Encomendas & Álbum**
+- **Release:** [v1.4.0](https://github.com/marlonferreira1800-hue/Fazenda-asclepio-/releases/tag/v1.4.0)
+- **Contribuidor:** [@marlonferreira1800-hue](https://github.com/marlonferreira1800-hue)
+
+### 🔄 Antes vs. Depois
+- **Antes:** Sem minigame de pesca, sem máquinas de processamento artesanal, sem rebrota ou qualidade Ouro, sem carinho em animais nem compra de animais e sem sistema de encomendas diárias ou álbum de descobertas.
+- **Depois:** Minigame de pesca no lago (4 espécies), Queijeira / Forno de Pão / Apiário, rebrota (Morango/Milho/Tomate), Fertilizante para itens Ouro ★ (`1.5x`), carinho diário (`♥ 0..5`) com Ovo Azul, compra de animais na Loja, controle de velocidade do relógio no Menu e Diário (`J`) com Encomendas e Álbum com bônus passivos — preservando BGM procedural, Porco/Trufa, Previsão do Tempo, Aspersores recolhíveis e Controles Touch.
+
+### Bugs Resolvidos e Melhorias
+- **Pesca no Lago:** Vara de Pesca (`3`) com minigame de barra (teclado, mouse e botão touch `Usar`) para pescar **Tilápia**, **Camarão**, **Truta** e **Carpa Dourada**.
+- **Máquinas Artesanais & Compra de Animais:** Nova aba *Fazenda* na Loja (`B`) com **Queijeira** (`Leite -> Queijo $95`), **Forno de Pão** (`2 Trigo -> Pão $80`), **Apiário** (`Mel $70` todo amanhecer) e compra de **Galinha**, **Ovelha**, **Vaca** e **Porco** (até 8 animais no cercado).
+- **Rebrota, Fertilizante Ouro & Carinho:** **Morango**, **Milho** e **Tomate** rebrotam a cada 2 dias sem gastar semente; **Fertilizante** (`0`) aumenta chance de colheita **Ouro ★ (`1.5x`)**; carinho diário (`♥ 0..5`) habilita **Ovo Azul (`$55`)** e qualidade Ouro nos produtos animais.
+- **Diário (`J`) com Encomendas e Álbum:** Quadro de Encomendas no mapa (`(13,5)`) e modal **Diário (`J`)** com entregas diárias bônus e **Álbum** (`Botânico 6/6`, `Pescador 4/4`, `Mestre Artesão 8/8`) desbloqueando bônus permanentes.
+- **Áudio & UX:** Novos SFX procedurais (`splash`, `fish_catch`, `machine`, `order_done`), seletor de velocidade do dia (`0.5x / 1x / 1.5x`) no Menu (`Esc`) e integração completa na Demo IA (`Auto (P)`).
+
+---
+
 ## [v1.3.0] — 2026-11-19
 
 **Novos Cultivos, Upgrades 3x3, Aspersores, Clima Chuvoso, BGM Procedural, Ovelha/Porco & Mobile**

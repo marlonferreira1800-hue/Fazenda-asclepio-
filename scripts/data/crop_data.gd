@@ -7,8 +7,18 @@ extends Resource
 @export var crop_name: String = ""
 @export var row: int = 0
 @export var days_to_grow: int = 2
+@export var regrow_days: int = 0
 @export var seed_price: int = 10
 @export var sell_price: int = 25
+
+const CROP_ORDER: Array[String] = [
+	"wheat",
+	"carrot",
+	"strawberry",
+	"corn",
+	"tomato",
+	"pumpkin",
+]
 
 const DEFINITIONS: Dictionary = {
 	"wheat": {
@@ -16,54 +26,76 @@ const DEFINITIONS: Dictionary = {
 		"name": "Trigo",
 		"row": 0,
 		"days_to_grow": 2,
+		"regrow_days": 0,
 		"seed_price": 10,
 		"sell_price": 25,
+		"icon_sheet": "base",
+		"icon_col": 2,
 	},
 	"carrot": {
 		"id": "carrot",
 		"name": "Cenoura",
 		"row": 1,
 		"days_to_grow": 3,
+		"regrow_days": 0,
 		"seed_price": 20,
 		"sell_price": 55,
+		"icon_sheet": "base",
+		"icon_col": 3,
 	},
 	"strawberry": {
 		"id": "strawberry",
 		"name": "Morango",
 		"row": 2,
 		"days_to_grow": 4,
+		"regrow_days": 2,
 		"seed_price": 35,
 		"sell_price": 110,
+		"icon_sheet": "base",
+		"icon_col": 4,
 	},
 	"corn": {
 		"id": "corn",
 		"name": "Milho",
 		"row": 3,
 		"days_to_grow": 3,
+		"regrow_days": 2,
 		"seed_price": 30,
 		"sell_price": 90,
+		"icon_sheet": "base",
+		"icon_col": 8,
 	},
 	"tomato": {
 		"id": "tomato",
 		"name": "Tomate",
 		"row": 4,
 		"days_to_grow": 4,
+		"regrow_days": 2,
 		"seed_price": 45,
 		"sell_price": 145,
+		"icon_sheet": "base",
+		"icon_col": 9,
 	},
 	"pumpkin": {
 		"id": "pumpkin",
 		"name": "Abóbora",
 		"row": 5,
 		"days_to_grow": 5,
+		"regrow_days": 0,
 		"seed_price": 65,
 		"sell_price": 220,
+		"icon_sheet": "base",
+		"icon_col": 10,
 	},
 }
 
 
 static func get_all_definitions() -> Dictionary:
 	return DEFINITIONS.duplicate(true)
+
+
+static func get_crop_order() -> Array[String]:
+	return CROP_ORDER.duplicate()
 
 
 static func create_crop(crop_id: String):
@@ -75,6 +107,7 @@ static func create_crop(crop_id: String):
 	crop.crop_name = str(entry["name"])
 	crop.row = int(entry["row"])
 	crop.days_to_grow = int(entry["days_to_grow"])
+	crop.regrow_days = int(entry.get("regrow_days", 0))
 	crop.seed_price = int(entry["seed_price"])
 	crop.sell_price = int(entry["sell_price"])
 	return crop
@@ -86,6 +119,7 @@ func to_dict() -> Dictionary:
 		"name": crop_name,
 		"row": row,
 		"days_to_grow": days_to_grow,
+		"regrow_days": regrow_days,
 		"seed_price": seed_price,
 		"sell_price": sell_price,
 	}

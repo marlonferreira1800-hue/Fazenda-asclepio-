@@ -46,6 +46,11 @@ EXPECTED_SPRITES: dict[str, tuple[int, int]] = {
     "assets/sprites/ui_icons.png": (256, 16),
 }
 
+EXTRA_SPRITES_V14: dict[str, tuple[int, int]] = {
+    "assets/sprites/v13_props_sheet.png": (112, 32),
+    "assets/sprites/v13_icons.png": (256, 16),
+}
+
 FORBIDDEN_TEMP_PATTERNS = [
     "test_*.gd",
     "test_*.py",
@@ -195,7 +200,8 @@ def check_rule_2_assets() -> RuleResult:
         return RuleResult(2, "Barreira de Assets & Grade RGBA", False, ["Biblioteca Pillow (PIL) não instalada."])
 
     failed = False
-    for rel_path, expected_size in EXPECTED_SPRITES.items():
+    all_sprites = {**EXPECTED_SPRITES, **EXTRA_SPRITES_V14}
+    for rel_path, expected_size in all_sprites.items():
         full = REPO_ROOT / rel_path
         if not full.is_file():
             failed = True
