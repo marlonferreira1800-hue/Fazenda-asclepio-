@@ -37,10 +37,32 @@ jobs:
           unzip -q -o /tmp/templates.tpz "templates/web_nothreads_release.zip" "templates/web_nothreads_debug.zip" -d /tmp
           mv /tmp/templates/web_nothreads_*.zip "$TP_DIR/"
           "/tmp/Godot_v${GODOT_VER}_linux.x86_64" --headless --path . --import || true
+          "/tmp/Godot_v${GODOT_VER}_linux.x86_64" --headless --path . --check-only --script res://scripts/data/season_data.gd
+          "/tmp/Godot_v${GODOT_VER}_linux.x86_64" --headless --path . --check-only --script res://scripts/data/crop_data.gd
+          "/tmp/Godot_v${GODOT_VER}_linux.x86_64" --headless --path . --check-only --script res://scripts/autoload/game_state.gd
+          "/tmp/Godot_v${GODOT_VER}_linux.x86_64" --headless --path . --check-only --script res://scripts/world/farm_world.gd
+          "/tmp/Godot_v${GODOT_VER}_linux.x86_64" --headless --path . --check-only --script res://scripts/ui/hud.gd
           "/tmp/Godot_v${GODOT_VER}_linux.x86_64" --headless --path . --export-release "Web" build/web/index.html
-          VER="$(grep -oP 'config/version="\K[^"]+' project.godot || echo '1.6.1')"
-          sed -i "s|src=\"index.js[^\"]*\"|src=\"index.js?v=v${VER}\"|g" build/web/index.html
-          sed -i "s|return fetch(file.*).then|return fetch(file+((file.endsWith('.pck')||file.endsWith('.wasm'))?'?v=v${VER}' :'')).then|g" build/web/index.js
+          python3 - << 'PY'
+          import re
+          from pathlib import Path
+          proj = Path("project.godot").read_text(encoding="utf-8")
+          m = re.search(r'config/version="([^"]+)"', proj)
+          ver = f"v{m.group(1)}" if m else "v1.6.1"
+          html_p = Path("build/web/index.html")
+          html_txt = html_p.read_text(encoding="utf-8")
+          html_txt = re.sub(r'src="index\.js[^"]*"', f'src="index.js?v={ver}"', html_txt)
+          html_p.write_text(html_txt, encoding="utf-8")
+          js_p = Path("build/web/index.js")
+          js_txt = js_p.read_text(encoding="utf-8")
+          js_txt = re.sub(
+              r"return fetch\(file(?:\+\(\(file\.endsWith\('\.pck'\)\|\|file\.endsWith\('\.wasm'\)\)\?'\?v=[^']*'\s*:''\))?\)\.then",
+              f"return fetch(file+((file.endsWith('.pck')||file.endsWith('.wasm'))?'?v={ver}' :'')).then",
+              js_txt,
+          )
+          js_p.write_text(js_txt, encoding="utf-8")
+          print("Cache-busting applied for", ver)
+          PY
 
       - name: Configure Pages
         uses: actions/configure-pages@v5

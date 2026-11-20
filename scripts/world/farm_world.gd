@@ -1614,13 +1614,18 @@ func _water_sprinkler_area(center_tile: Vector2i) -> void:
 func _create_crop_sprite(crop_id: String, stage: int, tile: Vector2i, animate_pop: bool) -> Sprite2D:
 	var crop_def: Dictionary = _game_state.CROPS.get(crop_id, {})
 	var row: int = int(crop_def.get("row", 0))
+	var sheet_path: String = str(crop_def.get("sheet_path", "res://assets/sprites/crops_sheet.png"))
+	var h_frames: int = maxi(int(crop_def.get("hframes", 5)), 1)
+	var v_frames: int = maxi(int(crop_def.get("vframes", 6)), 1)
 
 	var spr := Sprite2D.new()
-	if _crops_texture != null:
+	if sheet_path.ends_with("turnip_sheet.png") and _turnip_texture != null:
+		spr.texture = _turnip_texture
+	elif _crops_texture != null:
 		spr.texture = _crops_texture
-	spr.hframes = 5
-	spr.vframes = 6
-	spr.frame_coords = Vector2i(clampi(stage, 0, 4), row)
+	spr.hframes = h_frames
+	spr.vframes = v_frames
+	spr.frame_coords = Vector2i(clampi(stage, 0, h_frames - 1), clampi(row, 0, v_frames - 1))
 	spr.position = Vector2(tile.x * TILE_SIZE + 8.0, tile.y * TILE_SIZE + 13.0)
 	spr.offset = Vector2(0.0, -5.0)
 	add_child(spr)
@@ -1634,8 +1639,7 @@ func _create_crop_sprite(crop_id: String, stage: int, tile: Vector2i, animate_po
 
 
 func _compute_crop_stage(crop_id: String, days_grown: int) -> int:
-	var crop_def: Dictionary = _game_state.CROPS.get(crop_id, {})
-	var days_to_grow: int = maxi(int(crop_def.get("days_to_grow", 2)), 1)
+	var days_to_grow: int = maxi(CropDataScript.get_effective_days_to_grow(crop_id, _current_season_id), 1)
 	var progress: float = clampf(float(days_grown) / float(days_to_grow), 0.0, 1.0)
 	return 4 if days_grown >= days_to_grow else clampi(roundi(progress * 4.0), 0, 3)
 
@@ -1647,7 +1651,7 @@ func _harvest_crop(target_tile: Vector2i) -> void:
 	var crop_id: String = str(crop_info["crop_id"])
 	var crop_def: Dictionary = _game_state.CROPS.get(crop_id, {})
 	var regrow_days: int = int(crop_def.get("regrow_days", 0))
-	var days_to_grow: int = maxi(int(crop_def.get("days_to_grow", 2)), 1)
+	var days_to_grow: int = maxi(CropDataScript.get_effective_days_to_grow(crop_id, _current_season_id), 1)
 	var is_fertilized: bool = _fertilized_tiles.has(target_tile)
 	var gold_chance: float = 0.45 if is_fertilized else 0.10
 	var is_gold: bool = _rng.randf() < gold_chance
@@ -1660,7 +1664,7 @@ func _harvest_crop(target_tile: Vector2i) -> void:
 		crop_info["stage"] = new_stage
 		if is_instance_valid(spr_var):
 			var spr := spr_var as Sprite2D
-			spr.frame_coords = Vector2i(new_stage, int(crop_def.get("row", 0)))
+			spr.frame_coords = Vector2i(new_stage, clampi(int(crop_def.get("row", 0)), 0, spr.vframes - 1))
 			spr.scale = Vector2(1.18, 0.85)
 			var tw := create_tween()
 			tw.tween_property(spr, "scale", Vector2.ONE, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
@@ -1704,6 +1708,11 @@ func _refill_watering_can() -> void:
 
 func _on_day_advanced(_new_day: int) -> void:
 	_tea_used_today = false
+	if _game_state != null:
+		var gs_season: String = str(_game_state.get("current_season"))
+		if not gs_season.is_empty():
+			_current_season_id = gs_season
+
 	for tile in _crops.keys():
 		if soil_layer.get_cell_source_id(tile) == -1:
 			continue
@@ -1717,12 +1726,12 @@ func _on_day_advanced(_new_day: int) -> void:
 
 		var days_grown: int = int(crop_info["days_grown"]) + 1
 		crop_info["days_grown"] = days_grown
-		var stage: int = _compute_crop_stage(crop_id, days_grown)
+		var stage: int = maxi(int(crop_info.get("stage", 0)), _compute_crop_stage(crop_id, days_grown))
 		crop_info["stage"] = stage
 
 		var spr: Sprite2D = crop_info.get("sprite")
 		if is_instance_valid(spr):
-			spr.frame_coords = Vector2i(stage, row)
+			spr.frame_coords = Vector2i(stage, clampi(row, 0, spr.vframes - 1))
 
 	var is_rain: bool = _game_state != null and str(_game_state.get("weather")) == "rainy"
 	for cell in soil_layer.get_used_cells():
@@ -1744,6 +1753,117 @@ func _on_day_advanced(_new_day: int) -> void:
 
 
 func _on_day_changed(_day: int, _time_minutes: float) -> void:
+	_update_day_night_tint()
+
+
+func _on_season_changed(new_season_id: String, _new_year: int) -> void:
+	_apply_season_visuals(new_season_id)
+
+
+func _apply_season_visuals(season_id: String) -> void:
+	_current_season_id = season_id if SeasonDataScript.DEFINITIONS.has(season_id) else "spring"
+
+	var terrain_tex: Texture2D = _seasonal_terrain_textures.get(_current_season_id, null) as Texture2D
+	if terrain_tex != null and _shared_atlas_source != null:
+		_shared_atlas_source.texture = terrain_tex
+		ground_layer.queue_redraw()
+		soil_layer.queue_redraw()
+		obstacle_layer.queue_redraw()
+
+	var props_tex: Texture2D = _seasonal_props_textures.get(_current_season_id, _props_texture) as Texture2D
+	if props_tex != null:
+		for atlas in _prop_atlases:
+			if atlas != null:
+				atlas.atlas = props_tex
+
+	if _season_particles != null:
+		var grad := Gradient.new()
+		grad.offsets = PackedFloat32Array([0.0, 0.15, 0.85, 1.0])
+		match _current_season_id:
+			"spring":
+				_season_particles.amount = 36
+				_season_particles.lifetime = 5.5
+				_season_particles.direction = Vector2(0.55, 1.0)
+				_season_particles.spread = 28.0
+				_season_particles.gravity = Vector2(3.0, 6.0)
+				_season_particles.initial_velocity_min = 8.0
+				_season_particles.initial_velocity_max = 16.0
+				_season_particles.scale_amount_min = 1.4
+				_season_particles.scale_amount_max = 2.4
+				_season_particles.color = Color(1.0, 0.76, 0.85, 0.90)
+				grad.colors = PackedColorArray([
+					Color(1.0, 0.76, 0.85, 0.0),
+					Color(1.0, 0.82, 0.90, 0.88),
+					Color(1.0, 0.95, 0.96, 0.72),
+					Color(1.0, 0.95, 0.96, 0.0),
+				])
+			"summer":
+				_season_particles.amount = 20
+				_season_particles.lifetime = 4.5
+				_season_particles.direction = Vector2(0.8, 0.3)
+				_season_particles.spread = 35.0
+				_season_particles.gravity = Vector2(2.0, 2.0)
+				_season_particles.initial_velocity_min = 6.0
+				_season_particles.initial_velocity_max = 12.0
+				_season_particles.scale_amount_min = 1.0
+				_season_particles.scale_amount_max = 1.6
+				_season_particles.color = Color(1.0, 0.94, 0.58, 0.55)
+				grad.colors = PackedColorArray([
+					Color(1.0, 0.94, 0.58, 0.0),
+					Color(1.0, 0.94, 0.58, 0.50),
+					Color(1.0, 0.94, 0.58, 0.45),
+					Color(1.0, 0.94, 0.58, 0.0),
+				])
+			"autumn":
+				_season_particles.amount = 44
+				_season_particles.lifetime = 4.5
+				_season_particles.direction = Vector2(-0.7, 1.0)
+				_season_particles.spread = 25.0
+				_season_particles.gravity = Vector2(-6.0, 14.0)
+				_season_particles.initial_velocity_min = 12.0
+				_season_particles.initial_velocity_max = 22.0
+				_season_particles.scale_amount_min = 1.6
+				_season_particles.scale_amount_max = 2.8
+				_season_particles.color = Color(0.95, 0.50, 0.20, 0.92)
+				grad.colors = PackedColorArray([
+					Color(0.96, 0.56, 0.22, 0.0),
+					Color(0.95, 0.50, 0.20, 0.92),
+					Color(0.82, 0.30, 0.16, 0.82),
+					Color(0.82, 0.30, 0.16, 0.0),
+				])
+			"winter":
+				_season_particles.amount = 72
+				_season_particles.lifetime = 5.5
+				_season_particles.direction = Vector2(-0.2, 1.0)
+				_season_particles.spread = 22.0
+				_season_particles.gravity = Vector2(-2.0, 12.0)
+				_season_particles.initial_velocity_min = 8.0
+				_season_particles.initial_velocity_max = 18.0
+				_season_particles.scale_amount_min = 1.2
+				_season_particles.scale_amount_max = 2.4
+				_season_particles.color = Color(0.95, 0.98, 1.0, 0.94)
+				grad.colors = PackedColorArray([
+					Color(0.95, 0.98, 1.0, 0.0),
+					Color(0.96, 0.99, 1.0, 0.92),
+					Color(0.84, 0.93, 1.0, 0.80),
+					Color(0.84, 0.93, 1.0, 0.0),
+				])
+		_season_particles.color_ramp = grad
+		_season_particles.emitting = true
+
+	for tile in _crops.keys():
+		var crop_info: Dictionary = _crops[tile]
+		var crop_id: String = str(crop_info.get("crop_id", ""))
+		var days_grown: int = int(crop_info.get("days_grown", 0))
+		var new_stage: int = maxi(int(crop_info.get("stage", 0)), _compute_crop_stage(crop_id, days_grown))
+		crop_info["stage"] = new_stage
+		var crop_def: Dictionary = _game_state.CROPS.get(crop_id, {}) if _game_state != null else {}
+		var row: int = int(crop_def.get("row", 0))
+		var spr: Sprite2D = crop_info.get("sprite")
+		if is_instance_valid(spr):
+			spr.frame_coords = Vector2i(new_stage, clampi(row, 0, spr.vframes - 1))
+
+	_sync_weather_fx()
 	_update_day_night_tint()
 
 
