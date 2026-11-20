@@ -2,7 +2,7 @@ class_name VersionData
 extends RefCounted
 ## Metadados de versão, autoria, links do repositório e histórico de atualizações da Fazendinha 2D.
 
-const CURRENT_VERSION := "v1.6.1"
+const CURRENT_VERSION := "v1.6.2"
 const REPO_URL := "https://github.com/marlonferreira1800-hue/Fazenda-asclepio-"
 const RELEASES_URL := "https://github.com/marlonferreira1800-hue/Fazenda-asclepio-/releases"
 const ISSUES_URL := "https://github.com/marlonferreira1800-hue/Fazenda-asclepio-/issues?q=is%3Aissue"
@@ -10,6 +10,20 @@ const CHANGELOG_URL := "https://github.com/marlonferreira1800-hue/Fazenda-asclep
 const AUTHOR := "@marlonferreira1800-hue (Marlon Ferreira)"
 
 const HISTORY: Array[Dictionary] = [
+	{
+		"version": "v1.6.2",
+		"title": "Exportação Web Godot 4.7.2, Cache-Busting Único & Troca Rápida no Badge da Estação",
+		"date": "2026-11-20",
+		"author": "@marlonferreira1800-hue",
+		"tag_url": "https://github.com/marlonferreira1800-hue/Fazenda-asclepio-/releases/tag/v1.6.2",
+		"before": "O navegador reutilizava index.pck?v=v1.6.1 em cache com scripts não compilados (.gd sem .gdc), mantendo a tela cinza no GitHub Pages.",
+		"after": "Exportação oficial Godot 4.7.2 no CI com bytecode .gdc, cache-busting único por deploy e clique no badge da estação na HUD para avançar de estação.",
+		"highlights": [
+			"Antes -> Depois: Cache do navegador retinha index.pck antigo (?v=v1.6.1) -> Cache-busting único e exportação oficial Godot 4.7.2 (.gdc) no GitHub Pages",
+			"Clique no badge da estação (Primavera · Ano 1) na HUD avança diretamente para a próxima estação para testar/explorar todas as 4 estações",
+			"Proteção de posição inicial ao restaurar saves antigos para garantir spawn válido em frente à casa (136, 118)",
+		],
+	},
 	{
 		"version": "v1.6.1",
 		"title": "Hotfix: Renderização do Mapa Sazonal e Badge das 4 Estações na HUD",

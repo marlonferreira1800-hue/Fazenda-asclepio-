@@ -37,18 +37,24 @@ jobs:
           unzip -q -o /tmp/templates.tpz "templates/web_nothreads_release.zip" "templates/web_nothreads_debug.zip" -d /tmp
           mv /tmp/templates/web_nothreads_*.zip "$TP_DIR/"
           "/tmp/Godot_v${GODOT_VER}_linux.x86_64" --headless --path . --import || true
-          "/tmp/Godot_v${GODOT_VER}_linux.x86_64" --headless --path . --check-only --script res://scripts/data/season_data.gd
-          "/tmp/Godot_v${GODOT_VER}_linux.x86_64" --headless --path . --check-only --script res://scripts/data/crop_data.gd
-          "/tmp/Godot_v${GODOT_VER}_linux.x86_64" --headless --path . --check-only --script res://scripts/autoload/game_state.gd
-          "/tmp/Godot_v${GODOT_VER}_linux.x86_64" --headless --path . --check-only --script res://scripts/world/farm_world.gd
-          "/tmp/Godot_v${GODOT_VER}_linux.x86_64" --headless --path . --check-only --script res://scripts/ui/hud.gd
+          for s in scripts/data/*.gd scripts/autoload/*.gd scripts/world/*.gd scripts/ui/*.gd; do
+            "/tmp/Godot_v${GODOT_VER}_linux.x86_64" --headless --path . --check-only --script "res://$s"
+          done
+          BOOT_LOG=$(mktemp)
+          "/tmp/Godot_v${GODOT_VER}_linux.x86_64" --headless --path . --quit-after 10 2>&1 | tee "$BOOT_LOG"
+          if grep -E "SCRIPT ERROR|Parse Error" "$BOOT_LOG"; then
+            echo "Headless boot test detected script error!"
+            exit 1
+          fi
           "/tmp/Godot_v${GODOT_VER}_linux.x86_64" --headless --path . --export-release "Web" build/web/index.html
-          python3 - << 'PY'
-          import re
+          RUN_ID="${GITHUB_RUN_NUMBER:-1}" python3 - << 'PY'
+          import os, re
           from pathlib import Path
           proj = Path("project.godot").read_text(encoding="utf-8")
           m = re.search(r'config/version="([^"]+)"', proj)
-          ver = f"v{m.group(1)}" if m else "v1.6.1"
+          base_ver = f"v{m.group(1)}" if m else "v1.6.2"
+          run_id = os.environ.get("RUN_ID", "1")
+          ver = f"{base_ver}.{run_id}"
           html_p = Path("build/web/index.html")
           html_txt = html_p.read_text(encoding="utf-8")
           html_txt = re.sub(r'src="index\.js[^"]*"', f'src="index.js?v={ver}"', html_txt)
@@ -56,8 +62,8 @@ jobs:
           js_p = Path("build/web/index.js")
           js_txt = js_p.read_text(encoding="utf-8")
           js_txt = re.sub(
-              r"return fetch\(file(?:\+\(\(file\.endsWith\('\.pck'\)\|\|file\.endsWith\('\.wasm'\)\)\?'\?v=[^']*'\s*:''\))?\)\.then",
-              f"return fetch(file+((file.endsWith('.pck')||file.endsWith('.wasm'))?'?v={ver}' :'')).then",
+              r"return fetch\(file.*?\)\.then",
+              f"return fetch(file+((file.endsWith('.pck')||file.endsWith('.wasm'))?'?v={ver}' :''), {{cache:'no-cache'}}).then",
               js_txt,
           )
           js_p.write_text(js_txt, encoding="utf-8")

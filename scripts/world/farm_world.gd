@@ -707,6 +707,7 @@ func _sync_weather_fx() -> void:
 		return
 	var is_rain: bool = str(_game_state.get("weather")) == "rainy"
 	_weather_fx.set("is_rainy", is_rain)
+	_weather_fx.set("is_winter", _current_season_id == "winter")
 
 
 func _on_weather_changed(_weather: String, _tomorrow: String) -> void:
@@ -748,6 +749,8 @@ func _on_game_reset() -> void:
 		if player.has_method("set_facing_toward"):
 			player.call("set_facing_toward", Vector2(136.0, 134.0))
 
+	var reset_season: String = str(_game_state.get("current_season")) if _game_state != null else "spring"
+	_apply_season_visuals(reset_season if not reset_season.is_empty() else "spring")
 	_sync_weather_fx()
 	_update_day_night_tint()
 
@@ -2077,7 +2080,9 @@ func _restore_world_state(data: Dictionary) -> void:
 	var saved_pos_var: Variant = data.get("player_pos", [])
 	var target_pos := Vector2(136.0, 118.0)
 	if saved_pos_var is Array and (saved_pos_var as Array).size() >= 2:
-		target_pos = Vector2(float((saved_pos_var as Array)[0]), float((saved_pos_var as Array)[1]))
+		var cand := Vector2(float((saved_pos_var as Array)[0]), float((saved_pos_var as Array)[1]))
+		if saved_loc == "house" or (cand.x >= 24.0 and cand.y >= 24.0 and cand.x <= (MAP_WIDTH - 1) * TILE_SIZE and cand.y <= (MAP_HEIGHT - 1) * TILE_SIZE):
+			target_pos = cand
 	elif saved_loc == "house" and _house_interior != null:
 		target_pos = _house_interior.call("get_spawn_world_pos")
 

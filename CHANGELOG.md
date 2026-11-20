@@ -9,6 +9,23 @@ Todas as alterações relevantes do projeto **Fazendinha 2D** estão documentada
 
 ---
 
+## [v1.6.2] — 2026-11-20
+
+**Exportação Web Godot 4.7.2, Cache-Busting Único & Troca Rápida no Badge da Estação**
+- **Release:** [v1.6.2](https://github.com/marlonferreira1800-hue/Fazenda-asclepio-/releases/tag/v1.6.2)
+- **Contribuidor:** [@marlonferreira1800-hue](https://github.com/marlonferreira1800-hue)
+
+### 🔄 Antes vs. Depois
+- **Antes:** O navegador reutilizava `index.pck?v=v1.6.1` em cache do build anterior, mantendo a tela cinza no GitHub Pages.
+- **Depois:** Exportação Web oficial via Godot 4.7.2 (`.gdc` compilado), cache-busting único por deploy (`?v=v1.6.2.<run>`) com `{cache: 'no-cache'}` e clique direto no badge `Primavera · Ano 1` na HUD para avançar de estação.
+
+### Bugs Resolvidos e Melhorias
+- **Cache-Busting & Build Web Oficial:** Atualizado `build/web/index.pck` com o pacote oficial exportado pelo Godot 4.7.2 e forçada invalidação de cache no navegador.
+- **Troca Rápida de Estação no Badge da HUD:** Clicar no badge da estação no canto superior esquerdo avança imediatamente para a próxima estação (**Primavera → Verão → Outono → Inverno**).
+- **Proteção de Spawn:** Validação de coordenadas ao restaurar saves antigos para evitar posição `(0, 0)` fora da área caminhável.
+
+---
+
 ## [v1.6.1] — 2026-11-20
 
 **Hotfix: Renderização do Mapa Sazonal e Badge das 4 Estações na HUD**

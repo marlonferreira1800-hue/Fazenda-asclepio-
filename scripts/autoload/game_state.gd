@@ -848,6 +848,34 @@ func advance_day() -> void:
 
 # --- 4 Estações do Ano ---
 
+func advance_season() -> void:
+	var current_block: int = (maxi(day, 1) - 1) / SeasonDataScript.DAYS_PER_SEASON
+	day = (current_block + 1) * SeasonDataScript.DAYS_PER_SEASON + 1
+	time_minutes = START_OF_DAY_MINUTES
+	_last_emitted_minute = int(time_minutes)
+	stamina = max_stamina
+
+	weather = tomorrow_weather
+	var rain_chance: float = 0.14 if weather == WEATHER_RAINY else 0.30
+	tomorrow_weather = WEATHER_RAINY if _weather_rng.randf() < rain_chance else WEATHER_SUNNY
+
+	_sync_season_from_day()
+	_generate_daily_orders()
+	season_changed.emit(current_season, year)
+	weather_changed.emit(weather, tomorrow_weather)
+	day_advanced.emit(day)
+	day_changed.emit(day, time_minutes)
+	stamina_changed.emit(stamina, max_stamina)
+	machines_changed.emit()
+
+	var audio := _get_audio()
+	if audio != null and audio.has_method("play_season_change"):
+		audio.play_season_change()
+	emit_toast(str(get_season_definition().get("greeting", "Nova estação!")))
+	if auto_save_enabled:
+		save_game(false)
+
+
 func _sync_season_from_day() -> void:
 	current_season = SeasonDataScript.get_season_id_for_day(day)
 	day_of_season = SeasonDataScript.get_day_of_season(day)

@@ -10,7 +10,7 @@ const CropDataScript := preload("res://scripts/data/crop_data.gd")
 const FarmCatalogScript := preload("res://scripts/data/farm_catalog.gd")
 const SeasonDataScript := preload("res://scripts/data/season_data.gd")
 
-const FALLBACK_VERSION := "v1.6.1"
+const FALLBACK_VERSION := "v1.6.2"
 const FALLBACK_AUTHOR := "@marlonferreira1800-hue (Marlon Ferreira)"
 const FALLBACK_RELEASES_URL := "https://github.com/marlonferreira1800-hue/Fazenda-asclepio-/releases"
 const FALLBACK_ISSUES_URL := "https://github.com/marlonferreira1800-hue/Fazenda-asclepio-/issues"
@@ -617,7 +617,10 @@ func _build_stats_panel() -> void:
 	_season_badge_panel = PanelContainer.new()
 	_season_badge_panel.name = "SeasonBadge"
 	_season_badge_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_season_badge_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_season_badge_panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	_season_badge_panel.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	_season_badge_panel.tooltip_text = "Estação atual — Clique para avançar para a próxima estação"
+	_season_badge_panel.gui_input.connect(_on_season_badge_gui_input)
 	_season_badge_panel.add_theme_stylebox_override("panel", _make_flat_style(Color("#e8f6df"), Color("#4d9938"), 1, 4, 1, 2))
 	season_row.add_child(_season_badge_panel)
 
@@ -1787,6 +1790,16 @@ func _on_day_changed(day: int, time_minutes: float) -> void:
 	var yr: int = SeasonDataScript.get_year_for_day(day)
 	_day_time_label.text = "Dia %d/%d - %02d:%02d" % [day_in_season, SeasonDataScript.DAYS_PER_SEASON, hours, mins]
 	_refresh_season_badge(season_id, yr)
+
+
+func _on_season_badge_gui_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton:
+		var mb := event as InputEventMouseButton
+		if mb.pressed and mb.button_index == MOUSE_BUTTON_LEFT:
+			var gs := _get_game_state()
+			if gs != null and gs.has_method("advance_season"):
+				gs.call("advance_season")
+				get_viewport().set_input_as_handled()
 
 
 func _on_season_changed(season_id: String, yr: int) -> void:
