@@ -21,6 +21,7 @@ Se qualquer uma das 5 regras falhar, o robô **REJEITA** a publicação (`STATUS
   - `assets/sprites/ui_icons.png` -> `256x16` RGBA
   - `assets/sprites/v13_props_sheet.png` -> `112x32` RGBA
   - `assets/sprites/v13_icons.png` -> `256x16` RGBA
+  - `assets/sprites/house_interior.png` -> `256x160` RGBA
 - **Verificação automática:** Inspeciona todos os PNGs via Python Pillow (`PIL.Image`).
 
 ### Regra 3 — Barreira de Boot & Higiene do Repositório

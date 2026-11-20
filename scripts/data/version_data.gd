@@ -2,7 +2,7 @@ class_name VersionData
 extends RefCounted
 ## Metadados de versão, autoria, links do repositório e histórico de atualizações da Fazendinha 2D.
 
-const CURRENT_VERSION := "v1.4.0"
+const CURRENT_VERSION := "v1.5.0"
 const REPO_URL := "https://github.com/marlonferreira1800-hue/Fazenda-asclepio-"
 const RELEASES_URL := "https://github.com/marlonferreira1800-hue/Fazenda-asclepio-/releases"
 const ISSUES_URL := "https://github.com/marlonferreira1800-hue/Fazenda-asclepio-/issues?q=is%3Aissue"
@@ -10,6 +10,19 @@ const CHANGELOG_URL := "https://github.com/marlonferreira1800-hue/Fazenda-asclep
 const AUTHOR := "@marlonferreira1800-hue (Marlon Ferreira)"
 
 const HISTORY: Array[Dictionary] = [
+	{
+		"version": "v1.5.0",
+		"title": "Acesso ao interior da casa e móveis interativos CC0",
+		"date": "2026-11-20",
+		"author": "@marlonferreira1800-hue",
+		"tag_url": "https://github.com/marlonferreira1800-hue/Fazenda-asclepio-/releases/tag/v1.5.0",
+		"before": "A casinha da fazenda funcionava apenas pelo lado de fora (sem cena interna, sem transição de porta e sem móveis interativos no interior).",
+		"after": "Adicionado acesso completo ao interior da casa (18x12 tiles) via porta com fade, spritesheet CC0 house_interior.png (256x160) e 8 interações internas (cama, fogão com chá +20 energia, lareira animada, estante com guia, escrivaninha/diário para salvar, baú, mesa posta e capacho de saída).",
+		"highlights": [
+			"Antes -> Depois: A casinha da fazenda funcionava apenas pelo lado de fora (sem cena interna, sem transição de porta e sem móveis interativos no interior). -> Adicionado acesso completo ao interior da casa (18x12 tiles) via porta com fade, spritesheet CC0 house_interior.png (256x160) e 8 interações internas (cama, fogão com chá +20 energia, lareira animada, estante com guia, escrivaninha/diário para salvar, baú, mesa posta e capacho de saída).",
+			"Issue #12: Cena scenes/house_interior.tscn e script scripts/world/house_interior.gd com lareira animada e iluminação quente;Spritesheet assets/sprites/house_interior.png (256x160 RGBA) com pacotes CC0 (Kenney Roguelike Indoor, Zelda-like indoor e 16x16 Food);Transição de entrada/saída na porta, persistência de localização no save e suporte ao modo Demo IA (P)",
+		],
+	},
 	{
 		"version": "v1.4.0",
 		"title": "Pesca no Lago, Máquinas Artesanais, Rebrota, Fertilizante, Encomendas & Álbum",

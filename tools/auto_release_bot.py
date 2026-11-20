@@ -49,6 +49,7 @@ EXPECTED_SPRITES: dict[str, tuple[int, int]] = {
 EXTRA_SPRITES_V14: dict[str, tuple[int, int]] = {
     "assets/sprites/v13_props_sheet.png": (112, 32),
     "assets/sprites/v13_icons.png": (256, 16),
+    "assets/sprites/house_interior.png": (256, 160),
 }
 
 FORBIDDEN_TEMP_PATTERNS = [

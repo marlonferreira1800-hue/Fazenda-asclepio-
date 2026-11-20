@@ -9,6 +9,21 @@ Todas as alterações relevantes do projeto **Fazendinha 2D** estão documentada
 
 ---
 
+## [v1.5.0] — 2026-11-20
+
+**Acesso ao interior da casa e móveis interativos CC0**
+- **Release:** [v1.5.0](https://github.com/marlonferreira1800-hue/Fazenda-asclepio-/releases/tag/v1.5.0)
+- **Contribuidor:** [@marlonferreira1800-hue](https://github.com/marlonferreira1800-hue)
+
+### 🔄 Antes vs. Depois
+- **Antes:** A casinha da fazenda funcionava apenas pelo lado de fora (sem cena interna, sem transição de porta e sem móveis interativos no interior).
+- **Depois:** Adicionado acesso completo ao interior da casa (18x12 tiles) via porta com fade, spritesheet CC0 house_interior.png (256x160) e 8 interações internas (cama, fogão com chá +20 energia, lareira animada, estante com guia, escrivaninha/diário para salvar, baú, mesa posta e capacho de saída).
+
+### Bugs Resolvidos e Melhorias
+- **Issue [#12](https://github.com/marlonferreira1800-hue/Fazenda-asclepio-/issues/12):** Cena scenes/house_interior.tscn e script scripts/world/house_interior.gd com lareira animada e iluminação quente;Spritesheet assets/sprites/house_interior.png (256x160 RGBA) com pacotes CC0 (Kenney Roguelike Indoor, Zelda-like indoor e 16x16 Food);Transição de entrada/saída na porta, persistência de localização no save e suporte ao modo Demo IA (P)
+
+---
+
 ## [v1.4.0] — 2026-11-20
 
 **Pesca no Lago, Máquinas Artesanais, Rebrota, Fertilizante Ouro, Encomendas & Álbum**

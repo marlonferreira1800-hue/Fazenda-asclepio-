@@ -56,7 +56,8 @@ Jogo 2D pixel art estilo *cozy farming* desenvolvido para **Godot 4.7.2-stable**
 4. **Pescar no Lago:** Selecione a **Vara de Pesca (`3`)** perto do lago e acerte a zona verde no minigame para pescar **Tilápia**, **Camarão**, **Truta** e **Carpa Dourada**.
 5. **Cuidar dos Animais & Carinho:** Entre no cercado pelo portão e interaja (`F` ou clique) com **galinhas**, **vacas**, **ovelhas** e **porcos** para coletar **Ovo/Ovo Azul**, **Leite**, **Lã** e **Trufa**, aumentar corações de amizade (`♥ 0..5`) e comprar mais animais na aba *Fazenda* da Loja (`B`).
 6. **Máquinas Artesanais, Encomendas & Álbum:** Instale **Queijeira**, **Forno de Pão** e **Apiário** na aba *Fazenda* da Loja (`B`) para produzir **Queijo**, **Pão** e **Mel**, entregue pedidos no **Quadro / Diário (`J`)** e complete o **Álbum** para liberar bônus permanentes!
-7. **Avançar os dias e Vender:** O relógio começa às `06:00` e avança até `24:00` (ajuste `0.5x/1x/1.5x` no Menu `Esc`), ou durma com `N` / na porta da casinha. Venda na **Caixa de Venda** (`F`) ou via **Vender Tudo** na Loja (`B`).
+7. **Entrar na Casa do Personagem:** Aproxime-se da porta da **Casinha da Fazenda** e caminhe para cima em direção à porta (ou pressione `F` / `E` / `Espaço` / clique na porta) para entrar no interior mobiliado (`18x12` tiles) com **Cama** (dormir até as `06:00`), **Fogão** (Chá da Fazenda `+20 Energia` 1x/dia), **Lareira animada**, **Estante de Livros** (Guia da Fazenda), **Escrivaninha / Diário** (salvar partida), **Baú**, **Mesa Posta** e **Capacho de Saída**.
+8. **Avançar os dias e Vender:** O relógio começa às `06:00` e avança até `24:00` (ajuste `0.5x/1x/1.5x` no Menu `Esc`), ou durma com `N` / na **Cama** dentro da casinha. Venda na **Caixa de Venda** (`F`) ou via **Vender Tudo** na Loja (`B`).
 
 ---
 

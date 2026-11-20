@@ -597,3 +597,43 @@ func _make_order_done_sfx() -> AudioStreamWAV:
 			samples[idx] = (0.7 * sin(TAU * n * t) + 0.3 * sin(TAU * n * 2.0 * t)) * env * 0.6
 			idx += 1
 	return _build_wav(samples)
+
+
+func _make_door_sfx() -> AudioStreamWAV:
+	var duration: float = 0.16
+	var count: int = int(duration * SAMPLE_RATE)
+	var samples := PackedFloat32Array()
+	samples.resize(count)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 424242
+	var phase: float = 0.0
+	for i in range(count):
+		var t: float = float(i) / float(SAMPLE_RATE)
+		var u: float = float(i) / float(count)
+		var freq: float = lerpf(160.0, 230.0, u) if u < 0.55 else 310.0
+		phase += freq / float(SAMPLE_RATE)
+		var click_latch: float = exp(-absf(u - 0.58) * 38.0) * 0.45
+		var env: float = exp(-u * 5.2) + click_latch
+		var tone: float = 0.65 * _triangle(phase) + 0.35 * rng.randf_range(-1.0, 1.0) * exp(-u * 9.0)
+		samples[i] = tone * env * 0.55
+	return _build_wav(samples)
+
+
+func _make_cozy_sfx() -> AudioStreamWAV:
+	var notes: Array[float] = [440.0, 554.37, 659.25]
+	var note_samples: int = int(0.085 * SAMPLE_RATE)
+	var total: int = note_samples * notes.size()
+	var samples := PackedFloat32Array()
+	samples.resize(total)
+	var idx: int = 0
+	for n_idx in range(notes.size()):
+		var freq: float = notes[n_idx]
+		for j in range(note_samples):
+			var t: float = float(j) / float(SAMPLE_RATE)
+			var u: float = float(j) / float(note_samples)
+			var env: float = minf(1.0, t / 0.008) * exp(-u * 2.4)
+			var wave: float = 0.72 * sin(TAU * freq * t) + 0.28 * _triangle(freq * t)
+			samples[idx] = wave * env * 0.58
+			idx += 1
+	return _build_wav(samples)
+

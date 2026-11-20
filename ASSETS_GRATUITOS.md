@@ -16,6 +16,7 @@ Todos os sprites em jogo já estão gerados em estética *cozy pastel* (inspirad
 - `assets/sprites/ui_icons.png` (`256x16 px` — 16 ícones incluindo novas sementes, aspersor, lã, trufa e clima)
 - `assets/sprites/v13_props_sheet.png` (`112x32 px` — Queijeira, Forno de Pão, Apiário, Quadro de Encomendas, Fertilizante no solo, Boia e Badges)
 - `assets/sprites/v13_icons.png` (`256x16 px` — Vara de Pesca, Fertilizante, Queijo, Pão, Mel, Ovo Azul e peixes com assets CC0)
+- `assets/sprites/house_interior.png` (`256x160 px` — pisos de madeira, paredes, tapetes, cama, fogão/cozinha, lareira com fogo animado, estante, mesa, cadeiras, escrivaninha, guarda-roupa, plantas e luminária para o interior da casa)
 
 Para regenerar todos os arquivos padrão a qualquer momento:
 ```bash
@@ -29,6 +30,8 @@ Durante a curadoria automática (sem burlar CAPTCHAs, logins ou bloqueios anti-b
 - **`assets/oga_cc0/oga_16x16_fruits_cc0/fruits_8.png`**: coleção 16x16 de frutas em grade do pacote **16x16 Fruits** (*Leozlk*, CC0).
 - **`assets/oga_cc0/oga_pixel_animals_16x16_cc0/Animals.png`**: sprites 16x16 de vaca e ovelha do pacote **Pixel Animals 16x16** (*GrumpyDiamond*, CC0).
 - **`assets/oga_cc0/oga_farming_set_cc0/farming set opengameart/`**: cereais, sementes, vegetais, frutas, caixotes e sacos do pacote **Farming Set (Pixel-Art)** (*ScratchIO*, CC0).
+- **`assets/oga_cc0/oga_roguelike_indoor_cc0/roguelikeIndoor_transparent.png`**: 486 sprites 16x16 de móveis de interior (cama de casal, estante de livros, bancada/pia/fogão, mesa, cadeiras, guarda-roupa, baú, escrivaninha, vasos de plantas e quadros) do pacote **Roguelike Indoor pack** (*Kenney*, CC0) integrados em `house_interior.png`.
+- **`assets/oga_cc0/oga_zelda_like_indoor_cc0/`** (`Inner.png` e `objects.png`): pisos de tábuas de madeira, ladrilhos de cozinha, lareira de tijolos e 3 quadros de fogo animado 16x16 do pacote **Zelda-like tilesets and sprites** (*ArMM1998*, CC0) integrados em `house_interior.png`.
 
 > **Sobre os pacotes da Kenney (`kenney.nl`):** os downloads da Kenney são gratuitos e CC0, porém o site exige interação humana em janela modal no navegador (*"Consider a donation" -> "Continue without donating..."* via JavaScript) antes de gerar a URL temporária do `.zip`. Por isso, eles estão documentados na seção abaixo para download manual pelo seu navegador.
 
