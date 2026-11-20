@@ -2,7 +2,7 @@ class_name VersionData
 extends RefCounted
 ## Metadados de versão, autoria, links do repositório e histórico de atualizações da Fazendinha 2D.
 
-const CURRENT_VERSION := "v1.2.0"
+const CURRENT_VERSION := "v1.3.0"
 const REPO_URL := "https://github.com/marlonferreira1800-hue/Fazenda-asclepio-"
 const RELEASES_URL := "https://github.com/marlonferreira1800-hue/Fazenda-asclepio-/releases"
 const ISSUES_URL := "https://github.com/marlonferreira1800-hue/Fazenda-asclepio-/issues?q=is%3Aissue"
@@ -10,6 +10,22 @@ const CHANGELOG_URL := "https://github.com/marlonferreira1800-hue/Fazenda-asclep
 const AUTHOR := "@marlonferreira1800-hue (Marlon Ferreira)"
 
 const HISTORY: Array[Dictionary] = [
+	{
+		"version": "v1.3.0",
+		"title": "Novos Cultivos, Upgrades, Clima, Música, Animais & Mobile",
+		"date": "2026-11-19",
+		"author": "@marlonferreira1800-hue",
+		"tag_url": "https://github.com/marlonferreira1800-hue/Fazenda-asclepio-/releases/tag/v1.3.0",
+		"before": "Apenas 3 cultivos, ferramentas sem evolução, clima estático, sem música de fundo, 2 tipos de animais e sem controles touch ou botão de reinício.",
+		"after": "6 cultivos, upgrades de ferramentas/energia e Aspersor 3x3, chuva automática, música cozy procedural, Ovelha e Porco, Menu/Reiniciar, controles touch e Auto-Farmer 12 canteiros.",
+		"highlights": [
+			"Antes -> Depois: Fazenda básica manual -> 6 cultivos, upgrades 3x3, Aspersor, Chuva, BGM procedural, Ovelha/Porco e Touch",
+			"Issue #7: Novos cultivos (Milho, Tomate, Abóbora) com spritesheets e ícones integrados",
+			"Upgrades de Enxada, Regador e Resistência (Nv. 1-3) + Aspersor automático 3x3 na Loja com abas",
+			"Sistema de Clima (Sol/Chuva com previsão e rega automática) + música procedural em loop",
+			"Ovelha (Lã $60) e Porco (Trufa $80), D-Pad touch mobile, Menu/Reiniciar save e Auto-Farmer expandido",
+		],
+	},
 	{
 		"version": "v1.2.0",
 		"title": "Modo Fazendeiro Automático, Painel de Atualizações & Deploy Web",

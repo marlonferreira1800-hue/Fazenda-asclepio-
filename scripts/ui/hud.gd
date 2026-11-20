@@ -1,15 +1,25 @@
 extends CanvasLayer
-## Cozy pixel-art HUD & Shop UI for Fazendinha 2D (640x360 viewport).
+## Cozy pixel-art HUD, Tabbed Shop, Menu/Options & Touch UI for Fazendinha 2D (640x360 viewport).
 
 const UI_ICONS_PATH := "res://assets/sprites/ui_icons.png"
 const VERSION_DATA_PATH := "res://scripts/data/version_data.gd"
 
-const FALLBACK_VERSION := "v1.2.0"
+const FALLBACK_VERSION := "v1.3.0"
 const FALLBACK_AUTHOR := "@marlonferreira1800-hue (Marlon Ferreira)"
 const FALLBACK_RELEASES_URL := "https://github.com/marlonferreira1800-hue/Fazenda-asclepio-/releases"
 const FALLBACK_ISSUES_URL := "https://github.com/marlonferreira1800-hue/Fazenda-asclepio-/issues"
 const FALLBACK_CHANGELOG_URL := "https://github.com/marlonferreira1800-hue/Fazenda-asclepio-/blob/main/CHANGELOG.md"
 const FALLBACK_HISTORY: Array[Dictionary] = [
+	{
+		"version": "v1.3.0",
+		"title": "Novos Cultivos, Upgrades, Clima, Música, Animais & Mobile",
+		"date": "2026-11-19",
+		"author": "@marlonferreira1800-hue",
+		"highlights": [
+			"Milho, Tomate e Abóbora (6 culturas), upgrades 3x1/3x3 e Aspersor 3x3",
+			"Clima Sol/Chuva automático, BGM procedural em loop, Ovelha/Porco e Touch Mobile",
+		],
+	},
 	{
 		"version": "v1.2.0",
 		"title": "Versionamento, Releases & Auto Farmer ao Vivo",
@@ -20,25 +30,6 @@ const FALLBACK_HISTORY: Array[Dictionary] = [
 			"Modo Auto Farmer ao vivo com tecla P e botão Auto (Issue #3)",
 		],
 	},
-	{
-		"version": "v1.1.0",
-		"title": "Áudio Procedural, Save/Load, Animais & Contraste UI",
-		"date": "2026-11-15",
-		"author": "@marlonferreira1800-hue",
-		"highlights": [
-			"Contraste corrigido nas barras, hotbar e rodapé (Issue #1)",
-			"SFX procedurais, Save/Load, Ovo/Leite e botões Salvar/Som (Issue #2)",
-		],
-	},
-	{
-		"version": "v1.0.0",
-		"title": "Fazendinha 2D — MVP Jogável Inicial",
-		"date": "2026-11-15",
-		"author": "@marlonferreira1800-hue",
-		"highlights": [
-			"Loop completo de fazenda em 640x360: arar, plantar, regar, colher e vender",
-		],
-	},
 ]
 
 const DEFAULT_HOTBAR_SLOTS: Array[Dictionary] = [
@@ -47,19 +38,29 @@ const DEFAULT_HOTBAR_SLOTS: Array[Dictionary] = [
 	{"id": "wheat_seed", "name": "Sem. Trigo", "type": "seed", "crop_id": "wheat", "icon_col": 2},
 	{"id": "carrot_seed", "name": "Sem. Cenoura", "type": "seed", "crop_id": "carrot", "icon_col": 3},
 	{"id": "strawberry_seed", "name": "Sem. Morango", "type": "seed", "crop_id": "strawberry", "icon_col": 4},
+	{"id": "corn_seed", "name": "Sem. Milho", "type": "seed", "crop_id": "corn", "icon_col": 8},
+	{"id": "tomato_seed", "name": "Sem. Tomate", "type": "seed", "crop_id": "tomato", "icon_col": 9},
+	{"id": "pumpkin_seed", "name": "Sem. Abóbora", "type": "seed", "crop_id": "pumpkin", "icon_col": 10},
+	{"id": "sprinkler", "name": "Aspersor", "type": "placeable", "icon_col": 11},
 ]
 
 const DEFAULT_CROPS: Dictionary = {
 	"wheat": {"name": "Trigo", "row": 0, "days_to_grow": 2, "seed_price": 10, "sell_price": 25},
 	"carrot": {"name": "Cenoura", "row": 1, "days_to_grow": 3, "seed_price": 20, "sell_price": 55},
 	"strawberry": {"name": "Morango", "row": 2, "days_to_grow": 4, "seed_price": 35, "sell_price": 110},
+	"corn": {"name": "Milho", "row": 3, "days_to_grow": 3, "seed_price": 30, "sell_price": 90},
+	"tomato": {"name": "Tomate", "row": 4, "days_to_grow": 4, "seed_price": 45, "sell_price": 145},
+	"pumpkin": {"name": "Abóbora", "row": 5, "days_to_grow": 5, "seed_price": 65, "sell_price": 220},
 }
 
-const CROP_ORDER: Array[String] = ["wheat", "carrot", "strawberry"]
+const CROP_ORDER: Array[String] = ["wheat", "carrot", "strawberry", "corn", "tomato", "pumpkin"]
 const CROP_ICON_COLS: Dictionary = {
 	"wheat": 2,
 	"carrot": 3,
 	"strawberry": 4,
+	"corn": 8,
+	"tomato": 9,
+	"pumpkin": 10,
 }
 
 # Cozy wood & parchment palette
@@ -78,7 +79,10 @@ const COL_SHADOW_DARK := Color(0.05, 0.03, 0.02, 0.85)
 var _icons_texture: Texture2D = null
 var _icons_cols: int = 0
 var _shop_open: bool = false
+var _shop_tab: String = "seeds"
 var _changelog_open: bool = false
+var _menu_open: bool = false
+var _touch_seen: bool = false
 var _toast_tween: Tween = null
 var _open_external_links: bool = true
 
@@ -94,6 +98,10 @@ var _ui_root: Control
 var _day_time_label: Label
 var _money_label: Label
 var _version_button: Button
+var _weather_today_icon: TextureRect
+var _weather_today_label: Label
+var _weather_next_icon: TextureRect
+var _weather_next_label: Label
 var _stamina_bar: ProgressBar
 var _stamina_fill_style: StyleBoxFlat
 var _stamina_value_label: Label
@@ -101,10 +109,10 @@ var _water_bar: ProgressBar
 var _water_value_label: Label
 var _harvest_label: Label
 var _animal_label: Label
-var _egg_icon: TextureRect
-var _milk_icon: TextureRect
 var _egg_label: Label
 var _milk_label: Label
+var _wool_label: Label
+var _truffle_label: Label
 var _sound_button: Button
 var _auto_button: Button
 var _active_item_label: Label
@@ -122,13 +130,33 @@ var _shop_backdrop: ColorRect
 var _shop_panel: PanelContainer
 var _shop_money_label: Label
 var _shop_harvest_label: Label
+var _shop_tab_seeds_btn: Button
+var _shop_tab_upgrades_btn: Button
+var _shop_seeds_grid: GridContainer
+var _shop_upgrades_vbox: VBoxContainer
 var _shop_crop_info_labels: Dictionary = {}
 var _shop_buy_buttons: Dictionary = {}
+var _shop_upgrade_title_labels: Dictionary = {}
+var _shop_upgrade_desc_labels: Dictionary = {}
+var _shop_upgrade_buttons: Dictionary = {}
+var _shop_sprinkler_desc_label: Label
+var _shop_sprinkler_buy_btn: Button
 
 var _changelog_backdrop: ColorRect
 var _changelog_panel: PanelContainer
 var _changelog_title_label: Label
 var _changelog_author_label: Label
+
+var _menu_backdrop: ColorRect
+var _menu_panel: PanelContainer
+var _menu_sfx_btn: Button
+var _menu_music_btn: Button
+var _menu_touch_btn: Button
+var _menu_reset_btn: Button
+var _menu_reset_confirm_box: PanelContainer
+
+var _touch_layer: Control
+var _touch_dir_active := Vector2.ZERO
 
 
 func _ready() -> void:
@@ -148,8 +176,14 @@ func _ready() -> void:
 	_sync_all_from_state()
 
 
+func _input(event: InputEvent) -> void:
+	if (event is InputEventScreenTouch or event is InputEventScreenDrag) and not _touch_seen:
+		_touch_seen = true
+		_refresh_touch_controls()
+
+
 func _unhandled_input(event: InputEvent) -> void:
-	for i in range(5):
+	for i in range(9):
 		var action_name := "slot_%d" % (i + 1)
 		if InputMap.has_action(action_name) and event.is_action_pressed(action_name):
 			_select_slot(i)
@@ -167,22 +201,26 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 
 	if (InputMap.has_action("ui_cancel") and event.is_action_pressed("ui_cancel")) or (key_pressed and keycode == KEY_ESCAPE):
+		_play_click()
 		if _changelog_open:
-			_play_click()
 			_set_changelog_open(false)
-			get_viewport().set_input_as_handled()
-			return
-		if _shop_open:
-			_play_click()
+		elif _menu_open:
+			if _menu_reset_confirm_box != null and _menu_reset_confirm_box.visible:
+				_menu_reset_confirm_box.visible = false
+			else:
+				_set_menu_open(false)
+		elif _shop_open:
 			_set_shop_open(false)
-			get_viewport().set_input_as_handled()
-			return
+		else:
+			_set_menu_open(true)
+		get_viewport().set_input_as_handled()
+		return
 
-	if _changelog_open and (
+	if (_changelog_open or _menu_open) and (
 		(InputMap.has_action("toggle_demo") and event.is_action_pressed("toggle_demo")) or (key_pressed and keycode == KEY_P)
 	):
-		# Close changelog before farm_world handles toggle_demo so _is_shop_open() won't trigger Shop.
 		_set_changelog_open(false)
+		_set_menu_open(false)
 		return
 
 	if key_pressed:
@@ -202,6 +240,31 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_5, KEY_KP_5:
 				_select_slot(4)
 				get_viewport().set_input_as_handled()
+			KEY_6, KEY_KP_6:
+				_select_slot(5)
+				get_viewport().set_input_as_handled()
+			KEY_7, KEY_KP_7:
+				_select_slot(6)
+				get_viewport().set_input_as_handled()
+			KEY_8, KEY_KP_8:
+				_select_slot(7)
+				get_viewport().set_input_as_handled()
+			KEY_9, KEY_KP_9:
+				_select_slot(8)
+				get_viewport().set_input_as_handled()
+		return
+
+	if not is_shop_open() and event is InputEventMouseButton and event.pressed:
+		var mb := event as InputEventMouseButton
+		if mb.button_index == MOUSE_BUTTON_WHEEL_UP or mb.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+			var slots := _get_hotbar_slots()
+			if not slots.is_empty():
+				var gs := _get_game_state()
+				var cur: int = int(gs.selected_slot) if gs != null else 0
+				var step: int = -1 if mb.button_index == MOUSE_BUTTON_WHEEL_UP else 1
+				var nxt: int = (cur + step + slots.size()) % slots.size()
+				_select_slot(nxt)
+				get_viewport().set_input_as_handled()
 
 
 func toggle_shop() -> void:
@@ -209,7 +272,7 @@ func toggle_shop() -> void:
 
 
 func is_shop_open() -> bool:
-	return _shop_open or _changelog_open
+	return _shop_open or _changelog_open or _menu_open
 
 
 func toggle_changelog() -> void:
@@ -220,9 +283,16 @@ func is_changelog_open() -> bool:
 	return _changelog_open
 
 
+func toggle_menu() -> void:
+	_set_menu_open(not _menu_open)
+
+
 func _set_shop_open(open: bool) -> void:
-	if open and _changelog_open:
-		_set_changelog_open(false)
+	if open:
+		if _changelog_open:
+			_set_changelog_open(false)
+		if _menu_open:
+			_set_menu_open(false)
 	_shop_open = open
 	if _shop_backdrop != null:
 		_shop_backdrop.visible = _shop_open
@@ -233,13 +303,33 @@ func _set_shop_open(open: bool) -> void:
 
 
 func _set_changelog_open(open: bool) -> void:
-	if open and _shop_open:
-		_set_shop_open(false)
+	if open:
+		if _shop_open:
+			_set_shop_open(false)
+		if _menu_open:
+			_set_menu_open(false)
 	_changelog_open = open
 	if _changelog_backdrop != null:
 		_changelog_backdrop.visible = _changelog_open
 	if _changelog_panel != null:
 		_changelog_panel.visible = _changelog_open
+
+
+func _set_menu_open(open: bool) -> void:
+	if open:
+		if _shop_open:
+			_set_shop_open(false)
+		if _changelog_open:
+			_set_changelog_open(false)
+	_menu_open = open
+	if _menu_reset_confirm_box != null:
+		_menu_reset_confirm_box.visible = false
+	if _menu_backdrop != null:
+		_menu_backdrop.visible = _menu_open
+	if _menu_panel != null:
+		_menu_panel.visible = _menu_open
+	if _menu_open:
+		_refresh_menu_buttons()
 
 
 func _load_version_metadata() -> void:
@@ -330,10 +420,19 @@ func _connect_signals() -> void:
 			gs.water_changed.connect(_on_water_changed)
 		if gs.has_signal("toast_message"):
 			gs.toast_message.connect(_on_toast_message)
+		if gs.has_signal("upgrades_changed"):
+			gs.upgrades_changed.connect(_on_upgrades_changed)
+		if gs.has_signal("weather_changed"):
+			gs.weather_changed.connect(_on_weather_changed)
+		if gs.has_signal("touch_mode_changed"):
+			gs.touch_mode_changed.connect(_on_touch_mode_changed)
 
 	var audio := _get_audio_manager()
-	if audio != null and audio.has_signal("mute_changed"):
-		audio.mute_changed.connect(_on_mute_changed)
+	if audio != null:
+		if audio.has_signal("mute_changed"):
+			audio.mute_changed.connect(_on_mute_changed)
+		if audio.has_signal("music_mute_changed"):
+			audio.music_mute_changed.connect(_on_music_mute_changed)
 
 	var parent := get_parent()
 	if parent != null and parent.has_signal("demo_mode_changed"):
@@ -347,6 +446,7 @@ func _sync_all_from_state() -> void:
 		_on_money_changed(100)
 		_on_stamina_changed(100, 100)
 		_on_water_changed(20, 20)
+		_on_weather_changed("sunny", "sunny")
 		_on_inventory_changed()
 		_on_tool_changed(0)
 	else:
@@ -354,11 +454,14 @@ func _sync_all_from_state() -> void:
 		_on_money_changed(gs.money)
 		_on_stamina_changed(gs.stamina, gs.max_stamina)
 		_on_water_changed(gs.water_level, gs.max_water)
+		_on_weather_changed(str(gs.get("weather")), str(gs.get("tomorrow_weather")))
 		_on_inventory_changed()
 		_on_tool_changed(gs.selected_slot)
 
 	_refresh_sound_button()
 	_refresh_auto_button()
+	_refresh_menu_buttons()
+	_refresh_touch_controls()
 
 
 func _build_ui() -> void:
@@ -370,10 +473,12 @@ func _build_ui() -> void:
 
 	_build_stats_panel()
 	_build_basket_panel()
+	_build_touch_controls()
 	_build_hotbar_section()
 	_build_controls_hint()
 	_build_shop_modal()
 	_build_changelog_modal()
+	_build_menu_modal()
 	_build_toast_panel()
 
 
@@ -381,17 +486,17 @@ func _build_stats_panel() -> void:
 	var panel := PanelContainer.new()
 	panel.name = "StatsPanel"
 	panel.position = Vector2(6, 6)
-	panel.add_theme_stylebox_override("panel", _make_parchment_style(7, 5))
+	panel.add_theme_stylebox_override("panel", _make_parchment_style(7, 4))
 	_ui_root.add_child(panel)
 
 	var vbox := VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 3)
+	vbox.add_theme_constant_override("separation", 2)
 	vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.add_child(vbox)
 
 	# Row 1: Day/Time + Money + Version badge
 	var top_row := HBoxContainer.new()
-	top_row.add_theme_constant_override("separation", 6)
+	top_row.add_theme_constant_override("separation", 5)
 	top_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	vbox.add_child(top_row)
 
@@ -400,19 +505,18 @@ func _build_stats_panel() -> void:
 	top_row.add_child(_day_time_label)
 
 	var money_row := HBoxContainer.new()
-	money_row.add_theme_constant_override("separation", 3)
+	money_row.add_theme_constant_override("separation", 2)
 	money_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	top_row.add_child(money_row)
 
-	var coin_rect := _make_icon_rect(5, Vector2(16, 16))
-	money_row.add_child(coin_rect)
+	money_row.add_child(_make_icon_rect(5, Vector2(14, 14)))
 
 	_money_label = _make_label("$100", 9, COL_GOLD_TEXT)
 	money_row.add_child(_money_label)
 
 	_version_button = _make_colored_button(
 		"%s (V)" % _current_version,
-		Vector2(48, 15),
+		Vector2(46, 15),
 		7,
 		Color("#5a442d"),
 		Color("#72583b"),
@@ -426,7 +530,25 @@ func _build_stats_panel() -> void:
 	_version_button.pressed.connect(_on_version_button_pressed)
 	top_row.add_child(_version_button)
 
-	# Row 2: Stamina bar
+	# Row 2: Weather & Forecast
+	var weather_row := HBoxContainer.new()
+	weather_row.add_theme_constant_override("separation", 4)
+	weather_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vbox.add_child(weather_row)
+
+	_weather_today_icon = _make_icon_rect(14, Vector2(13, 13))
+	weather_row.add_child(_weather_today_icon)
+	_weather_today_label = _make_label("Hoje: Sol", 8, COL_INK)
+	weather_row.add_child(_weather_today_label)
+
+	weather_row.add_child(_make_label("|", 8, COL_INK_MUTED))
+
+	_weather_next_icon = _make_icon_rect(14, Vector2(13, 13))
+	weather_row.add_child(_weather_next_icon)
+	_weather_next_label = _make_label("Amanhã: Sol", 8, COL_INK_MUTED)
+	weather_row.add_child(_weather_next_label)
+
+	# Row 3: Stamina bar
 	var stamina_row := HBoxContainer.new()
 	stamina_row.add_theme_constant_override("separation", 4)
 	stamina_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -437,13 +559,13 @@ func _build_stats_panel() -> void:
 	stamina_row.add_child(stamina_lbl)
 
 	_stamina_fill_style = _make_bar_fill_style(Color("#5ab549"))
-	var stamina_built := _make_progress_bar(Vector2(108, 12), _stamina_fill_style)
+	var stamina_built := _make_progress_bar(Vector2(114, 11), _stamina_fill_style)
 	_stamina_bar = stamina_built["bar"]
 	_stamina_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_stamina_value_label = stamina_built["label"]
 	stamina_row.add_child(_stamina_bar)
 
-	# Row 3: Water bar
+	# Row 4: Water bar
 	var water_row := HBoxContainer.new()
 	water_row.add_theme_constant_override("separation", 4)
 	water_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -454,7 +576,7 @@ func _build_stats_panel() -> void:
 	water_row.add_child(water_lbl)
 
 	var water_fill := _make_bar_fill_style(Color("#3a9be0"))
-	var water_built := _make_progress_bar(Vector2(108, 12), water_fill)
+	var water_built := _make_progress_bar(Vector2(114, 11), water_fill)
 	_water_bar = water_built["bar"]
 	_water_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_water_value_label = water_built["label"]
@@ -469,18 +591,18 @@ func _build_basket_panel() -> void:
 	panel.anchor_top = 0.0
 	panel.anchor_bottom = 0.0
 	panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	panel.offset_left = -236
+	panel.offset_left = -304
 	panel.offset_top = 6
 	panel.offset_right = -6
-	panel.add_theme_stylebox_override("panel", _make_parchment_style(7, 4))
+	panel.add_theme_stylebox_override("panel", _make_parchment_style(6, 4))
 	_ui_root.add_child(panel)
 
 	var vbox := VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 3)
+	vbox.add_theme_constant_override("separation", 2)
 	vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.add_child(vbox)
 
-	_harvest_label = _make_label("Trigo: 0 | Cenoura: 0 | Morango: 0", 9, COL_INK)
+	_harvest_label = _make_label("Tri:0 Cen:0 Mor:0 | Mil:0 Tom:0 Abo:0", 8, COL_INK)
 	_harvest_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	vbox.add_child(_harvest_label)
 
@@ -490,21 +612,24 @@ func _build_basket_panel() -> void:
 	animal_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	vbox.add_child(animal_row)
 
-	if _icons_cols >= 8:
-		_egg_icon = _make_icon_rect(6, Vector2(16, 16))
-		animal_row.add_child(_egg_icon)
-		_egg_label = _make_label("Ovo: 0", 8, COL_INK)
+	if _icons_cols >= 14:
+		animal_row.add_child(_make_icon_rect(6, Vector2(13, 13)))
+		_egg_label = _make_label("0", 8, COL_INK)
 		animal_row.add_child(_egg_label)
 
-		var sep_lbl := _make_label("|", 8, COL_INK_MUTED)
-		animal_row.add_child(sep_lbl)
-
-		_milk_icon = _make_icon_rect(7, Vector2(16, 16))
-		animal_row.add_child(_milk_icon)
-		_milk_label = _make_label("Leite: 0", 8, COL_INK)
+		animal_row.add_child(_make_icon_rect(7, Vector2(13, 13)))
+		_milk_label = _make_label("0", 8, COL_INK)
 		animal_row.add_child(_milk_label)
+
+		animal_row.add_child(_make_icon_rect(12, Vector2(13, 13)))
+		_wool_label = _make_label("0", 8, COL_INK)
+		animal_row.add_child(_wool_label)
+
+		animal_row.add_child(_make_icon_rect(13, Vector2(13, 13)))
+		_truffle_label = _make_label("0", 8, COL_INK)
+		animal_row.add_child(_truffle_label)
 	else:
-		_animal_label = _make_label("Ovo: 0 | Leite: 0", 8, COL_INK)
+		_animal_label = _make_label("Ovo:0 Leite:0 Lã:0 Trufa:0", 8, COL_INK)
 		_animal_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		animal_row.add_child(_animal_label)
 
@@ -514,25 +639,30 @@ func _build_basket_panel() -> void:
 	btn_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	vbox.add_child(btn_row)
 
-	_auto_button = _make_wood_button("Auto (P)", Vector2(50, 17), 8)
+	_auto_button = _make_wood_button("Auto (P)", Vector2(46, 17), 7)
 	_auto_button.pressed.connect(_on_auto_button_pressed)
 	btn_row.add_child(_auto_button)
 
-	var save_btn := _make_wood_button("Salvar", Vector2(40, 17), 8)
+	var save_btn := _make_wood_button("Salvar", Vector2(36, 17), 7)
 	save_btn.pressed.connect(_on_save_button_pressed)
 	btn_row.add_child(save_btn)
 
-	_sound_button = _make_wood_button("Som: ON", Vector2(50, 17), 8)
+	_sound_button = _make_wood_button("Som: ON", Vector2(46, 17), 7)
 	_sound_button.pressed.connect(_on_sound_button_pressed)
 	btn_row.add_child(_sound_button)
 
-	var shop_btn := _make_wood_button("Loja (B)", Vector2(52, 17), 8)
+	var shop_btn := _make_wood_button("Loja (B)", Vector2(46, 17), 7)
 	shop_btn.pressed.connect(_on_shop_button_pressed)
 	btn_row.add_child(shop_btn)
 
-	var sleep_btn := _make_wood_button("Dormir (N)", Vector2(58, 17), 8)
+	var sleep_btn := _make_wood_button("Dormir (N)", Vector2(52, 17), 7)
 	sleep_btn.pressed.connect(_on_sleep_button_pressed)
 	btn_row.add_child(sleep_btn)
+
+	var menu_btn := _make_wood_button("Menu", Vector2(34, 17), 7)
+	menu_btn.name = "MenuButton"
+	menu_btn.pressed.connect(_on_menu_button_pressed)
+	btn_row.add_child(menu_btn)
 
 
 func _build_hotbar_section() -> void:
@@ -544,7 +674,7 @@ func _build_hotbar_section() -> void:
 	container.anchor_bottom = 1.0
 	container.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	container.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	container.offset_bottom = -18
+	container.offset_bottom = -17
 	container.add_theme_constant_override("separation", 2)
 	container.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_ui_root.add_child(container)
@@ -556,24 +686,24 @@ func _build_hotbar_section() -> void:
 	var tray := PanelContainer.new()
 	tray.name = "HotbarPanel"
 	tray.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	var tray_style := _make_flat_style(COL_WOOD_DARK, Color("#351b0c"), 2, 4, 4, 2)
+	var tray_style := _make_flat_style(COL_WOOD_DARK, Color("#351b0c"), 2, 4, 3, 2)
 	tray.add_theme_stylebox_override("panel", tray_style)
 	container.add_child(tray)
 
 	var hbox := HBoxContainer.new()
-	hbox.add_theme_constant_override("separation", 4)
+	hbox.add_theme_constant_override("separation", 3)
 	hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	tray.add_child(hbox)
 
-	_slot_normal_style = _make_flat_style(Color("#dfca9d"), COL_WOOD_SOFT, 1, 3, 3, 1)
-	_slot_active_style = _make_flat_style(Color("#fff4cf"), COL_GOLD_BORDER, 2, 3, 3, 1)
+	_slot_normal_style = _make_flat_style(Color("#dfca9d"), COL_WOOD_SOFT, 1, 2, 2, 1)
+	_slot_active_style = _make_flat_style(Color("#fff4cf"), COL_GOLD_BORDER, 2, 2, 2, 1)
 
 	var slots := _get_hotbar_slots()
 	for i in range(slots.size()):
 		var slot_data: Dictionary = slots[i]
 		var slot_panel := PanelContainer.new()
 		slot_panel.name = "Slot_%d" % i
-		slot_panel.custom_minimum_size = Vector2(30, 30)
+		slot_panel.custom_minimum_size = Vector2(26, 26)
 		slot_panel.mouse_filter = Control.MOUSE_FILTER_STOP
 		slot_panel.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 		slot_panel.tooltip_text = str(slot_data.get("name", ""))
@@ -591,7 +721,7 @@ func _build_hotbar_section() -> void:
 		inner.add_child(icon_center)
 
 		var icon_col := int(slot_data.get("icon_col", i))
-		var icon_rect := _make_icon_rect(icon_col, Vector2(16, 16))
+		var icon_rect := _make_icon_rect(icon_col, Vector2(15, 15))
 		icon_center.add_child(icon_rect)
 
 		var key_lbl := _make_label(str(i + 1), 7, COL_INK_MUTED)
@@ -602,13 +732,14 @@ func _build_hotbar_section() -> void:
 		key_lbl.vertical_alignment = VERTICAL_ALIGNMENT_TOP
 		inner.add_child(key_lbl)
 
-		var count_lbl := _make_outlined_label("", 8, Color.WHITE)
+		var s_type: String = str(slot_data.get("type", ""))
+		var count_lbl := _make_outlined_label("", 7, Color.WHITE)
 		count_lbl.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		count_lbl.offset_right = 0
 		count_lbl.offset_bottom = 2
 		count_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		count_lbl.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
-		count_lbl.visible = slot_data.get("type", "") == "seed"
+		count_lbl.visible = (s_type == "seed" or s_type == "placeable")
 		inner.add_child(count_lbl)
 
 		_slot_panels.append(slot_panel)
@@ -625,7 +756,7 @@ func _build_controls_hint() -> void:
 	panel.anchor_bottom = 1.0
 	panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	panel.offset_bottom = -2
+	panel.offset_bottom = -1
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.add_theme_stylebox_override(
 		"panel",
@@ -634,12 +765,100 @@ func _build_controls_hint() -> void:
 	_ui_root.add_child(panel)
 
 	var lbl := _make_label(
-		"WASD: Mover | Espaço/Clique: Usar | F: Interagir | 1-5: Slot | B: Loja | N: Dormir | P: Auto | V: Versão",
-		8,
+		"WASD: Mover | Espaço/Clique: Usar | F: Interagir | 1-9/Roda: Slot | B: Loja | N: Dormir | P: Auto | Esc: Menu",
+		7,
 		Color(0.96, 0.93, 0.84)
 	)
 	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	panel.add_child(lbl)
+
+
+func _build_touch_controls() -> void:
+	_touch_layer = Control.new()
+	_touch_layer.name = "TouchControls"
+	_touch_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_touch_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_touch_layer.visible = false
+	_ui_root.add_child(_touch_layer)
+
+	# Bottom-left D-Pad
+	var dpad := Control.new()
+	dpad.name = "TouchDPad"
+	dpad.anchor_left = 0.0
+	dpad.anchor_top = 1.0
+	dpad.anchor_bottom = 1.0
+	dpad.offset_left = 10
+	dpad.offset_top = -94
+	dpad.offset_right = 94
+	dpad.offset_bottom = -10
+	dpad.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_touch_layer.add_child(dpad)
+
+	var dir_specs := [
+		{"text": "▲", "pos": Vector2(28, 0), "dir": Vector2(0, -1)},
+		{"text": "▼", "pos": Vector2(28, 56), "dir": Vector2(0, 1)},
+		{"text": "◀", "pos": Vector2(0, 28), "dir": Vector2(-1, 0)},
+		{"text": "▶", "pos": Vector2(56, 28), "dir": Vector2(1, 0)},
+	]
+	for spec in dir_specs:
+		var btn := _make_colored_button(
+			str(spec["text"]),
+			Vector2(26, 26),
+			9,
+			Color(0.24, 0.14, 0.08, 0.72),
+			Color(0.35, 0.21, 0.12, 0.85),
+			Color(0.55, 0.36, 0.18, 0.92),
+			COL_GOLD_BORDER,
+			Color(1.0, 0.96, 0.82)
+		)
+		btn.position = spec["pos"]
+		btn.size = Vector2(26, 26)
+		var dir_vec: Vector2 = spec["dir"]
+		btn.button_down.connect(_on_touch_dir_down.bind(dir_vec))
+		btn.button_up.connect(_on_touch_dir_up.bind(dir_vec))
+		btn.mouse_exited.connect(_on_touch_dir_up.bind(dir_vec))
+		dpad.add_child(btn)
+
+	# Bottom-right Action buttons
+	var actions_box := VBoxContainer.new()
+	actions_box.name = "TouchActions"
+	actions_box.anchor_left = 1.0
+	actions_box.anchor_right = 1.0
+	actions_box.anchor_top = 1.0
+	actions_box.anchor_bottom = 1.0
+	actions_box.offset_left = -88
+	actions_box.offset_top = -80
+	actions_box.offset_right = -10
+	actions_box.offset_bottom = -14
+	actions_box.add_theme_constant_override("separation", 5)
+	actions_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_touch_layer.add_child(actions_box)
+
+	var use_btn := _make_colored_button(
+		"Usar",
+		Vector2(76, 28),
+		9,
+		Color(0.28, 0.56, 0.24, 0.82),
+		Color(0.35, 0.68, 0.30, 0.90),
+		Color(0.22, 0.44, 0.19, 0.95),
+		COL_GOLD_BORDER,
+		Color.WHITE
+	)
+	use_btn.pressed.connect(_on_touch_use_pressed)
+	actions_box.add_child(use_btn)
+
+	var interact_btn := _make_colored_button(
+		"Interagir",
+		Vector2(76, 28),
+		9,
+		Color(0.24, 0.48, 0.68, 0.82),
+		Color(0.30, 0.58, 0.80, 0.90),
+		Color(0.18, 0.38, 0.54, 0.95),
+		COL_GOLD_BORDER,
+		Color.WHITE
+	)
+	interact_btn.pressed.connect(_on_touch_interact_pressed)
+	actions_box.add_child(interact_btn)
 
 
 func _build_shop_modal() -> void:
@@ -657,10 +876,12 @@ func _build_shop_modal() -> void:
 	_shop_panel.anchor_right = 0.5
 	_shop_panel.anchor_top = 0.5
 	_shop_panel.anchor_bottom = 0.5
-	_shop_panel.offset_left = -160
-	_shop_panel.offset_right = 160
-	_shop_panel.offset_top = -108
-	_shop_panel.offset_bottom = 70
+	_shop_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_shop_panel.grow_vertical = Control.GROW_DIRECTION_BOTH
+	_shop_panel.offset_left = -218
+	_shop_panel.offset_right = 218
+	_shop_panel.offset_top = -132
+	_shop_panel.offset_bottom = 104
 	_shop_panel.visible = false
 	_shop_panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	_shop_panel.add_theme_stylebox_override("panel", _make_flat_style(COL_PARCHMENT, COL_WOOD_BORDER, 3, 9, 6, 3))
@@ -671,37 +892,58 @@ func _build_shop_modal() -> void:
 	main_vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_shop_panel.add_child(main_vbox)
 
-	# Header
+	# Header with tabs + money
 	var header := HBoxContainer.new()
-	header.add_theme_constant_override("separation", 6)
+	header.add_theme_constant_override("separation", 5)
 	header.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	main_vbox.add_child(header)
 
-	var title := _make_label("Loja de Sementes", 10, COL_WOOD_DARK)
-	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var title := _make_label("Loja da Fazenda", 10, COL_WOOD_DARK)
 	header.add_child(title)
+
+	_shop_tab_seeds_btn = _make_wood_button("Sementes", Vector2(60, 17), 8)
+	_shop_tab_seeds_btn.pressed.connect(_on_shop_tab_pressed.bind("seeds"))
+	header.add_child(_shop_tab_seeds_btn)
+
+	_shop_tab_upgrades_btn = _make_wood_button("Upgrades", Vector2(60, 17), 8)
+	_shop_tab_upgrades_btn.pressed.connect(_on_shop_tab_pressed.bind("upgrades"))
+	header.add_child(_shop_tab_upgrades_btn)
+
+	var header_spacer := Control.new()
+	header_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header_spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	header.add_child(header_spacer)
 
 	var money_box := HBoxContainer.new()
 	money_box.add_theme_constant_override("separation", 3)
 	money_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	header.add_child(money_box)
 
-	money_box.add_child(_make_icon_rect(5, Vector2(16, 16)))
+	money_box.add_child(_make_icon_rect(5, Vector2(15, 15)))
 	_shop_money_label = _make_label("$100", 10, COL_GOLD_TEXT)
 	money_box.add_child(_shop_money_label)
 
 	main_vbox.add_child(_make_separator())
 
-	# Seed purchase rows
+	# Tab 1: Seeds Grid (2 columns x 3 rows)
+	_shop_seeds_grid = GridContainer.new()
+	_shop_seeds_grid.name = "SeedsGrid"
+	_shop_seeds_grid.columns = 2
+	_shop_seeds_grid.add_theme_constant_override("h_separation", 6)
+	_shop_seeds_grid.add_theme_constant_override("v_separation", 4)
+	_shop_seeds_grid.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	main_vbox.add_child(_shop_seeds_grid)
+
 	var crops := _get_crops()
 	for crop_id in CROP_ORDER:
 		var crop: Dictionary = crops.get(crop_id, DEFAULT_CROPS.get(crop_id, {}))
 		var row_panel := PanelContainer.new()
-		row_panel.add_theme_stylebox_override("panel", _make_flat_style(COL_PARCHMENT_ALT, Color("#b89563"), 1, 6, 3, 2))
-		main_vbox.add_child(row_panel)
+		row_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row_panel.add_theme_stylebox_override("panel", _make_flat_style(COL_PARCHMENT_ALT, Color("#b89563"), 1, 5, 3, 2))
+		_shop_seeds_grid.add_child(row_panel)
 
 		var row_hbox := HBoxContainer.new()
-		row_hbox.add_theme_constant_override("separation", 6)
+		row_hbox.add_theme_constant_override("separation", 4)
 		row_hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		row_panel.add_child(row_hbox)
 
@@ -717,21 +959,99 @@ func _build_shop_modal() -> void:
 		row_hbox.add_child(info_vbox)
 
 		var crop_name := str(crop.get("name", crop_id.capitalize()))
-		var title_lbl := _make_label("Semente de %s" % crop_name, 9, COL_INK)
+		var title_lbl := _make_label(crop_name, 9, COL_INK)
 		info_vbox.add_child(title_lbl)
 
 		var days := int(crop.get("days_to_grow", 2))
 		var sell_price := int(crop.get("sell_price", 25))
-		var sub_lbl := _make_label("Cresce: %dd | Venda: $%d | Estoque: 0" % [days, sell_price], 8, COL_INK_MUTED)
+		var sub_lbl := _make_label("%dd | $%d | Est:0" % [days, sell_price], 7, COL_INK_MUTED)
 		info_vbox.add_child(sub_lbl)
 		_shop_crop_info_labels[crop_id] = sub_lbl
 
 		var seed_price := int(crop.get("seed_price", 10))
-		var buy_btn := _make_wood_button("Comprar ($%d)" % seed_price, Vector2(82, 20), 8)
+		var buy_btn := _make_wood_button("1x $%d" % seed_price, Vector2(46, 19), 7)
 		buy_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		buy_btn.pressed.connect(_on_buy_seed_pressed.bind(crop_id))
+		buy_btn.pressed.connect(_on_buy_seed_pressed.bind(crop_id, 1))
 		row_hbox.add_child(buy_btn)
 		_shop_buy_buttons[crop_id] = buy_btn
+
+		var buy5_btn := _make_wood_button("+5", Vector2(22, 19), 7)
+		buy5_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		buy5_btn.pressed.connect(_on_buy_seed_pressed.bind(crop_id, 5))
+		row_hbox.add_child(buy5_btn)
+
+	# Tab 2: Upgrades & Sprinklers
+	_shop_upgrades_vbox = VBoxContainer.new()
+	_shop_upgrades_vbox.name = "UpgradesVBox"
+	_shop_upgrades_vbox.add_theme_constant_override("separation", 4)
+	_shop_upgrades_vbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_shop_upgrades_vbox.visible = false
+	main_vbox.add_child(_shop_upgrades_vbox)
+
+	var upgrade_specs := [
+		{"id": "hoe", "title": "Enxada", "icon": 0},
+		{"id": "can", "title": "Regador", "icon": 1},
+		{"id": "stamina", "title": "Resistência", "icon": 5},
+	]
+	for u in upgrade_specs:
+		var uid: String = str(u["id"])
+		var row_p := PanelContainer.new()
+		row_p.add_theme_stylebox_override("panel", _make_flat_style(COL_PARCHMENT_ALT, Color("#b89563"), 1, 6, 3, 2))
+		_shop_upgrades_vbox.add_child(row_p)
+
+		var row_h := HBoxContainer.new()
+		row_h.add_theme_constant_override("separation", 6)
+		row_p.add_child(row_h)
+
+		var u_icon := _make_icon_rect(int(u["icon"]), Vector2(16, 16))
+		u_icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		row_h.add_child(u_icon)
+
+		var u_vbox := VBoxContainer.new()
+		u_vbox.add_theme_constant_override("separation", 0)
+		u_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row_h.add_child(u_vbox)
+
+		var u_title := _make_label("%s (Nv. 1/3)" % str(u["title"]), 9, COL_INK)
+		u_vbox.add_child(u_title)
+		_shop_upgrade_title_labels[uid] = u_title
+
+		var u_desc := _make_label("", 7, COL_INK_MUTED)
+		u_vbox.add_child(u_desc)
+		_shop_upgrade_desc_labels[uid] = u_desc
+
+		var u_btn := _make_wood_button("Melhorar ($150)", Vector2(90, 20), 8)
+		u_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		u_btn.pressed.connect(_on_buy_upgrade_pressed.bind(uid))
+		row_h.add_child(u_btn)
+		_shop_upgrade_buttons[uid] = u_btn
+
+	# Sprinkler row inside Upgrades tab
+	var sp_panel := PanelContainer.new()
+	sp_panel.add_theme_stylebox_override("panel", _make_flat_style(COL_PARCHMENT_ALT, Color("#b89563"), 1, 6, 3, 2))
+	_shop_upgrades_vbox.add_child(sp_panel)
+
+	var sp_hbox := HBoxContainer.new()
+	sp_hbox.add_theme_constant_override("separation", 6)
+	sp_panel.add_child(sp_hbox)
+
+	var sp_icon := _make_icon_rect(11, Vector2(16, 16))
+	sp_icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	sp_hbox.add_child(sp_icon)
+
+	var sp_vbox := VBoxContainer.new()
+	sp_vbox.add_theme_constant_override("separation", 0)
+	sp_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sp_hbox.add_child(sp_vbox)
+
+	sp_vbox.add_child(_make_label("Aspersor Automático (Slot 9)", 9, COL_INK))
+	_shop_sprinkler_desc_label = _make_label("Rega 3x3 toda manhã | Estoque: 0", 7, COL_INK_MUTED)
+	sp_vbox.add_child(_shop_sprinkler_desc_label)
+
+	_shop_sprinkler_buy_btn = _make_wood_button("Comprar ($180)", Vector2(90, 20), 8)
+	_shop_sprinkler_buy_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_shop_sprinkler_buy_btn.pressed.connect(_on_buy_sprinkler_pressed)
+	sp_hbox.add_child(_shop_sprinkler_buy_btn)
 
 	main_vbox.add_child(_make_separator())
 
@@ -771,6 +1091,119 @@ func _build_shop_modal() -> void:
 	)
 	close_btn.pressed.connect(_on_close_shop_pressed)
 	footer.add_child(close_btn)
+
+
+func _build_menu_modal() -> void:
+	_menu_backdrop = ColorRect.new()
+	_menu_backdrop.name = "MenuBackdrop"
+	_menu_backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_menu_backdrop.color = Color(0.08, 0.05, 0.03, 0.58)
+	_menu_backdrop.mouse_filter = Control.MOUSE_FILTER_STOP
+	_menu_backdrop.visible = false
+	_ui_root.add_child(_menu_backdrop)
+
+	_menu_panel = PanelContainer.new()
+	_menu_panel.name = "MenuPanel"
+	_menu_panel.anchor_left = 0.5
+	_menu_panel.anchor_right = 0.5
+	_menu_panel.anchor_top = 0.5
+	_menu_panel.anchor_bottom = 0.5
+	_menu_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_menu_panel.grow_vertical = Control.GROW_DIRECTION_BOTH
+	_menu_panel.offset_left = -132
+	_menu_panel.offset_right = 132
+	_menu_panel.offset_top = -108
+	_menu_panel.offset_bottom = 94
+	_menu_panel.visible = false
+	_menu_panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	_menu_panel.add_theme_stylebox_override("panel", _make_flat_style(COL_PARCHMENT, COL_WOOD_BORDER, 3, 10, 7, 3))
+	_menu_backdrop.add_child(_menu_panel)
+
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 5)
+	_menu_panel.add_child(vbox)
+
+	var title := _make_label("Menu & Opções", 10, COL_WOOD_DARK)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(title)
+	vbox.add_child(_make_separator())
+
+	_menu_sfx_btn = _make_wood_button("Efeitos Sonoros: ON", Vector2(0, 20), 8)
+	_menu_sfx_btn.pressed.connect(_on_sound_button_pressed)
+	vbox.add_child(_menu_sfx_btn)
+
+	_menu_music_btn = _make_wood_button("Música de Fundo: ON", Vector2(0, 20), 8)
+	_menu_music_btn.pressed.connect(_on_music_button_pressed)
+	vbox.add_child(_menu_music_btn)
+
+	_menu_touch_btn = _make_wood_button("Controles Touch: Auto", Vector2(0, 20), 8)
+	_menu_touch_btn.pressed.connect(_on_touch_mode_button_pressed)
+	vbox.add_child(_menu_touch_btn)
+
+	var ver_btn := _make_wood_button("Atualizações & Changelog (V)", Vector2(0, 20), 8)
+	ver_btn.pressed.connect(_on_version_button_pressed)
+	vbox.add_child(ver_btn)
+
+	_menu_reset_btn = _make_colored_button(
+		"Reiniciar Fazenda (Dia 1)",
+		Vector2(0, 20),
+		8,
+		Color("#a84336"),
+		Color("#c25244"),
+		Color("#853126"),
+		Color("#591d15"),
+		Color.WHITE
+	)
+	_menu_reset_btn.pressed.connect(_on_menu_reset_pressed)
+	vbox.add_child(_menu_reset_btn)
+
+	_menu_reset_confirm_box = PanelContainer.new()
+	_menu_reset_confirm_box.visible = false
+	_menu_reset_confirm_box.add_theme_stylebox_override("panel", _make_flat_style(Color(0.95, 0.84, 0.72), Color("#9e382b"), 1, 6, 4, 2))
+	vbox.add_child(_menu_reset_confirm_box)
+
+	var confirm_vbox := VBoxContainer.new()
+	confirm_vbox.add_theme_constant_override("separation", 3)
+	_menu_reset_confirm_box.add_child(confirm_vbox)
+
+	var warn_lbl := _make_label("Apagar o save e voltar ao Dia 1?", 8, Color("#731e15"))
+	warn_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	confirm_vbox.add_child(warn_lbl)
+
+	var confirm_row := HBoxContainer.new()
+	confirm_row.add_theme_constant_override("separation", 6)
+	confirm_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	confirm_vbox.add_child(confirm_row)
+
+	var cancel_rst := _make_wood_button("Cancelar", Vector2(70, 18), 8)
+	cancel_rst.pressed.connect(_on_cancel_reset_pressed)
+	confirm_row.add_child(cancel_rst)
+
+	var do_rst := _make_colored_button(
+		"Confirmar",
+		Vector2(76, 18),
+		8,
+		Color("#b8392c"),
+		Color("#d14739"),
+		Color("#8f281e"),
+		Color("#5e1912"),
+		Color.WHITE
+	)
+	do_rst.pressed.connect(_on_confirm_reset_pressed)
+	confirm_row.add_child(do_rst)
+
+	var close_menu_btn := _make_colored_button(
+		"Voltar ao Jogo (Esc)",
+		Vector2(0, 20),
+		8,
+		Color("#5a9640"),
+		Color("#6eb050"),
+		Color("#487a32"),
+		Color("#2e4f1e"),
+		Color.WHITE
+	)
+	close_menu_btn.pressed.connect(_on_close_menu_pressed)
+	vbox.add_child(close_menu_btn)
 
 
 func _format_author_badge(author: String) -> String:
@@ -967,7 +1400,7 @@ func _build_toast_panel() -> void:
 	_toast_panel.anchor_bottom = 1.0
 	_toast_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_toast_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	_toast_panel.offset_bottom = -74
+	_toast_panel.offset_bottom = -68
 	_toast_panel.visible = false
 	_toast_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_toast_panel.add_theme_stylebox_override(
@@ -1000,6 +1433,19 @@ func _on_day_changed(day: int, time_minutes: float) -> void:
 	_day_time_label.text = "Dia %d - %02d:%02d" % [day, hours, mins]
 
 
+func _on_weather_changed(weather: String, tomorrow_weather: String) -> void:
+	var today_rain := (weather == "rainy")
+	var next_rain := (tomorrow_weather == "rainy")
+	if _weather_today_icon != null:
+		_weather_today_icon.texture = _make_icon_texture(15 if today_rain else 14)
+	if _weather_today_label != null:
+		_weather_today_label.text = "Hoje: %s" % ("Chuva" if today_rain else "Sol")
+	if _weather_next_icon != null:
+		_weather_next_icon.texture = _make_icon_texture(15 if next_rain else 14)
+	if _weather_next_label != null:
+		_weather_next_label.text = "Amanhã: %s" % ("Chuva" if next_rain else "Sol")
+
+
 func _on_stamina_changed(stamina: int, max_stamina: int) -> void:
 	if _stamina_bar == null:
 		return
@@ -1024,30 +1470,54 @@ func _on_water_changed(water: int, max_water: int) -> void:
 	_water_value_label.text = "%d/%d" % [water, max_water]
 
 
+func _on_upgrades_changed() -> void:
+	var gs := _get_game_state()
+	var selected: int = int(gs.selected_slot) if gs != null else 0
+	_update_active_item_label(selected)
+	_refresh_shop()
+
+
+func _on_touch_mode_changed(_mode: String) -> void:
+	_refresh_touch_controls()
+	_refresh_menu_buttons()
+
+
 func _on_inventory_changed() -> void:
 	var gs := _get_game_state()
-	var harvested: Dictionary = gs.get("harvested") if gs != null and gs.get("harvested") != null else {"wheat": 0, "carrot": 0, "strawberry": 0}
-	var animal_products: Dictionary = gs.get("animal_products") if gs != null and gs.get("animal_products") != null else {"egg": 0, "milk": 0}
-	var seeds: Dictionary = gs.get("seeds") if gs != null and gs.get("seeds") != null else {"wheat": 6, "carrot": 4, "strawberry": 2}
+	var harvested: Dictionary = gs.get("harvested") if gs != null and gs.get("harvested") != null else {}
+	var animal_products: Dictionary = gs.get("animal_products") if gs != null and gs.get("animal_products") != null else {}
+	var seeds: Dictionary = gs.get("seeds") if gs != null and gs.get("seeds") != null else {}
+	var sprinklers_owned: int = int(gs.get("sprinklers_owned")) if gs != null and gs.get("sprinklers_owned") != null else 0
 
 	if _harvest_label != null:
 		var w := int(harvested.get("wheat", 0))
 		var c := int(harvested.get("carrot", 0))
 		var s := int(harvested.get("strawberry", 0))
-		_harvest_label.text = "Trigo: %d | Cenoura: %d | Morango: %d" % [w, c, s]
+		var co := int(harvested.get("corn", 0))
+		var t := int(harvested.get("tomato", 0))
+		var p := int(harvested.get("pumpkin", 0))
+		_harvest_label.text = "Tri:%d Cen:%d Mor:%d | Mil:%d Tom:%d Abo:%d" % [w, c, s, co, t, p]
 
 	var egg_qty := int(animal_products.get("egg", 0))
 	var milk_qty := int(animal_products.get("milk", 0))
-	if _egg_label != null and _milk_label != null:
-		_egg_label.text = "Ovo: %d" % egg_qty
-		_milk_label.text = "Leite: %d" % milk_qty
-	elif _animal_label != null:
-		_animal_label.text = "Ovo: %d | Leite: %d" % [egg_qty, milk_qty]
+	var wool_qty := int(animal_products.get("wool", 0))
+	var truffle_qty := int(animal_products.get("truffle", 0))
+	if _egg_label != null:
+		_egg_label.text = str(egg_qty)
+	if _milk_label != null:
+		_milk_label.text = str(milk_qty)
+	if _wool_label != null:
+		_wool_label.text = str(wool_qty)
+	if _truffle_label != null:
+		_truffle_label.text = str(truffle_qty)
+	if _animal_label != null:
+		_animal_label.text = "Ovo:%d Leite:%d Lã:%d Trufa:%d" % [egg_qty, milk_qty, wool_qty, truffle_qty]
 
 	var slots := _get_hotbar_slots()
 	for i in range(mini(slots.size(), _slot_counts.size())):
 		var slot_data: Dictionary = slots[i]
-		if slot_data.get("type", "") == "seed":
+		var s_type: String = str(slot_data.get("type", ""))
+		if s_type == "seed":
 			var crop_id := str(slot_data.get("crop_id", ""))
 			var qty := int(seeds.get(crop_id, 0))
 			_slot_counts[i].text = str(qty)
@@ -1056,6 +1526,13 @@ func _on_inventory_changed() -> void:
 				Color(1.0, 0.80, 0.76) if qty <= 0 else Color.WHITE
 			)
 			_slot_icons[i].modulate.a = 0.55 if qty <= 0 else 1.0
+		elif s_type == "placeable":
+			_slot_counts[i].text = str(sprinklers_owned)
+			_slot_counts[i].add_theme_color_override(
+				"font_color",
+				Color(1.0, 0.80, 0.76) if sprinklers_owned <= 0 else Color.WHITE
+			)
+			_slot_icons[i].modulate.a = 0.55 if sprinklers_owned <= 0 else 1.0
 
 	var selected: int = int(gs.selected_slot) if gs != null else 0
 	_update_active_item_label(selected)
@@ -1107,10 +1584,32 @@ func _on_sound_button_pressed() -> void:
 	if audio != null and audio.has_method("toggle_mute"):
 		audio.call("toggle_mute")
 	_refresh_sound_button()
+	_refresh_menu_buttons()
+
+
+func _on_music_button_pressed() -> void:
+	var audio := _get_audio_manager()
+	if audio != null and audio.has_method("toggle_music_mute"):
+		audio.call("toggle_music_mute")
+	_refresh_menu_buttons()
+
+
+func _on_touch_mode_button_pressed() -> void:
+	_play_click()
+	var gs := _get_game_state()
+	if gs != null and gs.has_method("set_touch_mode"):
+		var cur: String = str(gs.get("touch_mode"))
+		var nxt: String = "on" if cur == "auto" else ("off" if cur == "on" else "auto")
+		gs.call("set_touch_mode", nxt)
 
 
 func _on_mute_changed(_is_muted: bool) -> void:
 	_refresh_sound_button()
+	_refresh_menu_buttons()
+
+
+func _on_music_mute_changed(_is_muted: bool) -> void:
+	_refresh_menu_buttons()
 
 
 func _on_auto_button_pressed() -> void:
@@ -1122,8 +1621,11 @@ func _on_auto_button_pressed() -> void:
 
 
 func _on_demo_mode_changed(active: bool) -> void:
-	if active and _changelog_open:
-		_set_changelog_open(false)
+	if active:
+		if _changelog_open:
+			_set_changelog_open(false)
+		if _menu_open:
+			_set_menu_open(false)
 	_apply_auto_button_state(active)
 
 
@@ -1132,9 +1634,45 @@ func _on_shop_button_pressed() -> void:
 	toggle_shop()
 
 
+func _on_shop_tab_pressed(tab_id: String) -> void:
+	_play_click()
+	_shop_tab = tab_id
+	_refresh_shop()
+
+
 func _on_close_shop_pressed() -> void:
 	_play_click()
 	_set_shop_open(false)
+
+
+func _on_menu_button_pressed() -> void:
+	_play_click()
+	toggle_menu()
+
+
+func _on_close_menu_pressed() -> void:
+	_play_click()
+	_set_menu_open(false)
+
+
+func _on_menu_reset_pressed() -> void:
+	_play_click()
+	if _menu_reset_confirm_box != null:
+		_menu_reset_confirm_box.visible = not _menu_reset_confirm_box.visible
+
+
+func _on_cancel_reset_pressed() -> void:
+	_play_click()
+	if _menu_reset_confirm_box != null:
+		_menu_reset_confirm_box.visible = false
+
+
+func _on_confirm_reset_pressed() -> void:
+	_play_click()
+	var gs := _get_game_state()
+	if gs != null and gs.has_method("reset_save"):
+		gs.call("reset_save")
+	_set_menu_open(false)
 
 
 func _on_version_button_pressed() -> void:
@@ -1168,16 +1706,32 @@ func _on_sleep_button_pressed() -> void:
 		_set_shop_open(false)
 	if _changelog_open:
 		_set_changelog_open(false)
+	if _menu_open:
+		_set_menu_open(false)
 	var gs := _get_game_state()
 	if gs != null:
 		gs.advance_day()
 
 
-func _on_buy_seed_pressed(crop_id: String) -> void:
+func _on_buy_seed_pressed(crop_id: String, qty: int) -> void:
 	_play_click()
 	var gs := _get_game_state()
 	if gs != null:
-		gs.buy_seed(crop_id, 1)
+		gs.buy_seed(crop_id, qty)
+
+
+func _on_buy_upgrade_pressed(upgrade_id: String) -> void:
+	_play_click()
+	var gs := _get_game_state()
+	if gs != null and gs.has_method("buy_upgrade"):
+		gs.call("buy_upgrade", upgrade_id)
+
+
+func _on_buy_sprinkler_pressed() -> void:
+	_play_click()
+	var gs := _get_game_state()
+	if gs != null and gs.has_method("buy_sprinkler"):
+		gs.call("buy_sprinkler", 1)
 
 
 func _on_sell_all_pressed() -> void:
@@ -1185,6 +1739,34 @@ func _on_sell_all_pressed() -> void:
 	var gs := _get_game_state()
 	if gs != null:
 		gs.sell_all_harvested()
+
+
+func _on_touch_dir_down(dir: Vector2) -> void:
+	_touch_dir_active = dir
+	var parent := get_parent()
+	if parent != null and parent.has_method("set_touch_move_dir"):
+		parent.call("set_touch_move_dir", dir)
+
+
+func _on_touch_dir_up() -> void:
+	if _touch_dir_active == Vector2.ZERO:
+		return
+	_touch_dir_active = Vector2.ZERO
+	var parent := get_parent()
+	if parent != null and parent.has_method("set_touch_move_dir"):
+		parent.call("set_touch_move_dir", Vector2.ZERO)
+
+
+func _on_touch_use_pressed() -> void:
+	var parent := get_parent()
+	if parent != null and parent.has_method("trigger_touch_use"):
+		parent.call("trigger_touch_use")
+
+
+func _on_touch_interact_pressed() -> void:
+	var parent := get_parent()
+	if parent != null and parent.has_method("trigger_touch_interact"):
+		parent.call("trigger_touch_interact")
 
 
 # --- Refresh helpers ---
@@ -1195,6 +1777,36 @@ func _refresh_sound_button() -> void:
 	var audio := _get_audio_manager()
 	var is_muted: bool = bool(audio.get("muted")) if audio != null and audio.get("muted") != null else false
 	_sound_button.text = "Som: OFF" if is_muted else "Som: ON"
+
+
+func _refresh_menu_buttons() -> void:
+	var audio := _get_audio_manager()
+	var is_muted: bool = bool(audio.get("muted")) if audio != null and audio.get("muted") != null else false
+	var is_bgm_muted: bool = bool(audio.get("music_muted")) if audio != null and audio.get("music_muted") != null else false
+	if _menu_sfx_btn != null:
+		_menu_sfx_btn.text = "Efeitos Sonoros (SFX): %s" % ("OFF" if is_muted else "ON")
+	if _menu_music_btn != null:
+		_menu_music_btn.text = "Música de Fundo: %s" % ("OFF" if is_bgm_muted else "ON")
+
+	var gs := _get_game_state()
+	var t_mode: String = str(gs.get("touch_mode")) if gs != null and gs.get("touch_mode") != null else "auto"
+	if _menu_touch_btn != null:
+		var lbl := "Auto" if t_mode == "auto" else ("Sempre ON" if t_mode == "on" else "OFF")
+		_menu_touch_btn.text = "Controles Touch: %s" % lbl
+
+
+func _refresh_touch_controls() -> void:
+	if _touch_layer == null:
+		return
+	var gs := _get_game_state()
+	var t_mode: String = str(gs.get("touch_mode")) if gs != null and gs.get("touch_mode") != null else "auto"
+	if t_mode == "on":
+		_touch_layer.visible = true
+	elif t_mode == "off":
+		_touch_layer.visible = false
+		_on_touch_dir_up()
+	else:
+		_touch_layer.visible = DisplayServer.is_touchscreen_available() or _touch_seen
 
 
 func _refresh_auto_button() -> void:
@@ -1250,11 +1862,21 @@ func _update_active_item_label(slot_index: int) -> void:
 		return
 	var slot_data: Dictionary = slots[slot_index]
 	var item_name := str(slot_data.get("name", ""))
-	if slot_data.get("type", "") == "seed":
-		var gs := _get_game_state()
+	var s_type: String = str(slot_data.get("type", ""))
+	var gs := _get_game_state()
+	if s_type == "seed":
 		var crop_id := str(slot_data.get("crop_id", ""))
 		var qty := int(gs.seeds.get(crop_id, 0)) if gs != null else 0
 		_active_item_label.text = "%s (%d)" % [item_name, qty]
+	elif s_type == "placeable":
+		var sp_qty := int(gs.get("sprinklers_owned")) if gs != null else 0
+		_active_item_label.text = "%s (%d)" % [item_name, sp_qty]
+	elif slot_data.get("id", "") == "hoe" and gs != null:
+		var lvl := int(gs.get("hoe_level"))
+		_active_item_label.text = "%s (Nv.%d)" % [item_name, lvl]
+	elif slot_data.get("id", "") == "watering_can" and gs != null:
+		var lvl := int(gs.get("can_level"))
+		_active_item_label.text = "%s (Nv.%d)" % [item_name, lvl]
 	else:
 		_active_item_label.text = item_name
 
@@ -1272,6 +1894,16 @@ func _refresh_shop() -> void:
 	if _shop_money_label != null:
 		_shop_money_label.text = "$%d" % money
 
+	var show_seeds := (_shop_tab == "seeds")
+	if _shop_seeds_grid != null:
+		_shop_seeds_grid.visible = show_seeds
+	if _shop_upgrades_vbox != null:
+		_shop_upgrades_vbox.visible = not show_seeds
+	if _shop_tab_seeds_btn != null:
+		_apply_tab_style(_shop_tab_seeds_btn, show_seeds)
+	if _shop_tab_upgrades_btn != null:
+		_apply_tab_style(_shop_tab_upgrades_btn, not show_seeds)
+
 	for crop_id in CROP_ORDER:
 		var crop: Dictionary = crops.get(crop_id, DEFAULT_CROPS.get(crop_id, {}))
 		var days := int(crop.get("days_to_grow", 2))
@@ -1281,11 +1913,41 @@ func _refresh_shop() -> void:
 
 		if _shop_crop_info_labels.has(crop_id):
 			var info_lbl: Label = _shop_crop_info_labels[crop_id]
-			info_lbl.text = "Cresce: %dd | Venda: $%d | Estoque: %d" % [days, sell_price, owned]
+			info_lbl.text = "%dd | $%d | Est:%d" % [days, sell_price, owned]
 
 		if _shop_buy_buttons.has(crop_id):
 			var btn: Button = _shop_buy_buttons[crop_id]
-			btn.text = "Comprar ($%d)" % seed_price
+			btn.text = "1x $%d" % seed_price
+
+	# Refresh Upgrades tab
+	if gs != null and gs.has_method("get_upgrade_level") and gs.has_method("get_upgrade_cost"):
+		var defs: Dictionary = gs.UPGRADE_DEFS
+		for uid in ["hoe", "can", "stamina"]:
+			var def: Dictionary = defs.get(uid, {})
+			var lvl: int = int(gs.call("get_upgrade_level", uid))
+			var max_lvl: int = int(def.get("max_level", 3))
+			var cost: int = int(gs.call("get_upgrade_cost", uid))
+			var descs: Array = def.get("descriptions", [])
+			var cur_desc: String = str(descs[clampi(lvl - 1, 0, descs.size() - 1)]) if not descs.is_empty() else ""
+			var nxt_desc: String = str(descs[clampi(lvl, 0, descs.size() - 1)]) if lvl < max_lvl and not descs.is_empty() else "Nível Máximo"
+
+			if _shop_upgrade_title_labels.has(uid):
+				(_shop_upgrade_title_labels[uid] as Label).text = "%s (Nv. %d/%d)" % [str(def.get("name", uid)), lvl, max_lvl]
+			if _shop_upgrade_desc_labels.has(uid):
+				var desc_text := "%s → Próx: %s" % [cur_desc, nxt_desc] if lvl < max_lvl else "%s (MAX)" % cur_desc
+				(_shop_upgrade_desc_label_get(uid)).text = desc_text
+			if _shop_upgrade_buttons.has(uid):
+				var u_btn: Button = _shop_upgrade_buttons[uid]
+				if cost < 0:
+					u_btn.text = "MAX"
+					u_btn.disabled = true
+				else:
+					u_btn.text = "Melhorar ($%d)" % cost
+					u_btn.disabled = false
+
+	var sp_owned: int = int(gs.get("sprinklers_owned")) if gs != null else 0
+	if _shop_sprinkler_desc_label != null:
+		_shop_sprinkler_desc_label.text = "Rega 3x3 toda manhã | Estoque: %d" % sp_owned
 
 	if _shop_harvest_label != null:
 		var total_items := 0
@@ -1299,9 +1961,20 @@ func _refresh_shop() -> void:
 				var crop: Dictionary = crops.get(crop_id, DEFAULT_CROPS.get(crop_id, {}))
 				total_items += count
 				total_value += count * int(crop.get("sell_price", 0))
-			total_items += int(animal_products.get("egg", 0)) + int(animal_products.get("milk", 0))
-			total_value += int(animal_products.get("egg", 0)) * 30 + int(animal_products.get("milk", 0)) * 45
+			for prod_id in ["egg", "milk", "wool", "truffle"]:
+				total_items += int(animal_products.get(prod_id, 0))
 		_shop_harvest_label.text = "Cesta: %d itens ($%d)" % [total_items, total_value]
+
+
+func _shop_upgrade_desc_label_get(uid: String) -> Label:
+	return _shop_upgrade_desc_labels[uid] as Label
+
+
+func _apply_tab_style(btn: Button, active: bool) -> void:
+	if active:
+		_apply_button_theme(btn, Color("#5a9640"), Color("#6eb050"), Color("#487a32"), COL_GOLD_BORDER, Color.WHITE)
+	else:
+		_apply_button_theme(btn, Color("#d8b982"), Color("#ebd09d"), Color("#bd9b63"), COL_WOOD_BORDER, COL_INK)
 
 
 # --- Style & widget factory helpers ---
@@ -1440,9 +2113,11 @@ func _apply_button_theme(
 	btn.add_theme_color_override("font_color", font_col)
 	btn.add_theme_color_override("font_hover_color", font_col)
 	btn.add_theme_color_override("font_pressed_color", font_col)
+	btn.add_theme_color_override("font_disabled_color", Color(0.32, 0.25, 0.18, 0.85))
 	btn.add_theme_stylebox_override("normal", _make_flat_style(normal_col, border_col, 1, 4, 2, 2))
 	btn.add_theme_stylebox_override("hover", _make_flat_style(hover_col, border_col, 1, 4, 2, 2))
 	btn.add_theme_stylebox_override("pressed", _make_flat_style(pressed_col, border_col, 1, 4, 2, 2))
+	btn.add_theme_stylebox_override("disabled", _make_flat_style(Color(0.76, 0.70, 0.56, 0.85), Color("#8c7352"), 1, 4, 2, 2))
 
 
 func _make_separator() -> HSeparator:

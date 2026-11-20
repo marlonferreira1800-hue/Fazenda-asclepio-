@@ -40,12 +40,18 @@ const DEMO_BIN_WP := Vector2(168.0, 104.0)
 const DEMO_SIGN_WP := Vector2(200.0, 104.0)
 const DEMO_DOOR_WP := Vector2(136.0, 104.0)
 const DEMO_PLOTS: Array[Vector2i] = [
+	Vector2i(14, 10),
 	Vector2i(15, 10),
 	Vector2i(16, 10),
 	Vector2i(17, 10),
 	Vector2i(18, 10),
 	Vector2i(19, 10),
-	Vector2i(20, 10),
+	Vector2i(14, 12),
+	Vector2i(15, 12),
+	Vector2i(16, 12),
+	Vector2i(17, 12),
+	Vector2i(18, 12),
+	Vector2i(19, 12),
 ]
 
 @onready var ground_layer: TileMapLayer = $GroundLayer
@@ -65,11 +71,15 @@ var _animal_scene: PackedScene = null
 
 # tile Vector2i -> { "crop_id": String, "days_grown": int, "stage": int, "sprite": Sprite2D }
 var _crops: Dictionary = {}
+# tile Vector2i -> Sprite2D
+var _sprinklers: Dictionary = {}
 var _animals: Array[CharacterBody2D] = []
 
 var _mouse_active: bool = false
 var _cursor_fill: ColorRect = null
+var _extra_cursor_rects: Array[ColorRect] = []
 var _prompt_label: Label = null
+var _weather_fx: Node2D = null
 var _current_target_tile: Vector2i = Vector2i.ZERO
 var _target_in_reach: bool = true
 
@@ -80,7 +90,89 @@ var _demo_target_slot: int = -1
 var _demo_target_animal: CharacterBody2D = null
 var _demo_pause_timer: float = 0.0
 var _demo_stuck_timer: float = 0.0
+var _demo_stuck_strikes: int = 0
 var _demo_last_pos: Vector2 = Vector2.ZERO
+
+
+class WeatherFxNode extends Node2D:
+	var is_rainy: bool = false
+	var drops: Array[Dictionary] = []
+	var sparkles: Array[Vector2] = [
+		Vector2(484.0, 246.0),
+		Vector2(522.0, 266.0),
+		Vector2(496.0, 294.0),
+		Vector2(548.0, 278.0),
+	]
+	var smoke_puffs: Array[Dictionary] = []
+	var _time_acc: float = 0.0
+	var _smoke_timer: float = 0.0
+	var _rng := RandomNumberGenerator.new()
+
+	func _ready() -> void:
+		z_index = 22
+		_rng.seed = 13026
+		for i in range(60):
+			drops.append({
+				"pos": Vector2(_rng.randf_range(0.0, 640.0), _rng.randf_range(0.0, 384.0)),
+				"speed": _rng.randf_range(160.0, 230.0),
+				"len": _rng.randf_range(5.0, 9.0),
+			})
+
+	func _process(delta: float) -> void:
+		_time_acc += delta
+		if is_rainy:
+			for d in drops:
+				var p: Vector2 = d["pos"]
+				var spd: float = float(d["speed"])
+				p += Vector2(-0.25 * spd, spd) * delta
+				if p.y > 384.0 or p.x < -8.0:
+					p = Vector2(_rng.randf_range(0.0, 656.0), _rng.randf_range(-24.0, 0.0))
+				d["pos"] = p
+
+		_smoke_timer += delta
+		if _smoke_timer >= 0.65:
+			_smoke_timer = 0.0
+			smoke_puffs.append({
+				"pos": Vector2(135.0 + _rng.randf_range(-1.5, 1.5), 62.0),
+				"life": 0.0,
+				"max_life": 2.1,
+				"vx": _rng.randf_range(-3.0, 5.0),
+			})
+
+		for idx in range(smoke_puffs.size() - 1, -1, -1):
+			var puff: Dictionary = smoke_puffs[idx]
+			puff["life"] = float(puff["life"]) + delta
+			if float(puff["life"]) >= float(puff["max_life"]):
+				smoke_puffs.remove_at(idx)
+			else:
+				var pos: Vector2 = puff["pos"]
+				pos += Vector2(float(puff["vx"]), -10.5) * delta
+				puff["pos"] = pos
+		queue_redraw()
+
+	func _draw() -> void:
+		# Water sparkles on pond
+		for i in range(sparkles.size()):
+			var phase: float = sin(_time_acc * 3.2 + float(i) * 1.7)
+			if phase > 0.35:
+				var sp: Vector2 = sparkles[i]
+				var alpha: float = (phase - 0.35) * 1.15
+				draw_rect(Rect2(sp.x, sp.y, 2.0, 1.0), Color(0.88, 0.98, 1.0, alpha))
+
+		# Chimney smoke puffs
+		for puff in smoke_puffs:
+			var ratio: float = clampf(float(puff["life"]) / float(puff["max_life"]), 0.0, 1.0)
+			var alpha: float = (1.0 - ratio) * 0.42
+			var sz: float = lerpf(2.0, 5.0, ratio)
+			var p: Vector2 = puff["pos"]
+			draw_rect(Rect2(p.x - sz * 0.5, p.y - sz * 0.5, sz, sz), Color(0.95, 0.95, 0.96, alpha))
+
+		# Rain droplets
+		if is_rainy:
+			for d in drops:
+				var p: Vector2 = d["pos"]
+				var l: float = float(d["len"])
+				draw_line(p, p + Vector2(-0.25 * l, l), Color(0.72, 0.88, 1.0, 0.62), 1.0)
 
 
 func _ready() -> void:
@@ -96,6 +188,7 @@ func _ready() -> void:
 
 	_setup_cursor()
 	_setup_prompt_label()
+	_setup_weather_fx()
 	_build_farm_map()
 	_spawn_buildings_and_props()
 	_spawn_animals()
@@ -110,6 +203,10 @@ func _ready() -> void:
 			_game_state.day_advanced.connect(_on_day_advanced)
 		if _game_state.has_signal("day_changed"):
 			_game_state.day_changed.connect(_on_day_changed)
+		if _game_state.has_signal("weather_changed"):
+			_game_state.weather_changed.connect(_on_weather_changed)
+		if _game_state.has_signal("game_reset"):
+			_game_state.game_reset.connect(_on_game_reset)
 		if _game_state.has_method("register_world_provider"):
 			_game_state.call("register_world_provider", Callable(self, "export_world_state"))
 		if _game_state.has_method("consume_pending_world_save"):
@@ -117,6 +214,7 @@ func _ready() -> void:
 			if pending_save is Dictionary and not (pending_save as Dictionary).is_empty():
 				_restore_world_state(pending_save as Dictionary)
 
+	_sync_weather_fx()
 	_update_day_night_tint()
 
 
@@ -140,7 +238,9 @@ func _process(_delta: float) -> void:
 		player.set("can_move", not shop_open)
 
 	var manual_move: Vector2 = Input.get_vector("move_left", "move_right", "move_up", "move_down")
-	if manual_move.length_squared() > 0.01:
+	var touch_dir_val: Variant = player.get("touch_input_dir") if player != null else Vector2.ZERO
+	var touch_move: Vector2 = touch_dir_val if touch_dir_val is Vector2 else Vector2.ZERO
+	if manual_move.length_squared() > 0.01 or touch_move.length_squared() > 0.01:
 		_mouse_active = false
 		if demo_active:
 			set_demo_active(false)
@@ -161,6 +261,26 @@ func _physics_process(delta: float) -> void:
 		return
 	_mouse_active = false
 	_tick_demo_ai(delta)
+
+
+func set_touch_move_dir(dir: Vector2) -> void:
+	if player != null and player.has_method("set_touch_input_dir"):
+		player.call("set_touch_input_dir", dir)
+	if dir.length_squared() > 0.01 and demo_active:
+		set_demo_active(false)
+		_show_toast("Modo manual ativado")
+
+
+func trigger_touch_use() -> void:
+	if _is_shop_open() or player == null:
+		return
+	_handle_use_on_tile(_get_keyboard_target_tile())
+
+
+func trigger_touch_interact() -> void:
+	if _is_shop_open() or player == null:
+		return
+	_handle_interact()
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -277,6 +397,16 @@ func _setup_cursor() -> void:
 	_cursor_fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	tile_cursor.add_child(_cursor_fill)
 
+	for i in range(8):
+		var extra := ColorRect.new()
+		extra.size = Vector2(TILE_SIZE - 2, TILE_SIZE - 2)
+		extra.color = Color(1.0, 0.96, 0.55, 0.20)
+		extra.visible = false
+		extra.z_index = 9
+		extra.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(extra)
+		_extra_cursor_rects.append(extra)
+
 
 func _setup_prompt_label() -> void:
 	_prompt_label = Label.new()
@@ -288,6 +418,53 @@ func _setup_prompt_label() -> void:
 	_prompt_label.add_theme_color_override("font_outline_color", Color(0.12, 0.08, 0.05, 0.95))
 	_prompt_label.add_theme_constant_override("outline_size", 3)
 	add_child(_prompt_label)
+
+
+func _setup_weather_fx() -> void:
+	_weather_fx = WeatherFxNode.new()
+	_weather_fx.name = "WeatherFX"
+	add_child(_weather_fx)
+
+
+func _sync_weather_fx() -> void:
+	if _weather_fx == null or _game_state == null:
+		return
+	var is_rain: bool = str(_game_state.get("weather")) == "rainy"
+	_weather_fx.set("is_rainy", is_rain)
+
+
+func _on_weather_changed(_weather: String, _tomorrow: String) -> void:
+	_sync_weather_fx()
+	_update_day_night_tint()
+
+
+func _on_game_reset() -> void:
+	if demo_active:
+		set_demo_active(false)
+	soil_layer.clear()
+	for tile_var in _crops.keys():
+		var spr: Variant = _crops[tile_var].get("sprite")
+		if is_instance_valid(spr):
+			(spr as Node).queue_free()
+	_crops.clear()
+
+	for tile_var in _sprinklers.keys():
+		var spr_sp: Variant = _sprinklers[tile_var]
+		if is_instance_valid(spr_sp):
+			(spr_sp as Node).queue_free()
+	_sprinklers.clear()
+
+	for animal in _animals:
+		if is_instance_valid(animal) and animal.has_method("reset_daily"):
+			animal.call("reset_daily")
+
+	if player != null:
+		player.global_position = Vector2(136.0, 118.0)
+		if player.has_method("set_facing_toward"):
+			player.call("set_facing_toward", Vector2(136.0, 134.0))
+
+	_sync_weather_fx()
+	_update_day_night_tint()
 
 
 func _build_farm_map() -> void:
@@ -466,10 +643,11 @@ func _spawn_animals() -> void:
 	if _animal_scene == null:
 		return
 	var specs: Array[Dictionary] = [
-		{"type": "chicken", "pos": Vector2(476.0, 108.0)},
-		{"type": "chicken", "pos": Vector2(520.0, 124.0)},
-		{"type": "chicken", "pos": Vector2(496.0, 138.0)},
-		{"type": "cow", "pos": Vector2(544.0, 106.0)},
+		{"type": "chicken", "pos": Vector2(474.0, 106.0)},
+		{"type": "chicken", "pos": Vector2(514.0, 128.0)},
+		{"type": "cow", "pos": Vector2(546.0, 104.0)},
+		{"type": "sheep", "pos": Vector2(490.0, 134.0)},
+		{"type": "pig", "pos": Vector2(536.0, 138.0)},
 	]
 	for i in range(specs.size()):
 		var animal := _animal_scene.instantiate() as CharacterBody2D
@@ -514,6 +692,8 @@ func _handle_use_on_tile(target_tile: Vector2i) -> void:
 		_use_watering_can(target_tile)
 	elif slot_type == "seed":
 		_plant_seed(target_tile, str(slot.get("crop_id", "")))
+	elif slot_id == "sprinkler":
+		_place_sprinkler(target_tile)
 
 
 func _handle_interact() -> void:
@@ -549,9 +729,16 @@ func _handle_interact() -> void:
 		_interact_with_animal(nearby_animal)
 		return
 
-	# Check mature crop on target tile or player's current tile
 	var target_tile: Vector2i = _get_active_target_tile()
 	var player_tile: Vector2i = _world_to_tile(p_pos)
+
+	# Check sprinkler pickup
+	for check_tile in [target_tile, player_tile]:
+		if _sprinklers.has(check_tile):
+			_pickup_sprinkler(check_tile)
+			return
+
+	# Check crop on target tile or player's current tile
 	for check_tile in [target_tile, player_tile]:
 		if _crops.has(check_tile):
 			var crop_info: Dictionary = _crops[check_tile]
@@ -561,7 +748,9 @@ func _handle_interact() -> void:
 				var crop_def: Dictionary = _game_state.CROPS.get(crop_info["crop_id"], {})
 				var crop_name: String = str(crop_def.get("name", "Planta"))
 				var days_needed: int = int(crop_def.get("days_to_grow", 2))
-				_show_toast("%s: %d/%d dias" % [crop_name, int(crop_info["days_grown"]), days_needed])
+				var is_wet: bool = soil_layer.get_cell_source_id(check_tile) != -1 and soil_layer.get_cell_atlas_coords(check_tile) == TILE_SOIL_WET
+				var water_state: String = "Regada" if is_wet else "Precisa água"
+				_show_toast("%s: %d/%d dias (%s)" % [crop_name, int(crop_info["days_grown"]), days_needed, water_state])
 			return
 
 
@@ -580,14 +769,31 @@ func _interact_with_animal(animal: CharacterBody2D) -> void:
 		if not prod.is_empty():
 			if _game_state != null and _game_state.has_method("add_animal_product"):
 				_game_state.call("add_animal_product", prod, 1)
-			var float_lbl: String = "+1 Ovo" if prod == "egg" else "+1 Leite"
-			var toast_msg: String = "Coletou 1 Ovo fresco!" if prod == "egg" else "Ordenhou 1 Leite fresco!"
+			var float_lbl: String = "+1 Ovo"
+			var toast_msg: String = "Coletou 1 Ovo fresco!"
+			match prod:
+				"milk":
+					float_lbl = "+1 Leite"
+					toast_msg = "Ordenhou 1 Leite fresco!"
+				"wool":
+					float_lbl = "+1 Lã"
+					toast_msg = "Tosquiou 1 Lã macia!"
+				"truffle":
+					float_lbl = "+1 Trufa"
+					toast_msg = "Encontrou 1 Trufa rara!"
 			_spawn_floating_text(animal.global_position + Vector2(0.0, -14.0), float_lbl, Color(1.0, 0.96, 0.62))
 			_spawn_particles(animal.global_position + Vector2(0.0, -6.0), Color(1.0, 0.94, 0.72))
 			_show_toast(toast_msg)
 			return
 
-	var already_msg: String = "Galinha já botou ovo hoje!" if a_type == "chicken" else "Vaca já foi ordenhada hoje!"
+	var already_msg: String = "Galinha já botou ovo hoje!"
+	match a_type:
+		"cow":
+			already_msg = "Vaca já foi ordenhada hoje!"
+		"sheep":
+			already_msg = "Ovelha já foi tosquiada hoje!"
+		"pig":
+			already_msg = "Porco já encontrou trufa hoje!"
 	_show_toast(already_msg)
 	_spawn_floating_text(animal.global_position + Vector2(0.0, -14.0), "♥", Color(1.0, 0.45, 0.6))
 
@@ -618,43 +824,96 @@ func _find_animal_at_click(click_pos: Vector2) -> CharacterBody2D:
 	return best
 
 
+func _get_tool_area_tiles(center_tile: Vector2i, level: int) -> Array[Vector2i]:
+	var tiles: Array[Vector2i] = []
+	if level <= 1:
+		if center_tile.x >= 0 and center_tile.x < MAP_WIDTH and center_tile.y >= 0 and center_tile.y < MAP_HEIGHT:
+			tiles.append(center_tile)
+		return tiles
+
+	if level == 2:
+		var dir_val: Variant = player.get("facing_dir") if player != null else Vector2i(0, 1)
+		var facing: Vector2i = dir_val if dir_val is Vector2i else Vector2i(0, 1)
+		var offsets: Array[Vector2i] = []
+		if absi(facing.y) >= absi(facing.x):
+			offsets = [Vector2i(-1, 0), Vector2i(0, 0), Vector2i(1, 0)]
+		else:
+			offsets = [Vector2i(0, -1), Vector2i(0, 0), Vector2i(0, 1)]
+		for off in offsets:
+			var t: Vector2i = center_tile + off
+			if t.x >= 0 and t.x < MAP_WIDTH and t.y >= 0 and t.y < MAP_HEIGHT:
+				tiles.append(t)
+		return tiles
+
+	for dy in range(-1, 2):
+		for dx in range(-1, 2):
+			var t: Vector2i = center_tile + Vector2i(dx, dy)
+			if t.x >= 0 and t.x < MAP_WIDTH and t.y >= 0 and t.y < MAP_HEIGHT:
+				tiles.append(t)
+	return tiles
+
+
 func _use_hoe(target_tile: Vector2i) -> void:
-	if not ARABLE_RECT.has_point(target_tile):
-		_show_toast("Are apenas dentro do canteiro cercado!")
-		_play_sfx("play_error")
-		return
-	if obstacle_layer.get_cell_source_id(target_tile) != -1 or _crops.has(target_tile):
-		return
-	if soil_layer.get_cell_source_id(target_tile) != -1:
+	var hoe_lvl: int = maxi(1, int(_game_state.get("hoe_level")))
+	var candidate_tiles: Array[Vector2i] = _get_tool_area_tiles(target_tile, hoe_lvl)
+	var valid_tiles: Array[Vector2i] = []
+	for t in candidate_tiles:
+		if not ARABLE_RECT.has_point(t):
+			continue
+		if obstacle_layer.get_cell_source_id(t) != -1 or _crops.has(t) or _sprinklers.has(t):
+			continue
+		if soil_layer.get_cell_source_id(t) != -1:
+			continue
+		valid_tiles.append(t)
+
+	if valid_tiles.is_empty():
+		if not ARABLE_RECT.has_point(target_tile):
+			_show_toast("Are apenas dentro do canteiro cercado!")
+			_play_sfx("play_error")
 		return
 
-	if not bool(_game_state.call("consume_stamina", 2)):
+	var cost: int = 2 if valid_tiles.size() == 1 else (3 if valid_tiles.size() <= 3 else 4)
+	if not bool(_game_state.call("consume_stamina", cost)):
 		return
 
-	soil_layer.set_cell(target_tile, 0, TILE_SOIL_DRY)
+	var is_rain: bool = str(_game_state.get("weather")) == "rainy"
+	var soil_coord: Vector2i = TILE_SOIL_WET if is_rain else TILE_SOIL_DRY
+	for t in valid_tiles:
+		soil_layer.set_cell(t, 0, soil_coord)
+		_spawn_particles(_tile_center(t), Color(0.58, 0.38, 0.22))
 	_play_sfx("play_hoe")
-	_spawn_particles(_tile_center(target_tile), Color(0.58, 0.38, 0.22))
 
 
 func _use_watering_can(target_tile: Vector2i) -> void:
-	var is_soil: bool = soil_layer.get_cell_source_id(target_tile) != -1
+	var can_lvl: int = maxi(1, int(_game_state.get("can_level")))
+	var is_soil_center: bool = soil_layer.get_cell_source_id(target_tile) != -1
 	var is_water_target: bool = (
 		target_tile == WELL_TILE
 		or (ground_layer.get_cell_source_id(target_tile) != -1 and ground_layer.get_cell_atlas_coords(target_tile) == TILE_WATER)
 	)
-	if is_water_target or (not is_soil and _is_near_water_source(player.global_position, target_tile)):
+	if is_water_target or (not is_soil_center and _is_near_water_source(player.global_position, target_tile)):
 		_refill_watering_can()
 		return
 
-	if not is_soil:
+	var candidate_tiles: Array[Vector2i] = _get_tool_area_tiles(target_tile, can_lvl)
+	var dry_tiles: Array[Vector2i] = []
+	var has_any_soil: bool = is_soil_center
+	for t in candidate_tiles:
+		if soil_layer.get_cell_source_id(t) != -1:
+			has_any_soil = true
+			if soil_layer.get_cell_atlas_coords(t) == TILE_SOIL_DRY:
+				dry_tiles.append(t)
+
+	if not has_any_soil:
 		_show_toast("Use o regador em terra arada!")
 		_play_sfx("play_error")
 		return
 
-	if soil_layer.get_cell_atlas_coords(target_tile) == TILE_SOIL_WET:
+	if dry_tiles.is_empty():
 		return
 
-	if int(_game_state.get("water_level")) <= 0:
+	var water_avail: int = int(_game_state.get("water_level"))
+	if water_avail <= 0:
 		_show_toast("Regador vazio! Encha no poço ou lago.")
 		_play_sfx("play_error")
 		return
@@ -662,14 +921,21 @@ func _use_watering_can(target_tile: Vector2i) -> void:
 	if not bool(_game_state.call("consume_stamina", 1)):
 		return
 
-	if bool(_game_state.call("use_water", 1)):
-		soil_layer.set_cell(target_tile, 0, TILE_SOIL_WET)
+	var to_water: int = mini(dry_tiles.size(), water_avail)
+	if bool(_game_state.call("use_water", to_water)):
+		for i in range(to_water):
+			var t: Vector2i = dry_tiles[i]
+			soil_layer.set_cell(t, 0, TILE_SOIL_WET)
+			_spawn_particles(_tile_center(t), Color(0.35, 0.72, 1.0))
 		_play_sfx("play_water")
-		_spawn_particles(_tile_center(target_tile), Color(0.35, 0.72, 1.0))
 
 
 func _plant_seed(target_tile: Vector2i, crop_id: String) -> void:
 	if crop_id.is_empty():
+		return
+	if _sprinklers.has(target_tile):
+		_show_toast("Há um aspersor neste canteiro!")
+		_play_sfx("play_error")
 		return
 	if soil_layer.get_cell_source_id(target_tile) == -1:
 		_show_toast("Are a terra com a enxada antes de plantar!")
@@ -701,6 +967,73 @@ func _plant_seed(target_tile: Vector2i, crop_id: String) -> void:
 	_play_sfx("play_plant")
 
 
+func _place_sprinkler(target_tile: Vector2i) -> void:
+	if not ARABLE_RECT.has_point(target_tile):
+		_show_toast("Instale o aspersor dentro do canteiro!")
+		_play_sfx("play_error")
+		return
+	if obstacle_layer.get_cell_source_id(target_tile) != -1 or _crops.has(target_tile) or _sprinklers.has(target_tile):
+		_show_toast("Espaço ocupado neste canteiro!")
+		_play_sfx("play_error")
+		return
+	if int(_game_state.get("sprinklers_owned")) <= 0:
+		_show_toast("Sem aspersores! Compre na Loja (B -> Upgrades).")
+		_play_sfx("play_error")
+		return
+
+	if not bool(_game_state.call("consume_sprinkler_item")):
+		return
+
+	var spr: Sprite2D = _create_sprinkler_sprite(target_tile, true)
+	_sprinklers[target_tile] = spr
+	_water_sprinkler_area(target_tile)
+	_play_sfx("play_water")
+	_spawn_floating_text(_tile_center(target_tile) + Vector2(0.0, -12.0), "Aspersor 3x3!", Color(0.55, 0.90, 1.0))
+	if _game_state.get("auto_save_enabled"):
+		_game_state.call("save_game", false)
+
+
+func _pickup_sprinkler(target_tile: Vector2i) -> void:
+	if not _sprinklers.has(target_tile):
+		return
+	var spr: Variant = _sprinklers[target_tile]
+	if is_instance_valid(spr):
+		(spr as Node).queue_free()
+	_sprinklers.erase(target_tile)
+	if _game_state != null and _game_state.has_method("add_sprinkler"):
+		_game_state.call("add_sprinkler", 1)
+	_play_sfx("play_click")
+	_spawn_floating_text(_tile_center(target_tile) + Vector2(0.0, -10.0), "+1 Aspersor", Color(0.75, 0.92, 1.0))
+
+
+func _create_sprinkler_sprite(tile: Vector2i, animate_pop: bool) -> Sprite2D:
+	var spr := Sprite2D.new()
+	if _props_texture != null:
+		var atlas := AtlasTexture.new()
+		atlas.atlas = _props_texture
+		atlas.region = Rect2(32, 48, 16, 16)
+		spr.texture = atlas
+	spr.position = Vector2(tile.x * TILE_SIZE + 8.0, tile.y * TILE_SIZE + 13.0)
+	spr.offset = Vector2(0.0, -5.0)
+	add_child(spr)
+	if animate_pop:
+		spr.scale = Vector2(0.55, 0.55)
+		var tw := create_tween()
+		tw.tween_property(spr, "scale", Vector2.ONE, 0.16).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	return spr
+
+
+func _water_sprinkler_area(center_tile: Vector2i) -> void:
+	for dy in range(-1, 2):
+		for dx in range(-1, 2):
+			if dx == 0 and dy == 0:
+				continue
+			var c: Vector2i = center_tile + Vector2i(dx, dy)
+			if soil_layer.get_cell_source_id(c) != -1 and soil_layer.get_cell_atlas_coords(c) == TILE_SOIL_DRY:
+				soil_layer.set_cell(c, 0, TILE_SOIL_WET)
+				_spawn_particles(_tile_center(c), Color(0.45, 0.80, 1.0))
+
+
 func _create_crop_sprite(crop_id: String, stage: int, tile: Vector2i, animate_pop: bool) -> Sprite2D:
 	var crop_def: Dictionary = _game_state.CROPS.get(crop_id, {})
 	var row: int = int(crop_def.get("row", 0))
@@ -709,7 +1042,7 @@ func _create_crop_sprite(crop_id: String, stage: int, tile: Vector2i, animate_po
 	if _crops_texture != null:
 		spr.texture = _crops_texture
 	spr.hframes = 5
-	spr.vframes = 3
+	spr.vframes = 6
 	spr.frame_coords = Vector2i(clampi(stage, 0, 4), row)
 	spr.position = Vector2(tile.x * TILE_SIZE + 8.0, tile.y * TILE_SIZE + 13.0)
 	spr.offset = Vector2(0.0, -5.0)
@@ -788,14 +1121,22 @@ func _on_day_advanced(_new_day: int) -> void:
 		if is_instance_valid(spr):
 			spr.frame_coords = Vector2i(stage, row)
 
+	var is_rain: bool = _game_state != null and str(_game_state.get("weather")) == "rainy"
 	for cell in soil_layer.get_used_cells():
-		if soil_layer.get_cell_atlas_coords(cell) == TILE_SOIL_WET:
+		if is_rain:
+			soil_layer.set_cell(cell, 0, TILE_SOIL_WET)
+		elif soil_layer.get_cell_atlas_coords(cell) == TILE_SOIL_WET:
 			soil_layer.set_cell(cell, 0, TILE_SOIL_DRY)
+
+	if not is_rain:
+		for sp_tile in _sprinklers.keys():
+			_water_sprinkler_area(sp_tile as Vector2i)
 
 	for animal in _animals:
 		if is_instance_valid(animal) and animal.has_method("reset_daily"):
 			animal.call("reset_daily")
 
+	_sync_weather_fx()
 	_update_day_night_tint()
 
 
@@ -824,6 +1165,11 @@ func export_world_state() -> Dictionary:
 			"days_grown": int(info.get("days_grown", 0)),
 		})
 
+	var sprinklers_arr: Array = []
+	for tile_var in _sprinklers.keys():
+		var tile: Vector2i = tile_var as Vector2i
+		sprinklers_arr.append([tile.x, tile.y])
+
 	var animals_collected: Array = []
 	for animal in _animals:
 		if is_instance_valid(animal):
@@ -835,6 +1181,7 @@ func export_world_state() -> Dictionary:
 		"tilled_dry": tilled_dry,
 		"tilled_wet": tilled_wet,
 		"crops": crops_arr,
+		"sprinklers": sprinklers_arr,
 		"animals_collected": animals_collected,
 	}
 
@@ -846,6 +1193,12 @@ func _restore_world_state(data: Dictionary) -> void:
 		if is_instance_valid(spr):
 			(spr as Node).queue_free()
 	_crops.clear()
+
+	for tile_var in _sprinklers.keys():
+		var sp_spr: Variant = _sprinklers[tile_var]
+		if is_instance_valid(sp_spr):
+			(sp_spr as Node).queue_free()
+	_sprinklers.clear()
 
 	var dry_list: Variant = data.get("tilled_dry", [])
 	if dry_list is Array:
@@ -883,6 +1236,14 @@ func _restore_world_state(data: Dictionary) -> void:
 				"sprite": spr,
 			}
 
+	var sprinkler_list: Variant = data.get("sprinklers", [])
+	if sprinkler_list is Array:
+		for pair in sprinkler_list:
+			if pair is Array and (pair as Array).size() >= 2:
+				var sp_tile := Vector2i(int(pair[0]), int(pair[1]))
+				if ARABLE_RECT.has_point(sp_tile) and not _crops.has(sp_tile):
+					_sprinklers[sp_tile] = _create_sprinkler_sprite(sp_tile, false)
+
 	var collected_list: Variant = data.get("animals_collected", [])
 	if collected_list is Array:
 		var arr := collected_list as Array
@@ -915,6 +1276,9 @@ func _update_day_night_tint() -> void:
 	else:
 		var t: float = clampf((mins - 1260.0) / 180.0, 0.0, 1.0)
 		color = Color(0.56, 0.58, 0.84).lerp(Color(0.42, 0.45, 0.72), t)
+
+	if str(_game_state.get("weather")) == "rainy":
+		color = color * Color(0.84, 0.90, 1.0)
 	day_night_modulate.color = color
 
 
@@ -923,6 +1287,8 @@ func _update_target_cursor(shop_open: bool) -> void:
 		return
 	if shop_open:
 		tile_cursor.visible = false
+		for extra in _extra_cursor_rects:
+			extra.visible = false
 		return
 
 	tile_cursor.visible = true
@@ -938,6 +1304,31 @@ func _update_target_cursor(shop_open: bool) -> void:
 		tile_cursor.default_color = Color(1.0, 0.42, 0.42, 0.55)
 		if _cursor_fill != null:
 			_cursor_fill.color = Color(1.0, 0.35, 0.35, 0.08)
+
+	# Multi-tile preview for upgraded Hoe / Watering Can
+	for extra in _extra_cursor_rects:
+		extra.visible = false
+	if _target_in_reach and _game_state != null:
+		var slot: Dictionary = _game_state.call("get_selected_slot")
+		var slot_id: String = str(slot.get("id", ""))
+		var area_lvl: int = 1
+		if slot_id == "hoe":
+			area_lvl = int(_game_state.get("hoe_level"))
+		elif slot_id == "watering_can":
+			area_lvl = int(_game_state.get("can_level"))
+		if area_lvl >= 2:
+			var area_tiles: Array[Vector2i] = _get_tool_area_tiles(_current_target_tile, area_lvl)
+			var idx: int = 0
+			for t in area_tiles:
+				if t == _current_target_tile or idx >= _extra_cursor_rects.size():
+					continue
+				if not ARABLE_RECT.has_point(t):
+					continue
+				var rect_box: ColorRect = _extra_cursor_rects[idx]
+				rect_box.global_position = Vector2(t.x * TILE_SIZE + 1, t.y * TILE_SIZE + 1)
+				rect_box.color = Color(0.45, 0.85, 1.0, 0.22) if slot_id == "watering_can" else Color(1.0, 0.92, 0.45, 0.20)
+				rect_box.visible = true
+				idx += 1
 
 
 func _update_prompt_label(shop_open: bool) -> void:
@@ -968,10 +1359,21 @@ func _update_prompt_label(shop_open: bool) -> void:
 	elif nearby_animal != null:
 		if nearby_animal.has_method("can_collect") and bool(nearby_animal.call("can_collect")):
 			var a_type: String = str(nearby_animal.get("animal_type"))
-			hint = "[F] Coletar Ovo" if a_type == "chicken" else "[F] Ordenhar Vaca"
+			match a_type:
+				"cow":
+					hint = "[F] Ordenhar Vaca"
+				"sheep":
+					hint = "[F] Tosquiar Lã"
+				"pig":
+					hint = "[F] Coletar Trufa"
+				_:
+					hint = "[F] Coletar Ovo"
 		else:
 			hint = "[F] Acariciar"
 		anchor = nearby_animal.global_position + Vector2(0.0, -24.0)
+	elif _sprinklers.has(_current_target_tile) and _target_in_reach:
+		hint = "[F] Recolher Aspersor"
+		anchor = _tile_center(_current_target_tile) + Vector2(0.0, -18.0)
 	elif _crops.has(_current_target_tile) and int(_crops[_current_target_tile]["stage"]) == 4 and _target_in_reach:
 		hint = "[E/F] Colher"
 		anchor = _tile_center(_current_target_tile) + Vector2(0.0, -18.0)
@@ -1124,6 +1526,7 @@ func _reset_demo_ai_state() -> void:
 	_demo_target_animal = null
 	_demo_pause_timer = 0.0
 	_demo_stuck_timer = 0.0
+	_demo_stuck_strikes = 0
 	_demo_last_pos = player.global_position if player != null else Vector2.ZERO
 
 
@@ -1154,14 +1557,25 @@ func _tick_demo_ai(delta: float) -> void:
 		var diff: Vector2 = wp - player.global_position
 		if diff.length() <= 4.5:
 			_demo_waypoints.remove_at(0)
+			_demo_stuck_strikes = 0
 		else:
 			player.set("external_input_dir", diff.normalized())
 			var moved: float = player.global_position.distance_to(_demo_last_pos)
 			if moved < 15.0 * delta:
 				_demo_stuck_timer += delta
-				if _demo_stuck_timer >= 1.2:
-					_reset_demo_ai_state()
-					_demo_pause_timer = 0.12
+				if _demo_stuck_timer >= 1.1:
+					_demo_stuck_strikes += 1
+					if _demo_stuck_strikes >= 2:
+						var nudge: Vector2 = Vector2(DEMO_GARDEN_CORRIDOR_WP.x, DEMO_CORRIDOR_Y) - player.global_position
+						if nudge.length_squared() > 1.0:
+							player.set("external_input_dir", nudge.normalized())
+						_demo_stuck_strikes = 0
+					_demo_waypoints.clear()
+					_demo_action = ""
+					_demo_target_slot = -1
+					_demo_target_animal = null
+					_demo_stuck_timer = 0.0
+					_demo_pause_timer = 0.14
 			else:
 				_demo_stuck_timer = 0.0
 			_demo_last_pos = player.global_position
@@ -1174,6 +1588,7 @@ func _tick_demo_ai(delta: float) -> void:
 	_demo_target_slot = -1
 	_demo_target_animal = null
 	_demo_stuck_timer = 0.0
+	_demo_stuck_strikes = 0
 	_demo_pause_timer = 0.22
 
 
@@ -1215,7 +1630,7 @@ func _plan_next_demo_task() -> void:
 		_demo_waypoints = _build_demo_path(p_pos, _garden_stand_pos(dry_crop_tile), "garden")
 		return
 
-	# 3. Collect Ovo / Leite from ready animals
+	# 3. Collect Ovo / Leite / Lã / Trufa from ready animals
 	var ready_animal := _find_closest_ready_animal(p_pos)
 	if ready_animal != null:
 		_demo_action = "animal"
@@ -1223,7 +1638,7 @@ func _plan_next_demo_task() -> void:
 		_demo_waypoints = _build_demo_path(p_pos, ready_animal.global_position, "pen")
 		return
 
-	# 4. Till & plant up to 6 starter plots in DEMO_PLOTS
+	# 4. Till & plant up to 12 starter plots in DEMO_PLOTS
 	if stamina >= 10:
 		if pending_hoe_tile.x >= 0:
 			_demo_action = "hoe"
@@ -1261,8 +1676,8 @@ func _plan_next_demo_task() -> void:
 		_demo_waypoints = _build_demo_path(p_pos, DEMO_BIN_WP, "outside")
 		return
 
-	# 6. Buy missing seeds at Shop Sign if money >= 35
-	if money >= 35 and _needs_any_seed(seeds_dict):
+	# 6. Buy missing seeds at Shop Sign if money >= 30
+	if money >= 30 and _needs_any_seed(seeds_dict):
 		_demo_action = "buy_seeds"
 		_demo_target_tile = SHOP_SIGN_TILE
 		_demo_waypoints = _build_demo_path(p_pos, DEMO_SIGN_WP, "outside")
@@ -1312,7 +1727,7 @@ func _execute_demo_action() -> void:
 
 func _demo_buy_needed_seeds() -> void:
 	var seeds_dict: Dictionary = _game_state.get("seeds")
-	for crop_id in ["strawberry", "carrot", "wheat"]:
+	for crop_id in ["corn", "tomato", "pumpkin", "strawberry", "carrot", "wheat"]:
 		while int(seeds_dict.get(crop_id, 0)) < 2:
 			var crop_def: Dictionary = _game_state.CROPS.get(crop_id, {})
 			var price: int = int(crop_def.get("seed_price", 10))
@@ -1324,7 +1739,7 @@ func _demo_buy_needed_seeds() -> void:
 
 
 func _needs_any_seed(seeds_dict: Dictionary) -> bool:
-	for crop_id in ["wheat", "carrot", "strawberry"]:
+	for crop_id in ["wheat", "carrot", "strawberry", "corn", "tomato", "pumpkin"]:
 		if int(seeds_dict.get(crop_id, 0)) < 2:
 			return true
 	return false
@@ -1373,7 +1788,7 @@ func _find_demo_plot_to_hoe(from_pos: Vector2, stamina: int) -> Vector2i:
 	var best := Vector2i(-1, -1)
 	var best_dist: float = INF
 	for t in DEMO_PLOTS:
-		if soil_layer.get_cell_source_id(t) == -1 and obstacle_layer.get_cell_source_id(t) == -1 and not _crops.has(t):
+		if soil_layer.get_cell_source_id(t) == -1 and obstacle_layer.get_cell_source_id(t) == -1 and not _crops.has(t) and not _sprinklers.has(t):
 			var d: float = from_pos.distance_to(_tile_center(t))
 			if d < best_dist:
 				best_dist = d
@@ -1386,13 +1801,16 @@ func _find_demo_plot_to_plant(from_pos: Vector2, seeds_dict: Dictionary) -> Dict
 		{"crop_id": "wheat", "slot": 2},
 		{"crop_id": "carrot", "slot": 3},
 		{"crop_id": "strawberry", "slot": 4},
+		{"crop_id": "corn", "slot": 5},
+		{"crop_id": "tomato", "slot": 6},
+		{"crop_id": "pumpkin", "slot": 7},
 	]
 	var best_tile := Vector2i(-1, -1)
 	var best_idx: int = -1
 	var best_dist: float = INF
 	for i in range(DEMO_PLOTS.size()):
 		var t: Vector2i = DEMO_PLOTS[i]
-		if soil_layer.get_cell_source_id(t) != -1 and not _crops.has(t):
+		if soil_layer.get_cell_source_id(t) != -1 and not _crops.has(t) and not _sprinklers.has(t):
 			var d: float = from_pos.distance_to(_tile_center(t))
 			if d < best_dist:
 				best_dist = d

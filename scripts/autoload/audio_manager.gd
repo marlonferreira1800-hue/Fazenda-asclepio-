@@ -3,23 +3,32 @@ extends Node
 ## Compatível com Desktop, Web HTML5 single-threaded e modo --headless sem assets externos.
 
 signal mute_changed(is_muted: bool)
+signal music_mute_changed(is_muted: bool)
 
 const SAMPLE_RATE: int = 22050
 const POOL_SIZE: int = 6
 
 var muted: bool = false
+var music_muted: bool = false
 
 var _streams: Dictionary = {}
 var _players: Array[AudioStreamPlayer] = []
 var _next_player_idx: int = 0
+var _bgm_player: AudioStreamPlayer = null
+var _bgm_stream: AudioStreamWAV = null
 
 
 func _ready() -> void:
 	_init_player_pool()
 	_synthesize_all_sfx()
+	_init_bgm()
 
 
 func _exit_tree() -> void:
+	if is_instance_valid(_bgm_player):
+		_bgm_player.stop()
+		_bgm_player.stream = null
+	_bgm_stream = null
 	for player in _players:
 		if is_instance_valid(player):
 			player.stop()
@@ -36,6 +45,30 @@ func _init_player_pool() -> void:
 		_players.append(player)
 
 
+func _init_bgm() -> void:
+	_bgm_stream = _make_cozy_bgm_loop()
+	_bgm_player = AudioStreamPlayer.new()
+	_bgm_player.name = "BGMPlayer"
+	_bgm_player.stream = _bgm_stream
+	_bgm_player.volume_db = -17.0
+	add_child(_bgm_player)
+	_sync_bgm_playback()
+
+
+func _sync_bgm_playback() -> void:
+	if _bgm_player == null or not is_instance_valid(_bgm_player) or _bgm_stream == null:
+		return
+	if DisplayServer.get_name() == "headless":
+		return
+	var should_play: bool = (not muted) and (not music_muted) and is_inside_tree()
+	if should_play:
+		if not _bgm_player.playing:
+			_bgm_player.play()
+	else:
+		if _bgm_player.playing:
+			_bgm_player.stop()
+
+
 func _synthesize_all_sfx() -> void:
 	_streams["hoe"] = _make_hoe_sfx()
 	_streams["water"] = _make_water_sfx()
@@ -47,6 +80,9 @@ func _synthesize_all_sfx() -> void:
 	_streams["sleep"] = _make_sleep_sfx()
 	_streams["chicken"] = _make_chicken_sfx()
 	_streams["cow"] = _make_cow_sfx()
+	_streams["sheep"] = _make_sheep_sfx()
+	_streams["pig"] = _make_pig_sfx()
+	_streams["upgrade"] = _make_upgrade_sfx()
 
 
 func toggle_mute() -> bool:
@@ -55,14 +91,48 @@ func toggle_mute() -> bool:
 		for player in _players:
 			if is_instance_valid(player):
 				player.stop()
+	_sync_bgm_playback()
 	mute_changed.emit(muted)
 	if not muted:
 		play_click()
 	return muted
 
 
+func set_muted(val: bool) -> void:
+	if muted == val:
+		return
+	muted = val
+	if muted:
+		for player in _players:
+			if is_instance_valid(player):
+				player.stop()
+	_sync_bgm_playback()
+	mute_changed.emit(muted)
+
+
+func toggle_music_mute() -> bool:
+	music_muted = not music_muted
+	_sync_bgm_playback()
+	music_mute_changed.emit(music_muted)
+	if not muted:
+		play_click()
+	return music_muted
+
+
+func set_music_muted(val: bool) -> void:
+	if music_muted == val:
+		return
+	music_muted = val
+	_sync_bgm_playback()
+	music_mute_changed.emit(music_muted)
+
+
 func is_muted() -> bool:
 	return muted
+
+
+func is_music_muted() -> bool:
+	return music_muted
 
 
 func play_hoe() -> void:
@@ -85,6 +155,10 @@ func play_coin() -> void:
 	_play_sfx("coin", -5.0)
 
 
+func play_upgrade() -> void:
+	_play_sfx("upgrade", -5.0)
+
+
 func play_error() -> void:
 	_play_sfx("error", -7.0)
 
@@ -98,10 +172,15 @@ func play_sleep() -> void:
 
 
 func play_animal(animal_type: String) -> void:
-	if animal_type == "cow":
-		_play_sfx("cow", -5.0)
-	else:
-		_play_sfx("chicken", -5.0)
+	match animal_type:
+		"cow":
+			_play_sfx("cow", -5.0)
+		"sheep":
+			_play_sfx("sheep", -5.5)
+		"pig":
+			_play_sfx("pig", -5.0)
+		_:
+			_play_sfx("chicken", -5.0)
 
 
 func _play_sfx(key: String, volume_db: float = -6.0) -> void:
@@ -331,3 +410,122 @@ func _make_cow_sfx() -> AudioStreamWAV:
 		var env: float = minf(1.0, t / 0.045) * minf(1.0, (duration - t) / 0.08)
 		samples[i] = smooth * env * 0.65
 	return _build_wav(samples)
+
+
+func _make_sheep_sfx() -> AudioStreamWAV:
+	var duration: float = 0.30
+	var count: int = int(duration * SAMPLE_RATE)
+	var samples := PackedFloat32Array()
+	samples.resize(count)
+	var phase: float = 0.0
+	for i in range(count):
+		var t: float = float(i) / float(SAMPLE_RATE)
+		var u: float = float(i) / float(count)
+		var vibrato: float = 1.0 + 0.14 * sin(t * 52.0)
+		var freq: float = lerpf(325.0, 265.0, u) * vibrato
+		phase += freq / float(SAMPLE_RATE)
+		var amp_mod: float = 0.82 + 0.18 * sin(t * 52.0)
+		var env: float = minf(1.0, t / 0.025) * minf(1.0, (duration - t) / 0.06)
+		samples[i] = (0.55 * _triangle(phase) + 0.45 * sin(TAU * phase)) * amp_mod * env * 0.55
+	return _build_wav(samples)
+
+
+func _make_pig_sfx() -> AudioStreamWAV:
+	var duration: float = 0.24
+	var count: int = int(duration * SAMPLE_RATE)
+	var samples := PackedFloat32Array()
+	samples.resize(count)
+	var phase: float = 0.0
+	for i in range(count):
+		var u: float = float(i) / float(count)
+		var active: bool = (u < 0.38) or (u > 0.52 and u < 0.94)
+		var local_u: float = (u / 0.38) if u < 0.38 else ((u - 0.52) / 0.42)
+		var freq: float = lerpf(160.0, 235.0, clampf(local_u, 0.0, 1.0))
+		phase += freq / float(SAMPLE_RATE)
+		if active:
+			var env: float = sin(PI * clampf(local_u, 0.0, 1.0))
+			var rough: float = 0.65 * _triangle(phase) + 0.35 * sin(TAU * phase * 2.0)
+			samples[i] = rough * env * 0.55
+		else:
+			samples[i] = 0.0
+	return _build_wav(samples)
+
+
+func _make_upgrade_sfx() -> AudioStreamWAV:
+	var notes: Array[float] = [523.25, 659.25, 783.99, 1046.50]
+	var note_samples: int = int(0.075 * SAMPLE_RATE)
+	var samples := PackedFloat32Array()
+	samples.resize(note_samples * notes.size())
+	var idx: int = 0
+	for n in notes:
+		for j in range(note_samples):
+			var t: float = float(j) / float(SAMPLE_RATE)
+			var u: float = float(j) / float(note_samples)
+			var env: float = minf(1.0, t / 0.006) * exp(-u * 2.6)
+			samples[idx] = (0.75 * sin(TAU * n * t) + 0.25 * _triangle(n * t)) * env * 0.62
+			idx += 1
+	return _build_wav(samples)
+
+
+func _add_bgm_note(
+	samples: PackedFloat32Array,
+	total_samples: int,
+	start_sec: float,
+	dur_sec: float,
+	freq: float,
+	amp: float,
+	decay: float
+) -> void:
+	var start_idx: int = int(round(start_sec * float(SAMPLE_RATE)))
+	var note_count: int = int(round(dur_sec * float(SAMPLE_RATE)))
+	for j in range(note_count):
+		var t: float = float(j) / float(SAMPLE_RATE)
+		var attack: float = minf(1.0, t / 0.018)
+		var release: float = minf(1.0, (dur_sec - t) / 0.035)
+		var env: float = attack * release * exp(-t * decay)
+		var val: float = (0.82 * sin(TAU * freq * t) + 0.18 * sin(TAU * freq * 2.0 * t)) * env * amp
+		var target_idx: int = (start_idx + j) % total_samples
+		samples[target_idx] = clampf(samples[target_idx] + val, -0.95, 0.95)
+
+
+func _make_cozy_bgm_loop() -> AudioStreamWAV:
+	# 16 tempos a 90 BPM = 10.6667s em loop contínuo (Fmaj7 -> G6 -> Em7 -> Am7)
+	var beat: float = 60.0 / 90.0
+	var loop_dur: float = 16.0 * beat
+	var total_samples: int = int(round(loop_dur * float(SAMPLE_RATE)))
+	var samples := PackedFloat32Array()
+	samples.resize(total_samples)
+
+	var chords: Array[Dictionary] = [
+		{"bass": 174.61, "arp": [349.23, 440.00, 523.25, 659.25]}, # Fmaj7
+		{"bass": 196.00, "arp": [392.00, 493.88, 587.33, 659.25]}, # G6
+		{"bass": 164.81, "arp": [329.63, 392.00, 493.88, 587.33]}, # Em7
+		{"bass": 220.00, "arp": [440.00, 523.25, 659.25, 783.99]}, # Am7
+	]
+	var melody_bars: Array[Array] = [
+		[[0.0, 659.25, 0.9], [1.5, 587.33, 0.7], [2.5, 523.25, 0.9]],
+		[[0.0, 587.33, 0.9], [1.5, 659.25, 0.7], [2.5, 493.88, 0.9]],
+		[[0.0, 493.88, 0.9], [1.5, 587.33, 0.7], [2.5, 440.00, 0.9]],
+		[[0.0, 523.25, 1.0], [1.5, 659.25, 0.7], [2.5, 783.99, 0.9]],
+	]
+
+	for bar_idx in range(4):
+		var bar_start: float = float(bar_idx) * 4.0 * beat
+		var chord: Dictionary = chords[bar_idx]
+		var bass_freq: float = float(chord["bass"])
+		var arp: Array = chord["arp"]
+		_add_bgm_note(samples, total_samples, bar_start, 3.85 * beat, bass_freq, 0.16, 0.55)
+		for step in range(4):
+			var arp_freq: float = float(arp[step % arp.size()])
+			_add_bgm_note(samples, total_samples, bar_start + float(step) * beat, 1.35 * beat, arp_freq, 0.10, 1.6)
+		for mel in melody_bars[bar_idx]:
+			var m_offset: float = float(mel[0]) * beat
+			var m_freq: float = float(mel[1])
+			var m_dur: float = float(mel[2]) * beat
+			_add_bgm_note(samples, total_samples, bar_start + m_offset, m_dur, m_freq, 0.13, 1.3)
+
+	var wav := _build_wav(samples)
+	wav.loop_mode = AudioStreamWAV.LOOP_FORWARD
+	wav.loop_begin = 0
+	wav.loop_end = total_samples
+	return wav

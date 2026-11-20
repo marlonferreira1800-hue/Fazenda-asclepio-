@@ -6,6 +6,7 @@ const ANIM_FPS: float = 8.0
 var facing_dir: Vector2i = Vector2i(0, 1)
 var can_move: bool = true
 var external_input_dir: Vector2 = Vector2.ZERO
+var touch_input_dir: Vector2 = Vector2.ZERO
 var world_bounds: Rect2 = Rect2(8.0, 12.0, 624.0, 364.0)
 
 @onready var sprite: Sprite2D = $Sprite2D
@@ -37,6 +38,10 @@ func _load_texture_safe(res_path: String) -> Texture2D:
 	return null
 
 
+func set_touch_input_dir(dir: Vector2) -> void:
+	touch_input_dir = dir
+
+
 func _physics_process(delta: float) -> void:
 	if not can_move:
 		velocity = Vector2.ZERO
@@ -45,7 +50,9 @@ func _physics_process(delta: float) -> void:
 
 	var manual_dir: Vector2 = Input.get_vector("move_left", "move_right", "move_up", "move_down")
 	var input_dir: Vector2 = manual_dir
-	if manual_dir.length_squared() <= 0.01 and external_input_dir.length_squared() > 0.0001:
+	if input_dir.length_squared() <= 0.01 and touch_input_dir.length_squared() > 0.01:
+		input_dir = touch_input_dir.normalized() if touch_input_dir.length_squared() > 1.0 else touch_input_dir
+	elif input_dir.length_squared() <= 0.01 and external_input_dir.length_squared() > 0.0001:
 		input_dir = external_input_dir.normalized() if external_input_dir.length_squared() > 1.0 else external_input_dir
 	velocity = input_dir * SPEED
 	move_and_slide()

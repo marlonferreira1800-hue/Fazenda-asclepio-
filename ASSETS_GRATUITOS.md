@@ -10,10 +10,10 @@ Este documento cataloga os melhores pacotes de **pixel art 100% gratuitos** dos 
 Todos os sprites em jogo já estão gerados em estética *cozy pastel* (inspirada em *Sprout Lands* e *Tiny Town*) pelo script determinístico `tools/generate_sprites.py`:
 
 - `assets/sprites/terrain_tileset.png` (`64x32 px`)
-- `assets/sprites/crops_sheet.png` (`80x48 px`)
+- `assets/sprites/crops_sheet.png` (`80x96 px`)
 - `assets/sprites/farmer_sheet.png` (`64x64 px`)
-- `assets/sprites/props_buildings.png` (`96x48 px`)
-- `assets/sprites/ui_icons.png` (`128x16 px` — inclui ícones de Ovo e Leite nas colunas 6 e 7)
+- `assets/sprites/props_buildings.png` (`96x64 px`)
+- `assets/sprites/ui_icons.png` (`256x16 px` — 16 ícones incluindo novas sementes, aspersor, lã, trufa e clima)
 
 Para regenerar todos os arquivos padrão a qualquer momento:
 ```bash
@@ -151,12 +151,15 @@ O Godot carrega os 5 arquivos abaixo diretamente por código usando dimensões e
 | `(2, 1)` | `x=32, y=16` | Cerca de madeira (16x16) | Transparente |
 | `(3, 1)` | `x=48, y=16` | Caixa de venda / Shipping bin (16x16) | Transparente |
 
-#### 2. `assets/sprites/crops_sheet.png` — **`80 x 48 px`** (grade `5 x 3` de células `16x16`, fundo transparente)
+#### 2. `assets/sprites/crops_sheet.png` — **`80 x 96 px`** (grade `5 x 6` de células `16x16`, fundo transparente)
 - **Colunas (estágios):** `0` (`x=0`) = Sementes, `1` (`x=16`) = Broto, `2` (`x=32`) = Crescendo, `3` (`x=48`) = Florindo, `4` (`x=64`) = Maduro.
 - **Linhas (culturas):**
   - Linha `0` (`y=0`): **Trigo** (`wheat`)
   - Linha `1` (`y=16`): **Cenoura** (`carrot`)
   - Linha `2` (`y=32`): **Morango** (`strawberry`)
+  - Linha `3` (`y=48`): **Milho** (`corn`)
+  - Linha `4` (`y=64`): **Tomate** (`tomato`)
+  - Linha `5` (`y=80`): **Abóbora** (`pumpkin`)
 
 #### 3. `assets/sprites/farmer_sheet.png` — **`64 x 64 px`** (grade `4 x 4` de quadros `16x16`, fundo transparente)
 - **Colunas `0..3`:** 4 quadros da animação de caminhada (`idle / passo 1 / idle / passo 2`).
@@ -166,7 +169,7 @@ O Godot carrega os 5 arquivos abaixo diretamente por código usando dimensões e
   - Linha `2` (`y=32`): Olhando para **Esquerda**
   - Linha `3` (`y=48`): Olhando para **Direita**
 
-#### 4. `assets/sprites/props_buildings.png` — **`96 x 48 px`** (fundo transparente)
+#### 4. `assets/sprites/props_buildings.png` — **`96 x 64 px`** (fundo transparente)
 | Elemento | `Rect2(x, y, w, h)` exato | Observação |
 | :--- | :--- | :--- |
 | Casinha da fazenda | `(0, 0, 32, 32)` | Ocupa 2x2 tiles |
@@ -177,16 +180,18 @@ O Godot carrega os 5 arquivos abaixo diretamente por código usando dimensões e
 | Placa da Loja | `(80, 16, 16, 16)` | 1x1 tile |
 | Galinha (2 quadros) | `(0, 32, 16, 16)` e `(16, 32, 16, 16)` | Animação 2 frames |
 | Vaca (2 quadros) | `(32, 32, 16, 16)` e `(48, 32, 16, 16)` | Animação 2 frames |
+| Ovelha (2 quadros) | `(64, 32, 16, 16)` e `(80, 32, 16, 16)` | Animação 2 frames |
+| Porco (2 quadros) | `(0, 48, 16, 16)` e `(16, 48, 16, 16)` | Animação 2 frames |
+| Aspersor Automático | `(32, 48, 16, 16)` | 1x1 tile |
 
-#### 5. `assets/sprites/ui_icons.png` — **`128 x 16 px`** (grade `8 x 1` de ícones `16x16`, fundo transparente)
-- `col 0` (`x=0`): **Enxada**
-- `col 1` (`x=16`): **Regador**
-- `col 2` (`x=32`): **Semente de Trigo**
-- `col 3` (`x=48`): **Semente de Cenoura**
-- `col 4` (`x=64`): **Semente de Morango**
-- `col 5` (`x=80`): **Moeda dourada**
-- `col 6` (`x=96`): **Ovo (`egg`)**
-- `col 7` (`x=112`): **Garrafa de Leite (`milk`)**
+#### 5. `assets/sprites/ui_icons.png` — **`256 x 16 px`** (grade `16 x 1` de ícones `16x16`, fundo transparente)
+- `col 0` (`x=0`): **Enxada** · `col 1` (`x=16`): **Regador**
+- `col 2..4` (`x=32..64`): **Sementes de Trigo, Cenoura e Morango**
+- `col 5` (`x=80`): **Moeda dourada** · `col 6` (`x=96`): **Ovo (`egg`)** · `col 7` (`x=112`): **Garrafa de Leite (`milk`)**
+- `col 8..10` (`x=128..160`): **Sementes de Milho, Tomate e Abóbora**
+- `col 11` (`x=176`): **Aspersor Automático**
+- `col 12` (`x=192`): **Lã (`wool`)** · `col 13` (`x=208`): **Trufa (`truffle`)**
+- `col 14` (`x=224`): **Sol** · `col 15` (`x=240`): **Chuva**
 
 ### 4.2 Importação Automática (`tools/import_pack.py`) para Sprout Lands e Kenney Tiny Town
 Depois de baixar pelo navegador o `.zip` de **Sprout Lands** (itch.io) ou **Kenney Tiny Town** (kenney.nl), você pode importar e remapear os sprites automaticamente sem precisar editar cada arquivo manualmente:
@@ -208,7 +213,7 @@ python tools/import_pack.py --pack kenney-tiny-town --source "C:\caminho\kenney_
 python tools/import_pack.py --restore
 ```
 
-> **Como funciona com segurança:** o script cria um backup automático em `assets/sprites_backup/` antes da primeira substituição, preserva os sprites originais para slots que não existam no pacote externo (por exemplo, a garrafa de leite ou 3ª cultura) e garante as dimensões exatas (`64x32`, `80x48`, `64x64`, `96x48` e `128x16`) em RGBA com interpolação *Nearest Neighbor*.
+> **Como funciona com segurança:** o script cria um backup automático em `assets/sprites_backup/` antes da primeira substituição, preserva os sprites originais para slots que não existam no pacote externo (por exemplo, novos animais ou culturas extras) e garante as dimensões exatas (`64x32`, `80x96`, `64x64`, `96x64` e `256x16`) em RGBA com interpolação *Nearest Neighbor*.
 
 ### 4.3 Passo a passo manual para qualquer outro pack gratuito
 1. **Baixe e extraia** o pacote escolhido em uma pasta temporária fora de `assets/sprites/`.
