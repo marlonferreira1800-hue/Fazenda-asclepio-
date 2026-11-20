@@ -1,10 +1,12 @@
 extends CharacterBody2D
 
-@export_enum("chicken", "cow") var animal_type: String = "chicken"
+@export_enum("chicken", "cow", "sheep") var animal_type: String = "chicken"
 @export var wander_bounds: Rect2 = Rect2(456.0, 88.0, 112.0, 64.0)
 @export var move_speed: float = 18.0
 
 var collected_today: bool = false
+var petted_today: bool = false
+var hearts: int = 0
 
 @onready var sprite: Sprite2D = $Sprite2D
 
@@ -34,7 +36,12 @@ func _ready() -> void:
 func setup(p_type: String, p_bounds: Rect2) -> void:
 	animal_type = p_type
 	wander_bounds = p_bounds
-	move_speed = 22.0 if p_type == "chicken" else 13.0
+	if p_type == "chicken":
+		move_speed = 22.0
+	elif p_type == "sheep":
+		move_speed = 16.0
+	else:
+		move_speed = 13.0
 	if is_node_ready():
 		_load_frames()
 		_update_indicator()
@@ -44,8 +51,26 @@ func can_collect() -> bool:
 	return not collected_today
 
 
+func can_pet() -> bool:
+	return not petted_today
+
+
+func get_hearts() -> int:
+	return hearts
+
+
+func pet() -> bool:
+	if petted_today:
+		return false
+	petted_today = true
+	hearts = mini(hearts + 1, 5)
+	_play_happy_hop()
+	return true
+
+
 func reset_daily() -> void:
 	collected_today = false
+	petted_today = false
 	_update_indicator()
 
 
@@ -55,16 +80,60 @@ func set_collected_today(value: bool) -> void:
 
 
 func collect_product() -> String:
+	var info := collect_product_info()
+	return str(info.get("id", ""))
+
+
+func collect_product_info() -> Dictionary:
 	if not can_collect():
-		return ""
+		return {}
 	collected_today = true
 	_update_indicator()
 	_play_happy_hop()
-	return "milk" if animal_type == "cow" else "egg"
+
+	var bonus_chance: float = clampf(float(hearts) * 0.14, 0.0, 0.70)
+	var prod_id: String = "egg"
+	var is_gold: bool = false
+
+	if animal_type == "cow":
+		prod_id = "milk"
+		is_gold = _rng.randf() < bonus_chance
+	elif animal_type == "sheep":
+		prod_id = "wool"
+		is_gold = _rng.randf() < bonus_chance
+	else:
+		if hearts >= 2 and _rng.randf() < bonus_chance:
+			prod_id = "blue_egg"
+			is_gold = hearts >= 4 and _rng.randf() < 0.35
+		else:
+			prod_id = "egg"
+			is_gold = hearts >= 3 and _rng.randf() < (bonus_chance * 0.6)
+
+	return {"id": prod_id, "gold": is_gold}
 
 
 func get_display_name() -> String:
-	return "Galinha" if animal_type == "chicken" else "Vaca"
+	if animal_type == "cow":
+		return "Vaca"
+	if animal_type == "sheep":
+		return "Ovelha"
+	return "Galinha"
+
+
+func export_state() -> Dictionary:
+	return {
+		"type": animal_type,
+		"collected_today": collected_today,
+		"petted_today": petted_today,
+		"hearts": hearts,
+	}
+
+
+func restore_state(data: Dictionary) -> void:
+	collected_today = bool(data.get("collected_today", false))
+	petted_today = bool(data.get("petted_today", false))
+	hearts = clampi(int(data.get("hearts", 0)), 0, 5)
+	_update_indicator()
 
 
 func _build_indicator() -> void:
@@ -95,11 +164,12 @@ func _update_indicator() -> void:
 		return
 	_indicator.visible = not collected_today
 	if _indicator_fill != null:
-		_indicator_fill.color = (
-			Color(0.84, 0.96, 1.0, 1.0)
-			if animal_type == "cow"
-			else Color(1.0, 0.92, 0.38, 1.0)
-		)
+		if animal_type == "cow":
+			_indicator_fill.color = Color(0.84, 0.96, 1.0, 1.0)
+		elif animal_type == "sheep":
+			_indicator_fill.color = Color(1.0, 0.98, 0.88, 1.0)
+		else:
+			_indicator_fill.color = Color(1.0, 0.92, 0.38, 1.0)
 
 
 func _play_happy_hop() -> void:
@@ -131,16 +201,21 @@ func _load_texture_safe(res_path: String) -> Texture2D:
 
 
 func _load_frames() -> void:
-	var tex: Texture2D = _load_texture_safe("res://assets/sprites/props_buildings.png")
 	_frames.clear()
-	if tex == null:
-		return
-
+	var tex: Texture2D
 	var regions: Array[Rect2]
-	if animal_type == "cow":
+	if animal_type == "sheep":
+		tex = _load_texture_safe("res://assets/sprites/v13_props_sheet.png")
+		regions = [Rect2(0, 0, 16, 16), Rect2(16, 0, 16, 16)]
+	elif animal_type == "cow":
+		tex = _load_texture_safe("res://assets/sprites/props_buildings.png")
 		regions = [Rect2(32, 32, 16, 16), Rect2(48, 32, 16, 16)]
 	else:
+		tex = _load_texture_safe("res://assets/sprites/props_buildings.png")
 		regions = [Rect2(0, 32, 16, 16), Rect2(16, 32, 16, 16)]
+
+	if tex == null:
+		return
 
 	for r in regions:
 		var atlas := AtlasTexture.new()
@@ -205,7 +280,7 @@ func _clamp_to_bounds() -> void:
 func _update_anim(delta: float) -> void:
 	if _frames.size() < 2:
 		return
-	var interval: float = (0.20 if animal_type == "chicken" else 0.30) if _is_walking else 0.95
+	var interval: float = (0.20 if animal_type == "chicken" else 0.28) if _is_walking else 0.95
 	_anim_timer += delta
 	if _anim_timer >= interval:
 		_anim_timer = 0.0

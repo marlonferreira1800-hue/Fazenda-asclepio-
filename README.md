@@ -34,10 +34,11 @@ Jogo 2D pixel art estilo *cozy farming* desenvolvido para **Godot 4.7.2-stable**
 | Ação | Tecla / Entrada |
 | :--- | :--- |
 | Mover personagem | `W`, `A`, `S`, `D` ou `Setas Direcionais` |
-| Usar ferramenta / Plantar / Colher | `Espaço`, `E` ou `Clique do Mouse` no tile alvo |
-| Interagir (Animais, Caixa de Venda, Loja, Poço, Porta da Casa, Colheita) | `F` |
-| Selecionar slot da Hotbar (1 a 5) | `1`, `2`, `3`, `4`, `5` ou clique na Hotbar |
-| Abrir / Fechar Loja de Sementes | `B` |
+| Usar ferramenta / Plantar / Colher / Pescar | `Espaço`, `E` ou `Clique do Mouse` no tile alvo |
+| Interagir (Animais, Máquinas, Caixa de Venda, Loja, Encomendas, Poço, Porta) | `F` |
+| Selecionar slot da Hotbar (11 slots) | `1`–`9`, `0`, `-`, `Scroll do Mouse` ou clique na Hotbar |
+| Abrir / Fechar Loja da Fazenda (Sementes, Fazenda, Máquinas) | `B` |
+| Abrir / Fechar Diário da Fazenda (Pedidos, Álbum e Opções) | `J` |
 | Dormir / Avançar para o próximo dia | `N` (ou interagir com a porta da casinha) |
 | Ligar/Desligar Fazendeiro Automático (Demo IA) | `P` (ou botão **Auto (P)** na HUD) |
 | Ver Atualizações / Changelog e Versão atual | `V` (ou botão **v1.2.0 (V)** na HUD) |
@@ -48,52 +49,62 @@ Jogo 2D pixel art estilo *cozy farming* desenvolvido para **Godot 4.7.2-stable**
 
 ## Como Jogar (Ciclo da Fazenda)
 
-1. **Arar a terra:** Selecione a **Enxada** (`1`) e use (`Espaço`/`E`/clique) na área arável para preparar o solo.
-2. **Plantar:** Selecione uma semente (`3` Trigo, `4` Cenoura ou `5` Morango) e plante sobre a terra arada.
-3. **Regar:** Selecione o **Regador** (`2`) e molhe os canteiros plantados. Quando a água acabar, interaja perto do **lago** ou do **poço** para reabastecer.
-4. **Cuidar dos Animais (Ovo e Leite):** Entre no cercado pelo portão e interaja (`F` ou clique) perto das **galinhas** para coletar **Ovo** e perto da **vaca** para coletar **Leite** (uma coleta por animal por dia).
-5. **Avançar os dias:** O relógio começa às `06:00` e avança automaticamente até a meia-noite (`24:00`), ou você pode dormir a qualquer momento pressionando `N` (ou interagindo com a porta da casinha). Cultivos regados crescem ao virar o dia, a energia é restaurada e os animais voltam a produzir.
-6. **Colher e Vender:** Quando o cultivo atingir o estágio maduro, colha com `Espaço`/`E`/`F` e venda cultivos e produtos animais na **Caixa de Venda** (`F`) ou pelo botão **Vender Tudo** na Loja (`B`).
+1. **Arar e Fertilizar:** Selecione a **Enxada** (`1`) e use (`Espaço`/`E`/clique) na área arável. Opcionalmente aplique **Fertilizante** (`0`) para aumentar a chance de colheitas **Ouro ★ (`1.5x`)**.
+2. **Plantar:** Selecione uma semente (`4`–`9`) e plante sobre a terra arada. **Morango, Milho e Tomate** rebrotam após a colheita sem gastar nova semente!
+3. **Regar & Clima:** Selecione o **Regador** (`2`) ou instale **Aspersores** (`-`) para regar `3x3` automaticamente todo amanhecer. Em **dias de chuva**, toda a terra arada é regada pela natureza.
+4. **Pescar no Lago:** Selecione a **Vara de Pesca** (`3`) perto do lago e acerte a zona verde no minigame para pescar Tilápia, Camarão, Truta e Carpa Dourada.
+5. **Cuidar dos Animais & Carinho:** Entre no cercado pelo portão e interaja (`F` ou clique) com **galinhas**, **ovelhas** e **vacas** para coletar **Ovo/Ovo Azul**, **Lã** e **Leite** e aumentar corações de amizade (`♥ 0..5`), elevando a chance de variantes raras e qualidade Ouro.
+6. **Máquinas Artesanais & Encomendas:** Compre a **Queijeira**, **Forno de Pão** e **Apiário** na aba *Máquinas* da Loja (`B`) para transformar Leite/Trigo em **Queijo**, **Pão** e **Mel**, e entregue pedidos diários no **Quadro / Diário (`J`)** com bônus em moedas!
+7. **Melhorias & Álbum:** Evolua **Enxada e Regador** até `3x3` na Loja (`B`) e complete coleções no **Álbum (`J`)** para desbloquear bônus passivos permanentes.
 
 ---
 
-## Cultivos, Produtos Animais e Economia
+## Cultivos, Animais, Pesca e Artesanais
 
 ### Cultivos
 
-| Cultivo | Dias para Crescer (regado) | Preço da Semente | Preço de Venda |
-| :--- | :---: | :---: | :---: |
-| **Trigo** (`wheat`) | 2 dias | $10 | $25 |
-| **Cenoura** (`carrot`) | 3 dias | $20 | $55 |
-| **Morango** (`strawberry`) | 4 dias | $35 | $110 |
+| Cultivo | Dias (regado) | Rebrota | Semente | Venda |
+| :--- | :---: | :---: | :---: | :---: |
+| **Trigo** (`wheat`) | 2 dias | — | $10 | $25 |
+| **Cenoura** (`carrot`) | 3 dias | — | $20 | $55 |
+| **Morango** (`strawberry`) | 4 dias | 2 dias | $35 | $110 |
+| **Milho** (`corn`) | 4 dias | 2 dias | $40 | $65 |
+| **Tomate** (`tomato`) | 3 dias | 2 dias | $30 | $50 |
+| **Abóbora** (`pumpkin`) | 5 dias | — | $60 | $190 |
 
-### Produtos Animais
+### Produtos Animais, Pesca & Artesanais
 
-| Produto | Origem | Preço de Venda |
+| Produto | Origem | Venda Base |
 | :--- | :--- | :---: |
-| **Ovo** (`egg`) | Galinhas (1x por dia cada) | $30 |
-| **Leite** (`milk`) | Vaca (1x por dia) | $45 |
+| **Ovo** (`egg`) / **Ovo Azul** (`blue_egg`) | Galinhas (carinho libera Ovo Azul) | $30 / $55 |
+| **Leite** (`milk`) | Vacas (1x por dia) | $45 |
+| **Lã** (`wool`) | Ovelhas (1x por dia) | $60 |
+| **Tilápia** / **Camarão** / **Truta** / **Carpa Dourada** | Pesca no lago | $35 / $45 / $55 / $120 |
+| **Queijo** (`cheese`) | Queijeira (`1 Leite`) | $95 |
+| **Pão** (`bread`) | Forno de Pão (`2 Trigo`) | $80 |
+| **Mel** (`honey`) | Apiário (todo amanhecer) | $70 |
 
-- Recursos iniciais: **$100** moedas, **6** sementes de Trigo, **4** de Cenoura e **2** de Morango.
+- Recursos iniciais: **$100** moedas, **6** Trigo, **4** Cenoura, **2** Morango e **2** Fertilizantes.
 
 ---
 
 ## Áudio Procedural e Save/Load
 
-- **Efeitos Sonoros (`AudioManager`):** Todos os sons (enxada, água, plantio, colheita, moedas, erro, clique, descanso e animais) são sintetizados proceduralmente em memória via `AudioStreamWAV` (PCM 16-bit mono 22050Hz), funcionando offline tanto no Desktop quanto no export Web HTML5 sem depender de arquivos externos. Você pode silenciar/reativar o som pelo botão **Som** na HUD.
-- **Persistência (`user://savegame.json`):** O progresso (moedas, dia, horário, energia, água, inventário de sementes/colheitas/ovos/leite, solo arado/molhado, cultivos em crescimento e coleta diária dos animais) é salvo **automaticamente** ao avançar o dia, comprar sementes ou vender na cesta, e também **manualmente** pelo botão **Salvar** na HUD. Ao reabrir o jogo, o estado salvo é carregado automaticamente.
+- **Efeitos Sonoros (`AudioManager`):** Todos os sons (enxada, água, plantio, colheita, moedas, erro, clique, descanso, pesca, máquinas, pedidos e animais) são sintetizados proceduralmente em memória via `AudioStreamWAV` (PCM 16-bit mono 22050Hz), funcionando offline tanto no Desktop quanto no export Web HTML5 sem depender de arquivos externos. Você pode silenciar/reativar o som pelo botão **Som** na HUD.
+- **Persistência (`user://savegame.json`):** O progresso completo (incluindo clima, upgrades, fertilizante, aspersores, máquinas, encomendas, corações dos animais e Álbum) é salvo **automaticamente** ao avançar o dia, comprar na loja, entregar pedidos ou vender na cesta, mantendo retrocompatibilidade com saves da `v1.2.0`.
 
 ---
 
 ## Estrutura Principal do Projeto
 
-- `project.godot` — Configurações de entrada, viewport (`640x360` -> janela `1280x720`), filtro pixel art, versão (`1.2.0`) e Autoloads (`GameState`, `AudioManager`).
-- `scripts/data/crop_data.gd` — Definições e recurso `CropData` dos cultivos.
-- `scripts/data/version_data.gd` — Versão atual (`v1.2.0`), histórico de versões (`v1.0.0`, `v1.1.0`, `v1.2.0`), autoria e URLs de Releases/Issues.
-- `scripts/autoload/game_state.gd` — Estado global (`GameState`), inventário, economia, energia, regador, save/load JSON, sinais e relógio diário.
-- `scripts/autoload/audio_manager.gd` — Sintetizador procedural de efeitos sonoros (`AudioManager`) com pool de `AudioStreamPlayer` e controle de mudo.
-- `scripts/world/` e `scenes/` — Mundo da fazenda, jogador, animais e interface/HUD.
-- `assets/sprites/` — Spritesheets 16x16 de terreno, cultivos, personagens, construções e ícones (`ui_icons.png` 128x16).
+- `project.godot` — Configurações de entrada, viewport (`640x360` -> janela `1280x720`), filtro pixel art e Autoloads (`GameState`, `AudioManager`).
+- `scripts/data/crop_data.gd` — Definições e recurso `CropData` dos 6 cultivos (com suporte a rebrota e sheet extra).
+- `scripts/data/farm_catalog.gd` — Catálogo `FarmCatalog` de peixes, produtos animais, máquinas artesanais, upgrades de ferramentas, suprimentos e metas do Álbum.
+- `scripts/data/version_data.gd` — Histórico de versões, autoria e URLs de Releases/Issues.
+- `scripts/autoload/game_state.gd` — Estado global (`GameState`), inventário, clima, economia, máquinas, encomendas, Álbum e save/load JSON.
+- `scripts/autoload/audio_manager.gd` — Sintetizador procedural de efeitos sonoros (`AudioManager`).
+- `scripts/world/` e `scenes/` — Mundo da fazenda, clima, pesca, máquinas, jogador, animais (com carinho/corações) e interface/HUD.
+- `assets/sprites/` — Spritesheets 16x16 originais + sheets modulares adicionais (`crops_extra_sheet.png`, `v13_props_sheet.png`, `v13_icons.png`).
 - `tools/import_pack.py` — Ferramenta CLI para importar pacotes externos (como *Sprout Lands* ou *Kenney Tiny Town*) para `assets/sprites/` com backup automático em `assets/sprites_backup/`.
 - `tools/auto_release_bot.py` e `Robozinho_Release.bat` — Robô automatizador de auditoria das 5 Barreiras e publicação de Releases (`Antes vs. Depois`).
 - `RELEASE_RULES.md` — Critérios obrigatórios verificados pelo robô antes de subir qualquer nova versão.
