@@ -32,6 +32,20 @@ uso livre em projetos pessoais e comerciais, permissão total de modificação):
    - Arquivo direto: https://opengameart.org/sites/default/files/Farming%20Stuff.zip
    - Licença declarada na página: CC0 (https://creativecommons.org/publicdomain/zero/1.0/)
 
+5. oga_roguelike_indoor_cc0/
+   - Título: Roguelike Indoor pack
+   - Autor: Kenney Vleugels (www.kenney.nl) / OpenGameArt
+   - Página: https://opengameart.org/content/roguelike-indoor-pack
+   - Arquivo direto: https://opengameart.org/sites/default/files/Roguelike%20Indoor%20pack.zip
+   - Licença declarada na página: CC0 (https://creativecommons.org/publicdomain/zero/1.0/)
+
+6. oga_zelda_like_indoor_cc0/
+   - Título: Zelda-like tilesets and sprites
+   - Autor: ArMM1998 (OpenGameArt)
+   - Página: https://opengameart.org/content/zelda-like-tilesets-and-sprites
+   - Arquivo direto: https://opengameart.org/sites/default/files/gfx_3.zip
+   - Licença declarada na página: CC0 (https://creativecommons.org/publicdomain/zero/1.0/)
+
 Texto resumido CC0 1.0 Universal:
 To the extent possible under law, the authors have waived all copyright and
 related or neighboring rights to these works. You can copy, modify, distribute

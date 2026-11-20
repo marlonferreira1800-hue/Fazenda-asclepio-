@@ -9,6 +9,51 @@ Todas as alterações relevantes do projeto **Fazendinha 2D** estão documentada
 
 ---
 
+## [v1.6.0] — 2026-11-20
+
+**Sistema das 4 Estações do Ano, Nabo de Inverno, Paletas & Partículas Sazonais**
+- **Release:** [v1.6.0](https://github.com/marlonferreira1800-hue/Fazenda-asclepio-/releases/tag/v1.6.0)
+- **Contribuidor:** [@marlonferreira1800-hue](https://github.com/marlonferreira1800-hue)
+
+### 🔄 Antes vs. Depois
+- **Antes:** Calendário sem estações do ano (apenas Dia 1, 2, 3...), visual fixo de primavera/verão, sem cultivo de inverno e sem bônus sazonal na loja ou colheitas.
+- **Depois:** Ciclo completo das 4 Estações (Primavera, Verão, Outono e Inverno com 28 dias cada), paletas e partículas sazonais, Nabo de Inverno (tecla `=`), Modo Cozy (`+35%` e `-1 dia` na estação ideal) e `+20%` em animais/artesanais no Inverno.
+
+### Bugs Resolvidos e Melhorias
+- **PR [#11](https://github.com/marlonferreira1800-hue/Fazenda-asclepio-/pull/11):** Calendário `SeasonData` (28 dias por estação, 112 por ano), 11 spritesheets sazonais em `assets/sprites/seasons/`, partículas climáticas (`CPUParticles2D` + neve no `WeatherFX`), cultivo de Inverno **Nabo (`turnip`)**, badge e banner de estação na HUD com carrilhão procedural e destaque sazonal na Loja (`B`).
+
+---
+
+## [v1.5.1] — 2026-11-20
+
+**Corrigir cache do navegador no GitHub Pages (cache-busting do index.pck)**
+- **Release:** [v1.5.1](https://github.com/marlonferreira1800-hue/Fazenda-asclepio-/releases/tag/v1.5.1)
+- **Contribuidor:** [@marlonferreira1800-hue](https://github.com/marlonferreira1800-hue)
+
+### 🔄 Antes vs. Depois
+- **Antes:** O navegador reutilizava index.js e index.pck antigos em cache do GitHub Pages, mantendo a versão anterior ao abrir a URL.
+- **Depois:** Adicionado cache-busting automático (?v=1.5.1) no carregamento de index.js e no fetch de index.pck/index.wasm para forçar o download imediato da versão nova.
+
+### Bugs Resolvidos e Melhorias
+- **Issue [#13](https://github.com/marlonferreira1800-hue/Fazenda-asclepio-/issues/13):** Cache-busting automático em build/web/index.html e build/web/index.js durante a exportação Web no auto_release_bot.py
+
+---
+
+## [v1.5.0] — 2026-11-20
+
+**Acesso ao interior da casa e móveis interativos CC0**
+- **Release:** [v1.5.0](https://github.com/marlonferreira1800-hue/Fazenda-asclepio-/releases/tag/v1.5.0)
+- **Contribuidor:** [@marlonferreira1800-hue](https://github.com/marlonferreira1800-hue)
+
+### 🔄 Antes vs. Depois
+- **Antes:** A casinha da fazenda funcionava apenas pelo lado de fora (sem cena interna, sem transição de porta e sem móveis interativos no interior).
+- **Depois:** Adicionado acesso completo ao interior da casa (18x12 tiles) via porta com fade, spritesheet CC0 house_interior.png (256x160) e 8 interações internas (cama, fogão com chá +20 energia, lareira animada, estante com guia, escrivaninha/diário para salvar, baú, mesa posta e capacho de saída).
+
+### Bugs Resolvidos e Melhorias
+- **Issue [#12](https://github.com/marlonferreira1800-hue/Fazenda-asclepio-/issues/12):** Cena scenes/house_interior.tscn e script scripts/world/house_interior.gd com lareira animada e iluminação quente;Spritesheet assets/sprites/house_interior.png (256x160 RGBA) com pacotes CC0 (Kenney Roguelike Indoor, Zelda-like indoor e 16x16 Food);Transição de entrada/saída na porta, persistência de localização no save e suporte ao modo Demo IA (P)
+
+---
+
 ## [v1.4.0] — 2026-11-20
 
 **Pesca no Lago, Máquinas Artesanais, Rebrota, Fertilizante Ouro, Encomendas & Álbum**

@@ -10,7 +10,7 @@ const CropDataScript := preload("res://scripts/data/crop_data.gd")
 const FarmCatalogScript := preload("res://scripts/data/farm_catalog.gd")
 const SeasonDataScript := preload("res://scripts/data/season_data.gd")
 
-const FALLBACK_VERSION := "v1.4.0"
+const FALLBACK_VERSION := "v1.6.0"
 const FALLBACK_AUTHOR := "@marlonferreira1800-hue (Marlon Ferreira)"
 const FALLBACK_RELEASES_URL := "https://github.com/marlonferreira1800-hue/Fazenda-asclepio-/releases"
 const FALLBACK_ISSUES_URL := "https://github.com/marlonferreira1800-hue/Fazenda-asclepio-/issues"

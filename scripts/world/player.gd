@@ -83,18 +83,29 @@ func set_facing_toward(world_pos: Vector2) -> void:
 
 
 func set_camera_limits(bounds: Rect2i) -> void:
-	if camera == null:
-		return
-	camera.limit_left = bounds.position.x
-	camera.limit_top = bounds.position.y
-	camera.limit_right = bounds.end.x
-	camera.limit_bottom = bounds.end.y
-	world_bounds = Rect2(
+	var walk_rect := Rect2(
 		float(bounds.position.x) + 8.0,
 		float(bounds.position.y) + 12.0,
 		float(bounds.size.x) - 16.0,
 		float(bounds.size.y) - 20.0
 	)
+	set_camera_and_walk_bounds(bounds, walk_rect)
+
+
+func set_camera_and_walk_bounds(cam_bounds: Rect2i, walk_rect: Rect2) -> void:
+	world_bounds = walk_rect
+	if camera == null:
+		return
+	camera.limit_left = cam_bounds.position.x
+	camera.limit_top = cam_bounds.position.y
+	camera.limit_right = cam_bounds.end.x
+	camera.limit_bottom = cam_bounds.end.y
+
+
+func snap_camera() -> void:
+	if camera != null:
+		camera.reset_smoothing()
+		camera.force_update_scroll()
 
 
 func _update_animation(delta: float, input_dir: Vector2) -> void:

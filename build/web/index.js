@@ -142,7 +142,7 @@ const Preloader = /** @constructor */ function () { // eslint-disable-line no-un
 			loaded: 0,
 			done: false,
 		};
-		return fetch(file).then(function (response) {
+		return fetch(file+((file.endsWith('.pck')||file.endsWith('.wasm'))?'?v=v1.6.0' :'')).then(function (response) {
 			if (!response.ok) {
 				return Promise.reject(new Error(`Failed loading file '${file}'`));
 			}

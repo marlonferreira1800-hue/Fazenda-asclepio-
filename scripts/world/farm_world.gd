@@ -25,7 +25,23 @@ const SHOP_SIGN_TILE := Vector2i(12, 5)
 const ORDER_BOARD_TILE := Vector2i(13, 5)
 const WELL_TILE := Vector2i(15, 5)
 const HOUSE_DOOR_POS := Vector2(128.0, 96.0)
+const HOUSE_EXIT_SPAWN_POS := Vector2(128.0, 102.0)
+const HOUSE_DOOR_TILES: Array[Vector2i] = [
+	Vector2i(7, 4),
+	Vector2i(8, 4),
+	Vector2i(7, 5),
+	Vector2i(8, 5),
+]
+const HOUSE_ORIGIN := Vector2(1200.0, 0.0)
 const ANIMAL_PEN_BOUNDS := Rect2(456.0, 88.0, 112.0, 64.0)
+
+const FARM_GUIDE_TIPS: Array[String] = [
+	"Guia Cap.1: Plante sementes na terra arada e regue todos os dias!",
+	"Guia Cap.2: Colha cultivos maduros e venda na Caixa de Venda ($).",
+	"Guia Cap.3: Galinhas, vacas, ovelhas e porcos produzem todos os dias.",
+	"Guia Cap.4: Tome um Chá no fogão (+20 Energia) e durma na Cama!",
+	"Guia Cap.5: Pressione P para assistir ao Fazendeiro Automático!",
+]
 
 const REACH_TILES: int = 2
 const ANIMAL_INTERACT_REACH: float = 28.0
@@ -80,6 +96,16 @@ var _season_particles: CPUParticles2D = null
 var _firefly_particles: CPUParticles2D = null
 var _current_season_id: String = "spring"
 var _animal_scene: PackedScene = null
+var _house_interior_scene: PackedScene = null
+var _house_interior: Node2D = null
+var _exterior_props: Array[Node] = []
+var _current_location: String = "farm"
+var _is_transitioning: bool = false
+var _transition_rect: ColorRect = null
+var _door_cooldown: float = 0.0
+var _tea_used_today: bool = false
+var _guide_tip_index: int = 0
+var _entered_house_once: bool = false
 var _rng := RandomNumberGenerator.new()
 
 # tile Vector2i -> { "crop_id": String, "days_grown": int, "stage": int, "sprite": Sprite2D }
@@ -228,6 +254,7 @@ func _ready() -> void:
 		if p_tex != null:
 			_seasonal_props_textures[s_id] = p_tex
 	_animal_scene = load("res://scenes/animal.tscn") as PackedScene
+	_house_interior_scene = load("res://scenes/house_interior.tscn") as PackedScene
 
 	var shared_tileset: TileSet = _build_tileset()
 	ground_layer.tile_set = shared_tileset
@@ -236,17 +263,24 @@ func _ready() -> void:
 
 	_setup_cursor()
 	_setup_prompt_label()
+<<<<<<< HEAD
 	_setup_season_particles()
+=======
+	_setup_transition_overlay()
+>>>>>>> origin/main
 	_setup_weather_fx()
 	_setup_fishing_minigame()
 	_build_farm_map()
 	_spawn_buildings_and_props()
 	_spawn_animals()
+	_setup_house_interior()
 
 	if player != null:
 		player.global_position = Vector2(136.0, 118.0)
 		if player.has_method("set_camera_limits"):
 			player.call("set_camera_limits", Rect2i(0, 0, MAP_WIDTH * TILE_SIZE, MAP_HEIGHT * TILE_SIZE))
+
+	_set_exterior_active(true)
 
 	if _game_state != null:
 		if _game_state.has_signal("day_advanced"):
@@ -299,12 +333,14 @@ func is_fishing_active() -> bool:
 
 
 func _process(delta: float) -> void:
+	_door_cooldown = maxf(0.0, _door_cooldown - delta)
+
 	if _fishing_active:
 		_tick_fishing_minigame(delta)
 
 	var shop_open: bool = _is_shop_open()
 	if player != null:
-		player.set("can_move", not shop_open and not _fishing_active)
+		player.set("can_move", not shop_open and not _fishing_active and not _is_transitioning)
 
 	var manual_move: Vector2 = Input.get_vector("move_left", "move_right", "move_up", "move_down")
 	var touch_dir_val: Variant = player.get("touch_input_dir") if player != null else Vector2.ZERO
@@ -318,13 +354,24 @@ func _process(delta: float) -> void:
 	if demo_active:
 		_mouse_active = false
 
+	if not shop_open and not _fishing_active and not _is_transitioning and not demo_active and _door_cooldown <= 0.0 and player != null:
+		var moving_up: bool = Input.is_action_pressed("move_up") or touch_move.y < -0.35
+		var moving_down: bool = Input.is_action_pressed("move_down") or touch_move.y > 0.35
+		if _current_location == "farm":
+			var p_pos: Vector2 = player.global_position
+			if moving_up and absf(p_pos.x - HOUSE_DOOR_POS.x) <= 9.5 and p_pos.y <= 99.0 and p_pos.y >= 88.0:
+				_enter_house()
+		elif _current_location == "house" and _house_interior != null:
+			if moving_down and bool(_house_interior.call("is_at_exit_threshold", player.global_position)):
+				_exit_house()
+
 	_update_target_cursor(shop_open or _fishing_active)
 	_update_prompt_label(shop_open or _fishing_active)
 	_update_day_night_tint()
 
 
 func _physics_process(delta: float) -> void:
-	if not demo_active or _is_shop_open() or _fishing_active or player == null:
+	if not demo_active or _is_shop_open() or _fishing_active or _is_transitioning or player == null:
 		if player != null:
 			player.set("external_input_dir", Vector2.ZERO)
 		return
@@ -341,19 +388,29 @@ func set_touch_move_dir(dir: Vector2) -> void:
 
 
 func trigger_touch_use() -> void:
+	if _is_transitioning:
+		return
 	if _fishing_active:
 		_resolve_fishing_attempt()
 		return
 	if _is_shop_open() or player == null:
 		return
+	if _current_location == "house":
+		_handle_house_interact(false)
+		return
 	_handle_use_on_tile(_get_keyboard_target_tile())
 
 
 func trigger_touch_interact() -> void:
+	if _is_transitioning:
+		return
 	if _fishing_active:
 		_end_fishing_minigame(false, true)
 		return
 	if _is_shop_open() or player == null:
+		return
+	if _current_location == "house":
+		_handle_house_interact(true)
 		return
 	_handle_interact()
 
@@ -377,6 +434,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion:
 		if not demo_active:
 			_mouse_active = true
+		return
+
+	if _is_transitioning:
 		return
 
 	var is_demo_key: bool = (
@@ -413,6 +473,21 @@ func _unhandled_input(event: InputEvent) -> void:
 		if _game_state != null:
 			_game_state.call("advance_day")
 		get_viewport().set_input_as_handled()
+		return
+
+	if _current_location == "house":
+		if event.is_action_pressed("action_interact"):
+			_handle_house_interact(true)
+			get_viewport().set_input_as_handled()
+			return
+		if event.is_action_pressed("action_use"):
+			_handle_house_interact(false)
+			get_viewport().set_input_as_handled()
+			return
+		if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+			_handle_house_click(get_global_mouse_position())
+			get_viewport().set_input_as_handled()
+			return
 		return
 
 	if event.is_action_pressed("action_interact"):
@@ -599,6 +674,8 @@ func _on_game_reset() -> void:
 		set_demo_active(false)
 	if _fishing_active:
 		_end_fishing_minigame(false, true)
+	_tea_used_today = false
+	_apply_location_state("farm", Vector2(136.0, 118.0), Vector2i(0, 1))
 	soil_layer.clear()
 	for tile_var in _crops.keys():
 		var spr: Variant = _crops[tile_var].get("sprite")
@@ -826,6 +903,7 @@ func _spawn_prop_sprite(
 	body.add_child(col)
 
 	add_child(body)
+	_exterior_props.append(body)
 	return body
 
 
@@ -946,6 +1024,9 @@ func _handle_use_on_tile(target_tile: Vector2i) -> void:
 		return
 
 	# 2. Direct click/use on interactable world objects
+	if target_tile in HOUSE_DOOR_TILES and player.global_position.distance_to(HOUSE_DOOR_POS) <= 34.0:
+		_enter_house()
+		return
 	if target_tile == SHIPPING_BIN_TILE:
 		_sell_at_shipping_bin()
 		return
@@ -991,9 +1072,9 @@ func _handle_interact() -> void:
 		_sell_at_shipping_bin()
 		return
 
-	# Check proximity to House Door
+	# Check proximity to House Door -> Enter House Interior
 	if p_pos.distance_to(HOUSE_DOOR_POS) <= 28.0:
-		_game_state.call("advance_day")
+		_enter_house()
 		return
 
 	# Check proximity to Shop Sign
@@ -1623,6 +1704,7 @@ func _refill_watering_can() -> void:
 
 
 func _on_day_advanced(_new_day: int) -> void:
+	_tea_used_today = false
 	for tile in _crops.keys():
 		if soil_layer.get_cell_source_id(tile) == -1:
 			continue
@@ -1707,6 +1789,10 @@ func export_world_state() -> Dictionary:
 		else:
 			animals_collected.append(false)
 
+	var p_pos := Vector2(136.0, 118.0)
+	if player != null:
+		p_pos = player.global_position
+
 	return {
 		"tilled_dry": tilled_dry,
 		"tilled_wet": tilled_wet,
@@ -1715,6 +1801,9 @@ func export_world_state() -> Dictionary:
 		"sprinklers": sprinklers_arr,
 		"animals": animals_arr,
 		"animals_collected": animals_collected,
+		"location": _current_location,
+		"player_pos": [p_pos.x, p_pos.y],
+		"tea_used_today": _tea_used_today,
 	}
 
 
@@ -1818,11 +1907,32 @@ func _restore_world_state(data: Dictionary) -> void:
 					else:
 						animal.set("collected_today", val)
 
+	_tea_used_today = bool(data.get("tea_used_today", false))
+	var saved_loc: String = str(data.get("location", "farm"))
+	var saved_pos_var: Variant = data.get("player_pos", [])
+	var target_pos := Vector2(136.0, 118.0)
+	if saved_pos_var is Array and (saved_pos_var as Array).size() >= 2:
+		target_pos = Vector2(float((saved_pos_var as Array)[0]), float((saved_pos_var as Array)[1]))
+	elif saved_loc == "house" and _house_interior != null:
+		target_pos = _house_interior.call("get_spawn_world_pos")
+
+	if saved_loc == "house" and _house_interior != null:
+		_apply_location_state("house", target_pos, Vector2i(0, -1))
+	else:
+		_apply_location_state("farm", target_pos, Vector2i(0, 1))
+
 
 func _update_day_night_tint() -> void:
 	if day_night_modulate == null or _game_state == null:
 		return
 	var mins: float = float(_game_state.get("time_minutes"))
+	if _current_location == "house":
+		if mins >= 1110.0:
+			var t_in: float = clampf((mins - 1110.0) / 300.0, 0.0, 1.0)
+			day_night_modulate.color = Color(1.0, 0.98, 0.94).lerp(Color(0.92, 0.85, 0.78), t_in)
+		else:
+			day_night_modulate.color = Color(1.0, 0.98, 0.94)
+		return
 	var color := Color.WHITE
 	if mins < 480.0:
 		var t: float = clampf((mins - 360.0) / 120.0, 0.0, 1.0)
@@ -1855,7 +1965,7 @@ func _update_day_night_tint() -> void:
 func _update_target_cursor(shop_open: bool) -> void:
 	if tile_cursor == null or player == null:
 		return
-	if shop_open:
+	if shop_open or _current_location == "house" or _is_transitioning:
 		tile_cursor.visible = false
 		for extra in _extra_cursor_rects:
 			extra.visible = false
@@ -1904,7 +2014,7 @@ func _update_target_cursor(shop_open: bool) -> void:
 func _update_prompt_label(shop_open: bool) -> void:
 	if _prompt_label == null or player == null:
 		return
-	if shop_open:
+	if shop_open or _is_transitioning:
 		_prompt_label.visible = false
 		return
 
@@ -1912,11 +2022,26 @@ func _update_prompt_label(shop_open: bool) -> void:
 	var hint: String = ""
 	var anchor: Vector2 = p_pos + Vector2(0.0, -24.0)
 
+	if _current_location == "house":
+		if _house_interior != null:
+			var near_obj: Dictionary = _house_interior.call("get_nearest_interactable", p_pos)
+			if not near_obj.is_empty():
+				hint = str(near_obj.get("prompt", ""))
+				anchor = near_obj.get("anchor", p_pos + Vector2(0.0, -20.0))
+		if hint.is_empty():
+			_prompt_label.visible = false
+		else:
+			_prompt_label.visible = true
+			_prompt_label.text = hint
+			_prompt_label.reset_size()
+			_prompt_label.global_position = anchor - Vector2(_prompt_label.size.x * 0.5, 0.0)
+		return
+
 	var nearby_animal: CharacterBody2D = _find_nearby_animal(p_pos, ANIMAL_INTERACT_REACH)
 	var nearby_machine: String = _find_nearby_machine(p_pos)
 
 	if p_pos.distance_to(HOUSE_DOOR_POS) <= 28.0:
-		hint = "[F] Dormir"
+		hint = "[F] Entrar na Casa"
 		anchor = HOUSE_DOOR_POS + Vector2(0.0, -24.0)
 	elif p_pos.distance_to(_tile_center(SHIPPING_BIN_TILE)) <= 28.0:
 		hint = "[F] Vender"
@@ -2058,7 +2183,7 @@ func _spawn_floating_text(world_pos: Vector2, text: String, color: Color) -> voi
 
 func _spawn_particles(world_pos: Vector2, color: Color) -> void:
 	var p := CPUParticles2D.new()
-	p.position = world_pos
+	p.global_position = world_pos
 	p.z_index = 15
 	p.emitting = true
 	p.one_shot = true
@@ -2075,6 +2200,271 @@ func _spawn_particles(world_pos: Vector2, color: Color) -> void:
 	p.color = color
 	add_child(p)
 	get_tree().create_timer(0.5).timeout.connect(p.queue_free)
+
+
+# --- Casa do Personagem (Entrada, Saída e Interações no Interior) ---
+
+func is_inside_house() -> bool:
+	return _current_location == "house"
+
+
+func _setup_transition_overlay() -> void:
+	var layer := CanvasLayer.new()
+	layer.name = "TransitionLayer"
+	layer.layer = 20
+	add_child(layer)
+
+	_transition_rect = ColorRect.new()
+	_transition_rect.name = "FadeOverlay"
+	_transition_rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_transition_rect.color = Color(0.05, 0.03, 0.02, 1.0)
+	_transition_rect.modulate.a = 0.0
+	_transition_rect.visible = false
+	_transition_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.add_child(_transition_rect)
+
+
+func _setup_house_interior() -> void:
+	if _house_interior_scene == null:
+		return
+	var instance := _house_interior_scene.instantiate() as Node2D
+	if instance == null:
+		return
+	instance.name = "HouseInterior"
+	instance.position = HOUSE_ORIGIN
+	add_child(instance)
+	_house_interior = instance
+
+
+func _set_exterior_active(active: bool) -> void:
+	ground_layer.visible = active
+	soil_layer.visible = active
+	obstacle_layer.visible = active
+	ground_layer.collision_enabled = active
+	obstacle_layer.collision_enabled = active
+
+	for prop in _exterior_props:
+		if is_instance_valid(prop) and prop is Node2D:
+			(prop as Node2D).visible = active
+			prop.process_mode = Node.PROCESS_MODE_INHERIT if active else Node.PROCESS_MODE_DISABLED
+
+	for tile_var in _crops.keys():
+		var spr: Variant = _crops[tile_var].get("sprite")
+		if is_instance_valid(spr) and spr is Node2D:
+			(spr as Node2D).visible = active
+
+	for f_spr in _fertilized_tiles.values():
+		if is_instance_valid(f_spr) and f_spr is Node2D:
+			(f_spr as Node2D).visible = active
+
+	for sp_spr in _sprinklers.values():
+		if is_instance_valid(sp_spr) and sp_spr is Node2D:
+			(sp_spr as Node2D).visible = active
+
+	for m_entry in _machines.values():
+		var m_body: Variant = m_entry.get("body")
+		if is_instance_valid(m_body) and m_body is Node2D:
+			(m_body as Node2D).visible = active
+			m_body.process_mode = Node.PROCESS_MODE_INHERIT if active else Node.PROCESS_MODE_DISABLED
+
+	if _weather_fx != null and is_instance_valid(_weather_fx):
+		_weather_fx.visible = active
+	if _season_particles != null and is_instance_valid(_season_particles):
+		_season_particles.visible = active
+	if _firefly_particles != null and is_instance_valid(_firefly_particles):
+		_firefly_particles.visible = active
+
+	for animal in _animals:
+		if is_instance_valid(animal):
+			animal.visible = active
+			animal.process_mode = Node.PROCESS_MODE_INHERIT if active else Node.PROCESS_MODE_DISABLED
+
+	if _house_interior != null and is_instance_valid(_house_interior):
+		_house_interior.visible = not active
+		_house_interior.process_mode = Node.PROCESS_MODE_DISABLED if active else Node.PROCESS_MODE_INHERIT
+
+
+func _apply_location_state(loc: String, target_pos: Vector2, facing: Vector2i) -> void:
+	_current_location = loc
+	var inside: bool = (loc == "house")
+	_set_exterior_active(not inside)
+
+	if player != null:
+		var target_parent: Node = _house_interior if (inside and _house_interior != null) else self
+		if player.get_parent() != target_parent:
+			player.reparent(target_parent, true)
+		player.global_position = target_pos
+		player.set("facing_dir", facing)
+		if player.has_method("_update_animation"):
+			player.call("_update_animation", 0.0, Vector2.ZERO)
+		if inside and _house_interior != null:
+			var cam_b: Rect2i = _house_interior.call("get_camera_bounds")
+			var walk_b: Rect2 = _house_interior.call("get_walk_bounds")
+			if player.has_method("set_camera_and_walk_bounds"):
+				player.call("set_camera_and_walk_bounds", cam_b, walk_b)
+		elif player.has_method("set_camera_limits"):
+			player.call("set_camera_limits", Rect2i(0, 0, MAP_WIDTH * TILE_SIZE, MAP_HEIGHT * TILE_SIZE))
+		if player.has_method("snap_camera"):
+			player.call("snap_camera")
+
+	_update_day_night_tint()
+
+
+func _run_fade_transition(on_midpoint: Callable) -> void:
+	if _transition_rect == null or not is_inside_tree():
+		on_midpoint.call()
+		return
+	_is_transitioning = true
+	if player != null:
+		player.set("can_move", false)
+		player.set("external_input_dir", Vector2.ZERO)
+
+	_transition_rect.visible = true
+	_transition_rect.modulate.a = 0.0
+	var tw := create_tween()
+	tw.tween_property(_transition_rect, "modulate:a", 1.0, 0.14)
+	tw.tween_callback(on_midpoint)
+	tw.tween_interval(0.05)
+	tw.tween_property(_transition_rect, "modulate:a", 0.0, 0.16)
+	tw.tween_callback(func() -> void:
+		_transition_rect.visible = false
+		_is_transitioning = false
+		_door_cooldown = 0.45
+	)
+
+
+func _enter_house(instant: bool = false) -> void:
+	if _house_interior == null or (_is_transitioning and not instant):
+		return
+	var spawn_pos: Vector2 = _house_interior.call("get_spawn_world_pos")
+	if instant:
+		_apply_location_state("house", spawn_pos, Vector2i(0, -1))
+		_door_cooldown = 0.45
+		return
+	if _current_location == "house":
+		return
+	_play_sfx("play_door")
+	_run_fade_transition(func() -> void:
+		_apply_location_state("house", spawn_pos, Vector2i(0, -1))
+		if not _entered_house_once:
+			_entered_house_once = true
+			_show_toast("Bem-vindo à sua casa! Use F nos móveis ou saia pela porta.")
+	)
+
+
+func _exit_house(instant: bool = false) -> void:
+	if _is_transitioning and not instant:
+		return
+	if instant:
+		_apply_location_state("farm", HOUSE_EXIT_SPAWN_POS, Vector2i(0, 1))
+		_door_cooldown = 0.45
+		return
+	if _current_location == "farm":
+		return
+	_play_sfx("play_door")
+	_run_fade_transition(func() -> void:
+		_apply_location_state("farm", HOUSE_EXIT_SPAWN_POS, Vector2i(0, 1))
+	)
+
+
+func _sleep_in_bed() -> void:
+	if _game_state == null or _house_interior == null or _is_transitioning:
+		return
+	var wake_pos: Vector2 = _house_interior.call("get_bed_wake_world_pos")
+	_run_fade_transition(func() -> void:
+		_game_state.call("advance_day")
+		if player != null:
+			player.global_position = wake_pos
+			player.set("facing_dir", Vector2i(0, 1))
+			if player.has_method("_update_animation"):
+				player.call("_update_animation", 0.0, Vector2.ZERO)
+			if player.has_method("snap_camera"):
+				player.call("snap_camera")
+	)
+
+
+func _handle_house_interact(allow_exit: bool) -> void:
+	if _house_interior == null or player == null:
+		return
+	var near_obj: Dictionary = _house_interior.call("get_nearest_interactable", player.global_position)
+	if near_obj.is_empty():
+		return
+	var obj_id: String = str(near_obj.get("id", ""))
+	if obj_id == "exit" and not allow_exit:
+		return
+	_interact_with_house_object(near_obj)
+
+
+func _handle_house_click(click_pos: Vector2) -> void:
+	if _house_interior == null or player == null:
+		return
+	var clicked_obj: Dictionary = _house_interior.call("find_interactable_at_click", click_pos)
+	if clicked_obj.is_empty():
+		return
+	var world_pos: Vector2 = clicked_obj.get("world_pos", click_pos)
+	var reach: float = float(clicked_obj.get("radius", 30.0)) + 12.0
+	if player.global_position.distance_to(world_pos) <= reach:
+		_interact_with_house_object(clicked_obj)
+	else:
+		_show_toast("Aproxime-se mais!")
+		_play_sfx("play_error")
+
+
+func _interact_with_house_object(obj: Dictionary) -> void:
+	if _game_state == null or player == null:
+		return
+	var obj_id: String = str(obj.get("id", ""))
+	var world_pos: Vector2 = obj.get("world_pos", player.global_position)
+	if player.has_method("set_facing_toward"):
+		player.call("set_facing_toward", world_pos)
+
+	match obj_id:
+		"exit":
+			_exit_house()
+		"bed":
+			_sleep_in_bed()
+		"stove":
+			if _tea_used_today:
+				_play_sfx("play_cozy")
+				_show_toast("Você já tomou o chá da fazenda hoje!")
+			else:
+				_tea_used_today = true
+				var cur_stam: int = int(_game_state.get("stamina"))
+				var max_stam: int = int(_game_state.get("max_stamina"))
+				var new_stam: int = mini(max_stam, cur_stam + 20)
+				_game_state.set("stamina", new_stam)
+				if _game_state.has_signal("stamina_changed"):
+					_game_state.stamina_changed.emit(new_stam, max_stam)
+				_play_sfx("play_cozy")
+				_spawn_particles(world_pos + Vector2(0.0, -8.0), Color(1.0, 0.85, 0.45))
+				_spawn_floating_text(world_pos + Vector2(0.0, -16.0), "+20 Energia", Color(0.65, 1.0, 0.58))
+				_show_toast("Chá quentinho da fazenda! +20 Energia.")
+		"fireplace":
+			_play_sfx("play_cozy")
+			_spawn_particles(world_pos + Vector2(0.0, -8.0), Color(1.0, 0.58, 0.22))
+			_spawn_floating_text(world_pos + Vector2(0.0, -18.0), "♥ Aconchego!", Color(1.0, 0.65, 0.35))
+			_show_toast("Lareira quentinha crepitando...")
+		"bookshelf":
+			_play_sfx("play_click")
+			_show_toast(FARM_GUIDE_TIPS[_guide_tip_index])
+			_guide_tip_index = (_guide_tip_index + 1) % FARM_GUIDE_TIPS.size()
+		"desk":
+			_play_sfx("play_cozy")
+			_game_state.call("save_game", true)
+			_spawn_floating_text(world_pos + Vector2(0.0, -14.0), "Salvo!", Color(1.0, 0.94, 0.55))
+		"chest":
+			_play_sfx("play_click")
+			var seeds_dict: Dictionary = _game_state.get("seeds")
+			var total_seeds: int = 0
+			for q in seeds_dict.values():
+				total_seeds += int(q)
+			var basket_cnt: int = int(_game_state.call("get_total_basket_count"))
+			var basket_val: int = int(_game_state.call("get_total_basket_value"))
+			_show_toast("Baú: %d sementes | Cesta: %d itens ($%d)" % [total_seeds, basket_cnt, basket_val])
+		"table":
+			_play_sfx("play_cozy")
+			_spawn_floating_text(world_pos + Vector2(0.0, -16.0), "♥ Pão & Maçã", Color(1.0, 0.92, 0.55))
+			_show_toast("Mesa posta com pão caseiro e maçãs frescas!")
 
 
 # --- Demo IA / Auto-Farmer Mode (P) ---
@@ -2189,6 +2579,13 @@ func _plan_next_demo_task() -> void:
 		return
 
 	var p_pos: Vector2 = player.global_position
+	if _current_location == "house":
+		_demo_action = "exit_house"
+		if _house_interior != null:
+			_demo_waypoints = [_house_interior.call("get_exit_waypoint")]
+		else:
+			_demo_waypoints = []
+		return
 	var stamina: int = int(_game_state.get("stamina"))
 	var water_level: int = int(_game_state.get("water_level"))
 	var money: int = int(_game_state.get("money"))
@@ -2346,6 +2743,8 @@ func _execute_demo_action() -> void:
 			if player.has_method("set_facing_toward"):
 				player.call("set_facing_toward", _tile_center(SHOP_SIGN_TILE))
 			_demo_buy_needed_seeds()
+		"exit_house":
+			_exit_house(true)
 		"sleep":
 			if player.has_method("set_facing_toward"):
 				player.call("set_facing_toward", HOUSE_DOOR_POS)

@@ -13,11 +13,14 @@ Arquivos gerados em assets/sprites/:
 """
 
 from pathlib import Path
-from PIL import Image
+from PIL import Image, ImageDraw
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 SPRITES_DIR = ROOT_DIR / "assets" / "sprites"
 OGA_FOOD_DIR = ROOT_DIR / "assets" / "oga_cc0" / "oga_16x16_food_cc0" / "food"
+OGA_KENNEY_INDOOR = ROOT_DIR / "assets" / "oga_cc0" / "oga_roguelike_indoor_cc0" / "roguelikeIndoor_transparent.png"
+OGA_ZELDA_INNER = ROOT_DIR / "assets" / "oga_cc0" / "oga_zelda_like_indoor_cc0" / "Inner.png"
+OGA_ZELDA_OBJECTS = ROOT_DIR / "assets" / "oga_cc0" / "oga_zelda_like_indoor_cc0" / "objects.png"
 
 RGBA = tuple[int, int, int, int]
 
@@ -2784,6 +2787,361 @@ def build_season_icons() -> Image.Image:
     return sheet
 
 
+# ==============================================================================
+# 6. HOUSE INTERIOR (256x160 px = 16 cols x 10 rows de 16x16, assets CC0)
+# Integra Kenney Roguelike Indoor Pack, ArMM1998 Zelda-like Inner/Objects
+# e OGA 16x16 Food, harmonizado com a paleta da casinha da fazenda.
+# ==============================================================================
+def build_house_interior() -> Image.Image:
+    sheet = Image.new("RGBA", (256, 160), TRANSPARENT)
+
+    kenney = Image.open(OGA_KENNEY_INDOOR).convert("RGBA") if OGA_KENNEY_INDOOR.is_file() else None
+    zelda = Image.open(OGA_ZELDA_INNER).convert("RGBA") if OGA_ZELDA_INNER.is_file() else None
+    zobj = Image.open(OGA_ZELDA_OBJECTS).convert("RGBA") if OGA_ZELDA_OBJECTS.is_file() else None
+
+    def gk(col: int, row: int) -> Image.Image:
+        if kenney is None:
+            return Image.new("RGBA", (16, 16), TRANSPARENT)
+        return kenney.crop((col * 17, row * 17, col * 17 + 16, row * 17 + 16))
+
+    def gz(col: int, row: int) -> Image.Image:
+        if zelda is None:
+            return Image.new("RGBA", (16, 16), TRANSPARENT)
+        return zelda.crop((col * 16, row * 16, col * 16 + 16, row * 16 + 16))
+
+    def gzo(col: int, row: int) -> Image.Image:
+        if zobj is None:
+            return Image.new("RGBA", (16, 16), TRANSPARENT)
+        return zobj.crop((col * 16, row * 16, col * 16 + 16, row * 16 + 16))
+
+    def put_cell(col: int, row: int, tile: Image.Image) -> None:
+        paste_tile(sheet, tile, col * 16, row * 16)
+
+    # --- Row 0 (y=0): Pisos & Paredes do TileMapLayer ---
+    # (0,0) e (1,0): Piso de tábuas de madeira (Zelda Inner 0,4 e 1,4)
+    put_cell(0, 0, gz(0, 4))
+    put_cell(1, 0, gz(1, 4))
+    # (2,0): Piso xadrez da cozinha (Zelda Inner 0,0)
+    put_cell(2, 0, gz(0, 0))
+
+    # Cores da casinha da fazenda (paleta consistente com o exterior)
+    c_bg = hex_rgba("#18110e")
+    c_dark = PAL["B"]        # #42281c
+    c_wood_d = PAL["e"]      # #7a462b
+    c_wood_m = PAL["o"]      # #a66742
+    c_wood_l = PAL["O"]      # #c9895b
+    c_cream = PAL["n"]       # #f7edd9
+    c_cream_s = PAL["M"]     # #dfd0b2
+
+    # (3,0): Parede norte superior (reboco creme + viga de madeira superior)
+    wall_top = Image.new("RGBA", (16, 16), c_cream)
+    d = ImageDraw.Draw(wall_top)
+    d.rectangle((0, 0, 15, 2), fill=c_dark)
+    d.rectangle((0, 3, 15, 5), fill=c_wood_m)
+    d.rectangle((0, 6, 15, 7), fill=c_wood_d)
+    d.rectangle((0, 8, 15, 9), fill=c_cream_s)
+    put_cell(3, 0, wall_top)
+
+    # (4,0): Parede norte inferior (lambril de madeira + sombra do rodapé)
+    wall_bot = Image.new("RGBA", (16, 16), c_cream)
+    d = ImageDraw.Draw(wall_bot)
+    d.rectangle((0, 0, 15, 4), fill=c_cream)
+    d.rectangle((0, 5, 15, 6), fill=c_wood_l)
+    d.rectangle((0, 7, 15, 13), fill=c_wood_m)
+    for px in (0, 8):
+        d.line((px, 7, px, 13), fill=c_wood_d)
+    d.rectangle((0, 14, 15, 15), fill=c_dark)
+    put_cell(4, 0, wall_bot)
+
+    # (5,0): Parede esquerda (16px: escuro fora + borda madeira dentro)
+    wall_left = Image.new("RGBA", (16, 16), c_bg)
+    d = ImageDraw.Draw(wall_left)
+    d.rectangle((6, 0, 15, 15), fill=c_dark)
+    d.rectangle((8, 0, 13, 15), fill=c_wood_d)
+    d.rectangle((9, 0, 12, 15), fill=c_wood_m)
+    d.rectangle((10, 0, 11, 15), fill=c_wood_l)
+    put_cell(5, 0, wall_left)
+
+    # (6,0): Parede direita (espelho da parede esquerda)
+    put_cell(6, 0, wall_left.transpose(Image.Transpose.FLIP_LEFT_RIGHT))
+
+    # (7,0): Parede sul (borda madeira + escuro embaixo)
+    wall_south = Image.new("RGBA", (16, 16), c_bg)
+    d = ImageDraw.Draw(wall_south)
+    d.rectangle((0, 0, 15, 9), fill=c_dark)
+    d.rectangle((0, 2, 15, 7), fill=c_wood_d)
+    d.rectangle((0, 3, 15, 6), fill=c_wood_m)
+    d.rectangle((0, 4, 15, 4), fill=c_wood_l)
+    put_cell(7, 0, wall_south)
+
+    # (8,0): Quina topo-esquerda
+    c_tl = Image.new("RGBA", (16, 16), c_bg)
+    d = ImageDraw.Draw(c_tl)
+    d.rectangle((6, 0, 15, 15), fill=c_dark)
+    d.rectangle((8, 3, 15, 15), fill=c_wood_d)
+    d.rectangle((9, 4, 15, 15), fill=c_wood_m)
+    d.rectangle((10, 4, 15, 6), fill=c_wood_l)
+    d.rectangle((10, 4, 11, 15), fill=c_wood_l)
+    put_cell(8, 0, c_tl)
+
+    # (9,0): Quina topo-direita
+    put_cell(9, 0, c_tl.transpose(Image.Transpose.FLIP_LEFT_RIGHT))
+
+    # (10,0): Quina base-esquerda
+    c_bl = Image.new("RGBA", (16, 16), c_bg)
+    d = ImageDraw.Draw(c_bl)
+    d.rectangle((6, 0, 15, 9), fill=c_dark)
+    d.rectangle((8, 0, 15, 7), fill=c_wood_d)
+    d.rectangle((9, 0, 15, 6), fill=c_wood_m)
+    d.rectangle((10, 0, 11, 5), fill=c_wood_l)
+    d.rectangle((10, 4, 15, 4), fill=c_wood_l)
+    put_cell(10, 0, c_bl)
+
+    # (11,0): Quina base-direita
+    put_cell(11, 0, c_bl.transpose(Image.Transpose.FLIP_LEFT_RIGHT))
+
+    # (12,0) e (13,0): Soleira iluminada da porta de saída
+    thresh_l = gz(0, 4).copy()
+    d = ImageDraw.Draw(thresh_l)
+    d.rectangle((0, 0, 1, 15), fill=c_dark)
+    d.rectangle((2, 0, 15, 11), fill=PAL["T"])
+    d.rectangle((2, 4, 15, 9), fill=PAL["t"])
+    d.rectangle((2, 11, 15, 13), fill=c_wood_m)
+    d.rectangle((2, 14, 15, 15), fill=c_dark)
+    put_cell(12, 0, thresh_l)
+    put_cell(13, 0, thresh_l.transpose(Image.Transpose.FLIP_LEFT_RIGHT))
+
+    # (14,0) e (15,0): Capacho acolhedor coral/creme na entrada
+    mat_l = [
+        "................",
+        "................",
+        "..RRRRRRRRRRRRRR",
+        ".Rxxxxxxxxxxxxxx",
+        ".Rxnnnnnnnnnnnnn",
+        ".Rxnrrrrrrrrrrrr",
+        ".RxnrXXrrrrXXrrr",
+        ".RxnrXXrrrrXXrrr",
+        ".Rxnrrrrrrrrrrrr",
+        ".Rxnnnnnnnnnnnnn",
+        ".RXXXXXXXXXXXXXX",
+        "..RRRRRRRRRRRRRR",
+        "................",
+        "................",
+        "................",
+        "................",
+    ]
+    mat_tile_l = render_grid(mat_l, 16, 16)
+    put_cell(14, 0, mat_tile_l)
+    put_cell(15, 0, mat_tile_l.transpose(Image.Transpose.FLIP_LEFT_RIGHT))
+
+    # --- Rows 1..3 (y=16..63): Tapetes & Decoração de Parede ---
+    # (0..2, 1..3): Tapete verde bordado 48x48 (Zelda Inner 0..2, 7..9)
+    for dr in range(3):
+        for dc in range(3):
+            put_cell(dc, 1 + dr, gz(dc, 7 + dr))
+
+    # (3..4, 1): Tapete plano acolhedor coral/creme 32x16 para quarto (com franjas)
+    rug_bed_l = [
+        "................",
+        "................",
+        "..BBBBBBBBBBBBBB",
+        ".wnrrrrrrrrrrrrr",
+        "..nrxxxxxxxxxxxx",
+        ".wnrxrrrrrrrrrrr",
+        "..nrxrrnnrrnnrrr",
+        ".wnrxrrrrrrrrrrr",
+        "..nrxrrnnrrnnrrr",
+        ".wnrxrrrrrrrrrrr",
+        "..nrXXXXXXXXXXXX",
+        ".wnrrrrrrrrrrrrr",
+        "..BBBBBBBBBBBBBB",
+        "................",
+        "................",
+        "................",
+    ]
+    rug_bed_tile_l = render_grid(rug_bed_l, 16, 16)
+    put_cell(3, 1, rug_bed_tile_l)
+    put_cell(4, 1, rug_bed_tile_l.transpose(Image.Transpose.FLIP_LEFT_RIGHT))
+
+    # (5..6, 1): Tapete plano creme/dourado 32x16 para mesa de jantar
+    rug_din_l = [
+        "................",
+        "..BBBBBBBBBBBBBB",
+        ".wnYYYYYYYYYYYYY",
+        "..nYyyyyyyyyyyyy",
+        ".wnYyrrrrrrrrrrr",
+        "..nYyrnnnnnnnnnn",
+        ".wnYyrnYYYYYYYYY",
+        "..nYyrnnnnnnnnnn",
+        ".wnYyrrrrrrrrrrr",
+        "..nYyyyyyyyyyyyy",
+        ".wnYYYYYYYYYYYYY",
+        "..BBBBBBBBBBBBBB",
+        "................",
+        "................",
+        "................",
+        "................",
+    ]
+    rug_din_tile_l = render_grid(rug_din_l, 16, 16)
+    put_cell(5, 1, rug_din_tile_l)
+    put_cell(6, 1, rug_din_tile_l.transpose(Image.Transpose.FLIP_LEFT_RIGHT))
+
+    # (7..8, 1): Janela dupla aconchegante 32x16 (paleta da casinha)
+    win_l = [
+        "................",
+        ".BBBBBBBBBBBBBBB",
+        ".BOOOOOOOOOOOOOO",
+        ".Boaaaaaaaaaacca",
+        ".Boaaabcaaaaaaba",
+        ".Boaaaaaaaaaaaaa",
+        ".BoBBBBBBBBBBBBB",
+        ".Boaaaaaaaaaacca",
+        ".Boaaabbaaaaaaba",
+        ".Boaaaccaaaaaaaa",
+        ".Boaaaaaaaaaaaaa",
+        ".BOOOOOOOOOOOOOO",
+        ".BBBBBBBBBBBBBBB",
+        "..eeeeeeeeeeeeee",
+        "................",
+        "................",
+    ]
+    win_tile_l = render_grid(win_l, 16, 16)
+    put_cell(7, 1, win_tile_l)
+    put_cell(8, 1, win_tile_l.transpose(Image.Transpose.FLIP_LEFT_RIGHT))
+
+    # (9,1): Quadro paisagem (Zelda Inner 9,0)
+    put_cell(9, 1, gz(9, 0))
+    # (10,1): Quadro prado/céu centralizado (Zelda Inner 11,5 deslocado +4px)
+    pic2 = Image.new("RGBA", (16, 16), TRANSPARENT)
+    pic2.paste(gz(11, 5), (0, 5), gz(11, 5))
+    put_cell(10, 1, pic2)
+    # (11,1): Mapa na parede (Kenney 18,0)
+    put_cell(11, 1, gk(18, 0))
+    # (12,1): Cano da chaminé do fogão (Kenney 15,15)
+    put_cell(12, 1, gk(15, 15))
+    # (13,1) e (14,1): Vasinhos de planta (Kenney 16,0 e 17,0)
+    put_cell(13, 1, gk(16, 0))
+    put_cell(14, 1, gk(17, 0))
+    # (15,1): Vaso com flor azul (Zelda Inner 9,12)
+    put_cell(15, 1, gz(9, 12))
+
+    # --- Rows 4..6 (y=64..111): Cozinha, Lareira, Estante, Cama, Piano, Armário ---
+    # (0..4, 4): Balcão, Pia, Potes, Pratos, Fogão (Kenney)
+    put_cell(0, 4, gk(0, 12))
+    put_cell(1, 4, gk(8, 12))
+    put_cell(2, 4, gk(5, 12))
+    put_cell(3, 4, gk(7, 12))
+    put_cell(4, 4, gk(14, 14))
+
+    # (5..6, 4..6): Lareira de tijolos 32x48 (Zelda Inner 12..13, 10..11 + 10..11, 12)
+    for dc in range(2):
+        put_cell(5 + dc, 4, gz(12 + dc, 10))
+        put_cell(5 + dc, 5, gz(12 + dc, 11))
+        put_cell(5 + dc, 6, gz(10 + dc, 12))
+
+    # (7..9, 4..5): Estante de livros 48x32 (Zelda Inner 3..5, 12..13)
+    for dr in range(2):
+        for dc in range(3):
+            put_cell(7 + dc, 4 + dr, gz(3 + dc, 12 + dr))
+
+    # (10..11, 4..6): Cama de casal aconchegante 32x48 (Zelda Inner 16,1..3 + 18,1..3)
+    for dr in range(3):
+        put_cell(10, 4 + dr, gz(16, 1 + dr))
+        put_cell(11, 4 + dr, gz(18, 1 + dr))
+
+    # (12..13, 4..5): Piano vertical 32x32 (Kenney 23..24, 8..9)
+    for dr in range(2):
+        for dc in range(2):
+            put_cell(12 + dc, 4 + dr, gk(23 + dc, 8 + dr))
+
+    # (14..15, 4..6): Guarda-roupa de madeira 32x48 (Zelda Inner 6,9..11 + 8,9..11)
+    for dr in range(3):
+        put_cell(14, 4 + dr, gz(6, 9 + dr))
+        put_cell(15, 4 + dr, gz(8, 9 + dr))
+
+    # --- Rows 7..9 (y=112..159): Mesa, Cadeiras, Planta Alta, Baú, Diário, Comidas, Fogo ---
+    # (0..1, 7..8): Mesa de jantar 32x32 (Zelda Inner 10,1 + 12,1 / 10,3 + 12,3)
+    put_cell(0, 7, gz(10, 1))
+    put_cell(1, 7, gz(12, 1))
+    put_cell(0, 8, gz(10, 3))
+    put_cell(1, 8, gz(12, 3))
+
+    # (2..5, 7): Cadeiras de madeira nas 4 direções (Kenney)
+    put_cell(2, 7, gk(1, 2))
+    put_cell(3, 7, gk(2, 2))
+    put_cell(4, 7, gk(3, 2))
+    put_cell(5, 7, gk(0, 2))
+
+    # (6, 7..8): Planta alta florida 16x32 (Zelda Inner 8, 12..13)
+    put_cell(6, 7, gz(8, 12))
+    put_cell(6, 8, gz(8, 13))
+
+    # (7, 7): Baú de madeira (Zelda objects 0,0)
+    put_cell(7, 7, gzo(0, 0))
+    # (8, 7): Livro/Diário aberto (Zelda Inner 13,9)
+    put_cell(8, 7, gz(13, 9))
+    # (9, 7): Tigela de sopa quentinha (Zelda Inner 14,6)
+    put_cell(9, 7, gz(14, 6))
+
+    # (10, 7): Prato com pão caseiro (OGA 16x16 Food CC0 redimensionado 10x10 sobre prato)
+    bread_plate = Image.new("RGBA", (16, 16), TRANSPARENT)
+    d = ImageDraw.Draw(bread_plate)
+    d.ellipse((2, 4, 13, 13), fill=PAL["w"], outline=PAL["k"])
+    bread_src = OGA_FOOD_DIR / "bread_loaf_white.png"
+    if bread_src.is_file():
+        b_img = Image.open(bread_src).convert("RGBA").resize((10, 10), Image.Resampling.NEAREST)
+        bread_plate.paste(b_img, (3, 3), b_img)
+    put_cell(10, 7, bread_plate)
+
+    # (11, 7): Prato com maçã vermelha (OGA 16x16 Food CC0)
+    apple_plate = Image.new("RGBA", (16, 16), TRANSPARENT)
+    d = ImageDraw.Draw(apple_plate)
+    d.ellipse((3, 5, 12, 13), fill=PAL["W"], outline=PAL["k"])
+    apple_src = OGA_FOOD_DIR / "apple_red.png"
+    if apple_src.is_file():
+        a_img = Image.open(apple_src).convert("RGBA").resize((9, 9), Image.Resampling.NEAREST)
+        apple_plate.paste(a_img, (4, 4), a_img)
+    put_cell(11, 7, apple_plate)
+
+    # (12..14, 7): Chamas animadas da lareira (Zelda objects 4..6, 3)
+    put_cell(12, 7, gzo(4, 3))
+    put_cell(13, 7, gzo(5, 3))
+    put_cell(14, 7, gzo(6, 3))
+
+    # (15, 7): Abajur acolhedor de mesa (pixel art limpa sem halo escuro)
+    lamp = [
+        "................",
+        "................",
+        ".....kkkkkk.....",
+        "....kHyyyyHk....",
+        "...kHywwwwyHk...",
+        "...k0yyyyyy0k...",
+        "....kkkkkkkk....",
+        "......k0Hk......",
+        "......k0Hk......",
+        ".....kBBBBk.....",
+        ".....kOeeOk.....",
+        "......kkkk......",
+        "................",
+        "................",
+        "................",
+        "................",
+    ]
+    put_cell(15, 7, render_grid(lamp, 16, 16))
+
+    # (0..1, 9): Escrivaninha de madeira 32x16 (Kenney 0,12 e 2,12)
+    put_cell(0, 9, gk(0, 12))
+    put_cell(1, 9, gk(2, 12))
+    # (2, 9): Criado-mudo de madeira (Zelda Inner 10,7)
+    put_cell(2, 9, gz(10, 7))
+    # (3, 9): Vasinho de ervas (Zelda Inner 11,11)
+    put_cell(3, 9, gz(11, 11))
+    # (4, 9): Bule/caneca de chá (Zelda Inner 11,6)
+    put_cell(4, 9, gz(11, 6))
+
+    return sheet
+
+
 def main() -> None:
     SPRITES_DIR.mkdir(parents=True, exist_ok=True)
     seasons_dir = SPRITES_DIR / "seasons"
@@ -2800,6 +3158,7 @@ def main() -> None:
         (SPRITES_DIR / "ui_icons.png", build_ui_icons(), (256, 16)),
         (SPRITES_DIR / "v13_props_sheet.png", build_v13_props_sheet(), (112, 32)),
         (SPRITES_DIR / "v13_icons.png", build_v13_icons(), (256, 16)),
+        (SPRITES_DIR / "house_interior.png", build_house_interior(), (256, 160)),
     ]
 
     for season_id, img in build_seasonal_terrains(base_terrain).items():

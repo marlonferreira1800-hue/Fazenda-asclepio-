@@ -2,7 +2,7 @@ class_name VersionData
 extends RefCounted
 ## Metadados de versão, autoria, links do repositório e histórico de atualizações da Fazendinha 2D.
 
-const CURRENT_VERSION := "v1.4.0"
+const CURRENT_VERSION := "v1.6.0"
 const REPO_URL := "https://github.com/marlonferreira1800-hue/Fazenda-asclepio-"
 const RELEASES_URL := "https://github.com/marlonferreira1800-hue/Fazenda-asclepio-/releases"
 const ISSUES_URL := "https://github.com/marlonferreira1800-hue/Fazenda-asclepio-/issues?q=is%3Aissue"
@@ -10,6 +10,47 @@ const CHANGELOG_URL := "https://github.com/marlonferreira1800-hue/Fazenda-asclep
 const AUTHOR := "@marlonferreira1800-hue (Marlon Ferreira)"
 
 const HISTORY: Array[Dictionary] = [
+	{
+		"version": "v1.6.0",
+		"title": "Sistema das 4 Estações do Ano, Nabo de Inverno, Paletas & Partículas Sazonais",
+		"date": "2026-11-20",
+		"author": "@marlonferreira1800-hue",
+		"tag_url": "https://github.com/marlonferreira1800-hue/Fazenda-asclepio-/releases/tag/v1.6.0",
+		"before": "Calendário sem estações do ano (apenas Dia 1, 2, 3...), visual fixo de primavera/verão, sem cultivo de inverno e sem bônus sazonal na loja ou colheitas.",
+		"after": "Ciclo completo das 4 Estações (Primavera, Verão, Outono e Inverno com 28 dias cada), paletas e partículas sazonais, Nabo de Inverno (tecla =), Modo Cozy (+35% e -1 dia na estação ideal) e +20% em animais/artesanais no Inverno.",
+		"highlights": [
+			"Antes -> Depois: Fazenda sem estações do ano -> Ciclo anual de 4 Estações (28 dias cada / 112 por ano) com paletas, partículas e bônus sazonais",
+			"Primavera (Trigo/Morango), Verão (Milho/Tomate), Outono (Cenoura/Abóbora) e Inverno (Nabo +35% e Animais/Artesanais +20%)",
+			"11 novos spritesheets sazonais em assets/sprites/seasons/ (terreno, casinha/árvores nevadas, ícones e Nabo em 5 estágios)",
+			"Badge da estação + Dia X/28 na HUD, banner animado com carrilhão procedural, 12º slot (=) na Hotbar e destaque dourado na Loja (B)",
+		],
+	},
+	{
+		"version": "v1.5.1",
+		"title": "Corrigir cache do navegador no GitHub Pages (cache-busting do index.pck)",
+		"date": "2026-11-20",
+		"author": "@marlonferreira1800-hue",
+		"tag_url": "https://github.com/marlonferreira1800-hue/Fazenda-asclepio-/releases/tag/v1.5.1",
+		"before": "O navegador reutilizava index.js e index.pck antigos em cache do GitHub Pages, mantendo a versão anterior ao abrir a URL.",
+		"after": "Adicionado cache-busting automático (?v=1.5.1) no carregamento de index.js e no fetch de index.pck/index.wasm para forçar o download imediato da versão nova.",
+		"highlights": [
+			"Antes -> Depois: O navegador reutilizava index.js e index.pck antigos em cache do GitHub Pages, mantendo a versão anterior ao abrir a URL. -> Adicionado cache-busting automático (?v=1.5.1) no carregamento de index.js e no fetch de index.pck/index.wasm para forçar o download imediato da versão nova.",
+			"Issue #13: Cache-busting automático em build/web/index.html e build/web/index.js durante a exportação Web no auto_release_bot.py",
+		],
+	},
+	{
+		"version": "v1.5.0",
+		"title": "Acesso ao interior da casa e móveis interativos CC0",
+		"date": "2026-11-20",
+		"author": "@marlonferreira1800-hue",
+		"tag_url": "https://github.com/marlonferreira1800-hue/Fazenda-asclepio-/releases/tag/v1.5.0",
+		"before": "A casinha da fazenda funcionava apenas pelo lado de fora (sem cena interna, sem transição de porta e sem móveis interativos no interior).",
+		"after": "Adicionado acesso completo ao interior da casa (18x12 tiles) via porta com fade, spritesheet CC0 house_interior.png (256x160) e 8 interações internas (cama, fogão com chá +20 energia, lareira animada, estante com guia, escrivaninha/diário para salvar, baú, mesa posta e capacho de saída).",
+		"highlights": [
+			"Antes -> Depois: A casinha da fazenda funcionava apenas pelo lado de fora (sem cena interna, sem transição de porta e sem móveis interativos no interior). -> Adicionado acesso completo ao interior da casa (18x12 tiles) via porta com fade, spritesheet CC0 house_interior.png (256x160) e 8 interações internas (cama, fogão com chá +20 energia, lareira animada, estante com guia, escrivaninha/diário para salvar, baú, mesa posta e capacho de saída).",
+			"Issue #12: Cena scenes/house_interior.tscn e script scripts/world/house_interior.gd com lareira animada e iluminação quente;Spritesheet assets/sprites/house_interior.png (256x160 RGBA) com pacotes CC0 (Kenney Roguelike Indoor, Zelda-like indoor e 16x16 Food);Transição de entrada/saída na porta, persistência de localização no save e suporte ao modo Demo IA (P)",
+		],
+	},
 	{
 		"version": "v1.4.0",
 		"title": "Pesca no Lago, Máquinas Artesanais, Rebrota, Fertilizante, Encomendas & Álbum",
