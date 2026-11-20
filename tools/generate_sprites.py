@@ -6,10 +6,12 @@ Integra sprites CC0 reais de assets/oga_cc0/ quando disponíveis (com fallback e
 
 Arquivos gerados em assets/sprites/:
 - terrain_tileset.png : 64x32 px (4 cols x 2 rows de 16x16)
-- crops_sheet.png     : 80x48 px (5 cols x 3 rows de 16x16)
+- crops_sheet.png     : 80x96 px (5 cols x 6 rows de 16x16)
 - farmer_sheet.png    : 64x64 px (4 cols walk x 4 rows direções de 16x16)
-- props_buildings.png : 96x48 px (casinha 32x32, árvore 32x32, props 16x16, animais 2 frames)
-- ui_icons.png        : 128x16 px (8 ícones 16x16: enxada, regador, 3 sementes, moeda, ovo, leite)
+- props_buildings.png : 96x64 px (casinha 32x32, árvore 32x32, props 16x16, animais 2 frames, aspersor)
+- ui_icons.png        : 256x16 px (16 ícones 16x16: ferramentas, sementes, moeda, produtos animais, aspersor, clima)
+- v13_props_sheet.png : 112x32 px (máquinas artesanais, quadro de encomendas, fertilizante, estrela, boia, chuva, badge)
+- v13_icons.png       : 256x16 px (vara de pesca, fertilizante, queijo, pão, mel, ovo azul, peixes e pergaminho)
 """
 
 from pathlib import Path
@@ -314,10 +316,10 @@ def build_terrain_tileset() -> Image.Image:
 
 
 # ==============================================================================
-# 2. CROPS SHEET (80x48 px = 5 estágios x 3 culturas de 16x16)
+# 2. CROPS SHEET (80x96 px = 5 estágios x 6 culturas de 16x16)
 # ==============================================================================
 def build_crops_sheet() -> Image.Image:
-    sheet = Image.new("RGBA", (80, 48), TRANSPARENT)
+    sheet = Image.new("RGBA", (80, 96), TRANSPARENT)
 
     # Row 0 (y=0): Trigo (wheat)
     wheat_stages = [
@@ -601,7 +603,296 @@ def build_crops_sheet() -> Image.Image:
         ],
     ]
 
-    for row_idx, stages in enumerate([wheat_stages, carrot_stages, strawberry_stages]):
+    # Row 3 (y=48): Milho (corn)
+    corn_stages = [
+        [
+            "................",
+            "................",
+            "................",
+            "................",
+            "................",
+            "................",
+            "................",
+            "................",
+            ".....kk.........",
+            "....kYyk...kk...",
+            ".....kk...kYyk..",
+            "..kk.......kk...",
+            ".kYyk..kk.......",
+            "..kk..kYyk......",
+            ".......kk.......",
+            "................",
+        ],
+        [
+            "................",
+            "................",
+            "................",
+            "................",
+            "................",
+            "................",
+            ".......GG.......",
+            "......GLlG......",
+            ".....GGfGG......",
+            "....GLfGfLG.....",
+            ".....GGfGG......",
+            "......GfG.......",
+            "......GfG.......",
+            "......GFFG......",
+            ".......GG.......",
+            "................",
+        ],
+        [
+            "................",
+            "................",
+            ".......GG.......",
+            "......GLlG......",
+            "....GGGlfGGG....",
+            "...GLlGfGfLLG...",
+            "....GGfffGGG....",
+            "......GfG.......",
+            "....GGfffGG.....",
+            "...GLfGfGfLG....",
+            "....GGfGfGG.....",
+            "......GfG.......",
+            ".....GFFFG......",
+            ".....GFFFG......",
+            "......GGG.......",
+            "................",
+        ],
+        [
+            ".......kk.......",
+            "......kH0k......",
+            "....GGGlfGGG....",
+            "...GLlGfGfLLG...",
+            "....GGflfGGG....",
+            ".....GGfGG......",
+            "...GGkllkGG.....",
+            "..GLlkllkLLG....",
+            "...GGkffkGG.....",
+            ".....GffG.......",
+            "....GLfGfLG.....",
+            ".....GfffG......",
+            ".....GFFFG......",
+            ".....GFFFG......",
+            "......GGG.......",
+            "................",
+        ],
+        [
+            "......kkkk......",
+            ".....kH00Hk.....",
+            "....GGGlfGGG....",
+            "...GLlGfGfLLG...",
+            "....GGflfGGG....",
+            "...kkGGfGGkk....",
+            "..kHykllkHyk....",
+            "..kYykffkYyk....",
+            "..k0ykffky0k....",
+            "...kGkffkGk.....",
+            "....GLffLG......",
+            ".....GffG.......",
+            ".....GFFFG......",
+            ".....GFFFG......",
+            "......GGG.......",
+            "................",
+        ],
+    ]
+
+    # Row 4 (y=64): Tomate (tomato)
+    tomato_stages = [
+        [
+            "................",
+            "................",
+            "................",
+            "................",
+            "................",
+            "................",
+            "................",
+            "................",
+            ".....kk.........",
+            "....kwwk...kk...",
+            ".....kk...kwwk..",
+            "..kk.......kk...",
+            ".kwwk..kk.......",
+            "..kk..kwwk......",
+            ".......kk.......",
+            "................",
+        ],
+        [
+            "................",
+            "................",
+            "................",
+            "................",
+            "................",
+            "................",
+            "................",
+            ".....GG..GG.....",
+            "....GLlGGLlG....",
+            "....GfhGGfhG....",
+            ".....GffffG.....",
+            "......GffG......",
+            "......GFFG......",
+            ".......GG.......",
+            "................",
+            "................",
+        ],
+        [
+            "................",
+            "................",
+            "................",
+            "......GGGG......",
+            "....GGLhhLGG....",
+            "...GLhGffGhLG...",
+            "...GffGffGffG...",
+            "....GffffffG....",
+            "...GLhGffGhLG...",
+            "....GffFFffG....",
+            ".....GFFFFG.....",
+            "......GGGG......",
+            ".....GFFFG......",
+            "......GGG.......",
+            "................",
+            "................",
+        ],
+        [
+            "................",
+            ".....GGGGGG.....",
+            "...GGLhhhhLGG...",
+            "..GLhGwYwfGhLG..",
+            "..GffGfffGffwYw.",
+            "..GLhGfffGffwwG.",
+            "...GfwYwfGfffG..",
+            "...GffwwffFFfG..",
+            "....GffFFffffG..",
+            ".....GGFFFFGG...",
+            "......GFFFG.....",
+            "......GFFFG.....",
+            ".......GGG......",
+            "................",
+            "................",
+            "................",
+        ],
+        [
+            ".....GGGGGG.....",
+            "...GGLhhhhLGG...",
+            "..GLhGffffGhLG..",
+            "..Gfk11kffk11k..",
+            ".GLk2113kfk211k.",
+            "..Gk1113kfk113k.",
+            "..Gfk33kfGfk3kG.",
+            "..Gfffk11kfffG..",
+            "...Gfk2113kFG...",
+            "...GGk1133kGG...",
+            ".....GkkkGGG....",
+            "......GFFG......",
+            ".......GG.......",
+            "................",
+            "................",
+            "................",
+        ],
+    ]
+
+    # Row 5 (y=80): Abóbora (pumpkin)
+    pumpkin_stages = [
+        [
+            "................",
+            "................",
+            "................",
+            "................",
+            "................",
+            "................",
+            "................",
+            "................",
+            ".....kk.........",
+            "....kWWk...kk...",
+            ".....kk...kWWk..",
+            "..kk.......kk...",
+            ".kWWk..kk.......",
+            "..kk..kWWk......",
+            ".......kk.......",
+            "................",
+        ],
+        [
+            "................",
+            "................",
+            "................",
+            "................",
+            "................",
+            "................",
+            "................",
+            "....GGG..GGG....",
+            "...GLLhGGhLLG...",
+            "...GffGGGGffG...",
+            "....GffGGffG....",
+            ".....GffffG.....",
+            "......GFFG......",
+            ".......GG.......",
+            "................",
+            "................",
+        ],
+        [
+            "................",
+            "................",
+            "................",
+            "................",
+            "....GGG..GGG....",
+            "...GLhLGGGLhLG..",
+            "..GGffGffGffGG..",
+            ".GLhGffffffGhLG.",
+            "..GffGffffGffG..",
+            "...GffffffffG...",
+            "....GffFFffG....",
+            ".....GGFFGG.....",
+            "......GGGG......",
+            "................",
+            "................",
+            "................",
+        ],
+        [
+            "................",
+            "................",
+            "....GGG..GGG....",
+            "...GLhLGGGLhLG..",
+            "..GGfGGffGGfGG..",
+            ".GLhGffkkffGhLG.",
+            "..GffkGllGkffG..",
+            "...GfkGlhGfGffG.",
+            "....GkGffGfkGG..",
+            "....GkFFFFkG....",
+            ".....GkkkkG.....",
+            "......GGGG......",
+            "................",
+            "................",
+            "................",
+            "................",
+        ],
+        [
+            "......GGGG......",
+            ".....GLhhLG.....",
+            "...GGkffffkGG...",
+            "..GLhkkkkkkhLG..",
+            "..Gfk877779kfG..",
+            ".GLk87877979kLG.",
+            "..k8778779799k..",
+            "..k7778779799k..",
+            "..k7777779999k..",
+            "..k9777799999k..",
+            "...k99799999k...",
+            "...Gk999999kG...",
+            "....GGkkkkGG....",
+            "......GGGG......",
+            "................",
+            "................",
+        ],
+    ]
+
+    for row_idx, stages in enumerate([
+        wheat_stages,
+        carrot_stages,
+        strawberry_stages,
+        corn_stages,
+        tomato_stages,
+        pumpkin_stages,
+    ]):
         for col_idx, grid in enumerate(stages):
             paste_tile(sheet, render_grid(grid, 16, 16), col_idx * 16, row_idx * 16)
 
@@ -808,10 +1099,10 @@ def build_farmer_sheet() -> Image.Image:
 
 
 # ==============================================================================
-# 4. PROPS & BUILDINGS (96x48 px)
+# 4. PROPS & BUILDINGS (96x64 px)
 # ==============================================================================
 def build_props_buildings() -> Image.Image:
-    sheet = Image.new("RGBA", (96, 48), TRANSPARENT)
+    sheet = Image.new("RGBA", (96, 64), TRANSPARENT)
 
     # 1. Casinha da fazenda (32x32) com telhado texturizado, janela redonda e floreiras
     house = [
@@ -1051,16 +1342,119 @@ def build_props_buildings() -> Image.Image:
     paste_tile(sheet, render_grid(cow_0, 16, 16), 32, 32)
     paste_tile(sheet, render_grid(cow_1, 16, 16), 48, 32)
 
+    # 9. Ovelha 2 frames (16x16 each) at (64,32) and (80,32)
+    sheep_0 = [
+        "................",
+        "................",
+        ".....kkkkkk.....",
+        "...kkwwwwwwkk...",
+        "..kwwwwWWWWwwk..",
+        ".kJkwWwwwwWWwwk.",
+        "kJwkwwwwwwWWWWwk",
+        "kKJkwwwwWWWWWWwk",
+        ".kJkwWWWWWWWWwk.",
+        "..kkWWWWWWWWWWk.",
+        "...kkWWWWWWWWk..",
+        "....kkkkkkkkkk..",
+        "....kJJk..kJJk..",
+        "....kKKk..kKKk..",
+        "................",
+        "................",
+    ]
+    sheep_1 = [
+        "................",
+        "................",
+        "................",
+        ".....kkkkkk.....",
+        "...kkwwwwwwkk...",
+        "..kwwwwWWWWwwk..",
+        ".kJkwWwwwwWWwwk.",
+        "kJwkwwwwwwWWWWwk",
+        "kKJkwwwwWWWWWWwk",
+        ".kJkwWWWWWWWWwk.",
+        "..kkWWWWWWWWWWk.",
+        "...kkWWWWWWWWk..",
+        "....kkkkkkkkkk..",
+        "...kJJk....kJJk.",
+        "...kKKk....kKKk.",
+        "................",
+    ]
+    paste_tile(sheet, render_grid(sheep_0, 16, 16), 64, 32)
+    paste_tile(sheet, render_grid(sheep_1, 16, 16), 80, 32)
+
+    # 10. Porco 2 frames (16x16 each) at (0,48) and (16,48)
+    pig_0 = [
+        "................",
+        "................",
+        "...kk.....kk....",
+        "..kPpk...kpPk...",
+        "..kppkkkkkppk...",
+        ".kppppppppppkk..",
+        "kKpppppppppppPk.",
+        "kPPkppppppppppPk",
+        "kPPppppppppppPPk",
+        ".kppPPPppppPPPk.",
+        "..kkppppppppPPk.",
+        "....kkkkkkkkkk..",
+        "....kPPk..kPPk..",
+        "....kRRk..kRRk..",
+        "................",
+        "................",
+    ]
+    pig_1 = [
+        "................",
+        "................",
+        "................",
+        "...kk.....kk....",
+        "..kPpk...kpPk...",
+        "..kppkkkkkppk...",
+        ".kppppppppppkk..",
+        "kKpppppppppppPk.",
+        "kPPkppppppppppPk",
+        "kPPppppppppppPPk",
+        ".kppPPPppppPPPk.",
+        "..kkppppppppPPk.",
+        "....kkkkkkkkkk..",
+        "...kPPk....kPPk.",
+        "...kRRk....kRRk.",
+        "................",
+    ]
+    paste_tile(sheet, render_grid(pig_0, 16, 16), 0, 48)
+    paste_tile(sheet, render_grid(pig_1, 16, 16), 16, 48)
+
+    # 11. Aspersor Automático (16x16) at (32,48)
+    sprinkler = [
+        "................",
+        ".....kk..kk.....",
+        "....kbcbbcbk....",
+        ".....kkNNkk.....",
+        "....kIaaaaIk....",
+        "...kIabccbaIk...",
+        "...kJaaaaaaJk...",
+        "....kJJJJJJk....",
+        ".....kIiiIk.....",
+        ".....kIjjIk.....",
+        ".....kIjjIk.....",
+        "....kJIIIIJk....",
+        "...kJjjjjjjJk...",
+        "....kkkkkkkk....",
+        "................",
+        "................",
+    ]
+    paste_tile(sheet, render_grid(sprinkler, 16, 16), 32, 48)
+
     return sheet
 
 
 # ==============================================================================
-# 5. UI ICONS (128x16 px = 8 ícones de 16x16)
+# 5. UI ICONS (256x16 px = 16 ícones de 16x16)
 # Col 0: Enxada, Col 1: Regador, Col 2: Sem. Trigo, Col 3: Sem. Cenoura,
-# Col 4: Sem. Morango, Col 5: Moeda dourada, Col 6: Ovo, Col 7: Garrafa de Leite
+# Col 4: Sem. Morango, Col 5: Moeda dourada, Col 6: Ovo (CC0), Col 7: Leite,
+# Col 8: Sem. Milho, Col 9: Sem. Tomate, Col 10: Sem. Abóbora, Col 11: Aspersor,
+# Col 12: Lã, Col 13: Trufa, Col 14: Sol, Col 15: Chuva
 # ==============================================================================
 def build_ui_icons() -> Image.Image:
-    sheet = Image.new("RGBA", (128, 16), TRANSPARENT)
+    sheet = Image.new("RGBA", (256, 16), TRANSPARENT)
 
     # Col 0: Enxada
     hoe = [
@@ -1237,13 +1631,177 @@ def build_ui_icons() -> Image.Image:
     ]
     paste_tile(sheet, render_grid(milk_bottle, 16, 16), 112, 0)
 
+    # Col 8: Pacote de Semente Milho
+    seed_corn = [
+        "................",
+        "...kkkkkkkkkk...",
+        "..kEEEEEEEEEEk..",
+        "..kOooooooooOk..",
+        "...kkkkkkkkkk...",
+        "..kwwwwwwwwwwk..",
+        "..kwWWkkkkWWwk..",
+        "..kwwkHyy0kwwk..",
+        "..kwwGkYyGkwwk..",
+        "..kwwGlY0Gkwwk..",
+        "..kwwGGffGGwwk..",
+        "..kwWWGGGGWWwk..",
+        "..kWWWWWWWWWWk..",
+        "...kkkkkkkkkk...",
+        "................",
+        "................",
+    ]
+    paste_tile(sheet, render_grid(seed_corn, 16, 16), 128, 0)
+
+    # Col 9: Pacote de Semente Tomate
+    seed_tomato = [
+        "................",
+        "...kkkkkkkkkk...",
+        "..kEEEEEEEEEEk..",
+        "..kOooooooooOk..",
+        "...kkkkkkkkkk...",
+        "..kwwwwwwwwwwk..",
+        "..kwWWGGGGWWwk..",
+        "..kwwk2111kwwk..",
+        "..kwwk1113kwwk..",
+        "..kwwk1133kwwk..",
+        "..kwwwkkkkwwwk..",
+        "..kwWWWWWWWWwk..",
+        "..kWWWWWWWWWWk..",
+        "...kkkkkkkkkk...",
+        "................",
+        "................",
+    ]
+    paste_tile(sheet, render_grid(seed_tomato, 16, 16), 144, 0)
+
+    # Col 10: Pacote de Semente Abóbora
+    seed_pumpkin = [
+        "................",
+        "...kkkkkkkkkk...",
+        "..kEEEEEEEEEEk..",
+        "..kOooooooooOk..",
+        "...kkkkkkkkkk...",
+        "..kwwwwwwwwwwk..",
+        "..kwWWGGGGWWwk..",
+        "..kwwk8779kwwk..",
+        "..kwwk7879kwwk..",
+        "..kwwk7799kwwk..",
+        "..kwwwkkkkwwwk..",
+        "..kwWWWWWWWWwk..",
+        "..kWWWWWWWWWWk..",
+        "...kkkkkkkkkk...",
+        "................",
+        "................",
+    ]
+    paste_tile(sheet, render_grid(seed_pumpkin, 16, 16), 160, 0)
+
+    # Col 11: Aspersor Automático
+    sprinkler_icon = [
+        "................",
+        "....kbcbbcbk....",
+        ".....kkNNkk.....",
+        "....kIaaaaIk....",
+        "...kIabccbaIk...",
+        "...kJaaaaaaJk...",
+        "....kJJJJJJk....",
+        ".....kIiiIk.....",
+        ".....kIjjIk.....",
+        "....kJIIIIJk....",
+        "...kJjjjjjjJk...",
+        "....kkkkkkkk....",
+        "................",
+        "................",
+        "................",
+        "................",
+    ]
+    paste_tile(sheet, render_grid(sprinkler_icon, 16, 16), 176, 0)
+
+    # Col 12: Lã (Novelo/tufo fofo)
+    wool_icon = [
+        "................",
+        ".....kkkkkk.....",
+        "...kkwwwwwwkk...",
+        "..kwwwWWWWwwwk..",
+        ".kwwWWwwwwWWwwk.",
+        ".kwwWwwWWwwWwwk.",
+        ".kwWWwwWWwwWWwk.",
+        "..kwwWWWWWWwwk..",
+        "..kWWwwWWwwWWk..",
+        "...kWWWWWWWWk...",
+        "....kWWWWWWk....",
+        ".....kkkkkk.....",
+        "................",
+        "................",
+        "................",
+        "................",
+    ]
+    paste_tile(sheet, render_grid(wool_icon, 16, 16), 192, 0)
+
+    # Col 13: Trufa (Porco)
+    truffle_icon = [
+        "................",
+        "................",
+        ".....kkkkkk.....",
+        "...kkOoooooek...",
+        "..keOOoZoooeeek.",
+        ".keOooeeeZoooZek",
+        ".keoZeeeeeZZoeek",
+        ".keeZZeeeZZZeZZk",
+        "..keZZZeeeeZZZk.",
+        "...kZZZZZZZZZk..",
+        "....kkkkkkkkk...",
+        "................",
+        "................",
+        "................",
+        "................",
+        "................",
+    ]
+    paste_tile(sheet, render_grid(truffle_icon, 16, 16), 208, 0)
+
+    # Col 14: Sol (Clima ensolarado)
+    sun_icon = [
+        "................",
+        ".......yy.......",
+        "..y....yy....y..",
+        "...y..kkkk..y...",
+        "....kHyyyyHk....",
+        "...kHyyyyyyYk...",
+        ".yykyywwwwyYYyy.",
+        ".yykyywyyyyYYyy.",
+        "...kYYYYYYYYk...",
+        "....kY0000Yk....",
+        "...y..kkkk..y...",
+        "..y....yy....y..",
+        ".......yy.......",
+        "................",
+        "................",
+        "................",
+    ]
+    paste_tile(sheet, render_grid(sun_icon, 16, 16), 224, 0)
+
+    # Col 15: Chuva (Clima chuvoso)
+    rain_icon = [
+        "................",
+        ".....kkkkkk.....",
+        "...kkIIIIIIkk...",
+        "..kIIwwwwwwIIk..",
+        ".kIwwwwIIIIIIJk.",
+        ".kIIIIJJJJJJJJk.",
+        "..kkkkkkkkkkkk..",
+        "................",
+        "...bb..bb..bb...",
+        "..ba..ba..ba....",
+        "..a...a...a.....",
+        "....bb..bb..bb..",
+        "...ba..ba..ba...",
+        "...a...a...a....",
+        "................",
+        "................",
+    ]
+    paste_tile(sheet, render_grid(rain_icon, 16, 16), 240, 0)
+
     return sheet
 
 
-# ==============================================================================
-# 6. CROPS EXTRA SHEET v1.3.0 (80x48 px = 5 estágios x 3 culturas de 16x16)
-# Row 0: Milho (corn), Row 1: Tomate (tomato), Row 2: Abóbora (pumpkin)
-# ==============================================================================
 def _load_oga_food_16(filename: str) -> Image.Image | None:
     path = OGA_FOOD_DIR / filename
     if not path.is_file():
@@ -1254,300 +1812,8 @@ def _load_oga_food_16(filename: str) -> Image.Image | None:
     return img
 
 
-def build_crops_extra_sheet() -> Image.Image:
-    sheet = Image.new("RGBA", (80, 48), TRANSPARENT)
-
-    # Row 0 (y=0): Milho (corn)
-    corn_stages = [
-        [
-            "................",
-            "................",
-            "................",
-            "................",
-            "................",
-            "................",
-            "................",
-            "................",
-            ".....kk.........",
-            "....kYyk...kk...",
-            ".....kk...kYyk..",
-            "..kk.......kk...",
-            ".kYyk..kk.......",
-            "..kk..kYyk......",
-            ".......kk.......",
-            "................",
-        ],
-        [
-            "................",
-            "................",
-            "................",
-            "................",
-            "................",
-            "................",
-            "................",
-            "......GG........",
-            ".....GLlG.......",
-            ".....GllG..GG...",
-            "......GlG.GLlG..",
-            "......GfGGfG....",
-            ".......GfGG.....",
-            ".......GFFG.....",
-            "........GG......",
-            "................",
-        ],
-        [
-            "................",
-            "................",
-            "................",
-            "......GG........",
-            ".....GLlG.......",
-            "..GG.GlfG..GG...",
-            ".GLlGGffG.GLlG..",
-            "..GlGGffGGfGG...",
-            "...GffFFffG.....",
-            "....GffffG......",
-            "....GffFFG......",
-            ".....GFFG.......",
-            ".....GFFG.......",
-            "......GG........",
-            "................",
-            "................",
-        ],
-        [
-            "......kk........",
-            ".....kHyk.......",
-            "....GGyyGG......",
-            "...GLlGGllG.....",
-            "..GGffGGffGG....",
-            ".GLhGffffGhLG...",
-            "..GffGffGffG....",
-            "...GGffffGG.....",
-            "....GffffG......",
-            "...GGffFFGG.....",
-            "...GFFffFFG.....",
-            "....GFFFFG......",
-            ".....GFFG.......",
-            ".....GGGG.......",
-            "................",
-            "................",
-        ],
-        [
-            "......kk........",
-            ".....kHyk.......",
-            "....kGyyGk......",
-            "...GLkHykLG.....",
-            "..GGfkYYkfGG....",
-            ".GLhGkYYkGhLG...",
-            "..Gffk0YkffG....",
-            "...GGkYYkGG.....",
-            "...kHkffkHk.....",
-            "..kHykffkyHk....",
-            "..kY0GffG0Yk....",
-            "...kkGFFGkk.....",
-            ".....GFFG.......",
-            ".....GGGG.......",
-            "................",
-            "................",
-        ],
-    ]
-
-    # Row 1 (y=16): Tomate (tomato)
-    tomato_stages = [
-        [
-            "................",
-            "................",
-            "................",
-            "................",
-            "................",
-            "................",
-            "................",
-            "................",
-            ".....kk.........",
-            "....k78k...kk...",
-            ".....kk...k78k..",
-            "..kk.......kk...",
-            ".k78k..kk.......",
-            "..kk..k78k......",
-            ".......kk.......",
-            "................",
-        ],
-        [
-            "................",
-            "................",
-            "................",
-            "................",
-            "................",
-            "................",
-            "................",
-            "................",
-            ".....GG.GG......",
-            "....GLGGhLG.....",
-            "....GfGGfhG.....",
-            ".....GffGG......",
-            "......GfG.......",
-            "......GFG.......",
-            ".......G........",
-            "................",
-        ],
-        [
-            "................",
-            "................",
-            "................",
-            ".....GGGGGG.....",
-            "...GGLhhhhLLGG..",
-            "..GLhGffffGhLLG.",
-            "..GffGffffGffG..",
-            "...GffffffffG...",
-            "....GffFFffG....",
-            ".....GFFFFG.....",
-            "......GFFG......",
-            "......GGGG......",
-            "................",
-            "................",
-            "................",
-            "................",
-        ],
-        [
-            "................",
-            ".....GGGGGG.....",
-            "...GGLhhhhLLGG..",
-            "..GLhGyYffGhLLG.",
-            "..GffYyyGfGfyyG.",
-            ".GLhfGffGGffYyw.",
-            "..GfffffGGffffG.",
-            "..GffyyfffffGfG.",
-            "...GyYfffFFffG..",
-            "....GffFFFFGG...",
-            ".....GGGGGGG....",
-            "................",
-            "................",
-            "................",
-            "................",
-            "................",
-        ],
-        [
-            ".....GGGGGG.....",
-            "...GGLhhhhLLGG..",
-            "..GLhGffffGhLLG.",
-            "..Gfk11kffk11kG.",
-            ".GLk2113kfk211kG",
-            "..Gk1133kfk113k.",
-            "..Gfk33kfGk33kG.",
-            "..Gfffk11kffGfG.",
-            "...Gfk2113kffG..",
-            "....Gk113kFFG...",
-            ".....GkkkGGG....",
-            "......GGG.......",
-            "................",
-            "................",
-            "................",
-            "................",
-        ],
-    ]
-
-    # Row 2 (y=32): Abóbora (pumpkin)
-    pumpkin_stages = [
-        [
-            "................",
-            "................",
-            "................",
-            "................",
-            "................",
-            "................",
-            "................",
-            "................",
-            ".....kk.........",
-            "....k87k...kk...",
-            ".....kk...k87k..",
-            "..kk.......kk...",
-            ".k87k..kk.......",
-            "..kk..k87k......",
-            ".......kk.......",
-            "................",
-        ],
-        [
-            "................",
-            "................",
-            "................",
-            "................",
-            "................",
-            "................",
-            "................",
-            ".....GGGG.......",
-            "....GLhhLG......",
-            "....GffffG......",
-            ".....GffG.......",
-            "......GG........",
-            "................",
-            "................",
-            "................",
-            "................",
-        ],
-        [
-            "................",
-            "................",
-            "................",
-            "....GGGGGGGG....",
-            "..GGLhhhhhhLLG..",
-            ".GLhGffffffGhLG.",
-            ".GffGffffffGffG.",
-            "..GfffFFFFfffG..",
-            "...GGGGGGGGGG...",
-            "................",
-            "................",
-            "................",
-            "................",
-            "................",
-            "................",
-            "................",
-        ],
-        [
-            "................",
-            "....GGGGGGGG....",
-            "..GGLhhhhhhLLG..",
-            ".GLhGyYffYyGhLG.",
-            ".GffYyyGGyyYGfG.",
-            "..GffGffffGffG..",
-            "...GfffGGfffG...",
-            "....GGGGGGGG....",
-            "................",
-            "................",
-            "................",
-            "................",
-            "................",
-            "................",
-            "................",
-            "................",
-        ],
-        [
-            ".......GG.......",
-            "......GLLG......",
-            "....GGfGGfGG....",
-            "...kKKKKKKKKk...",
-            "..k8877kk7788k..",
-            ".k8777k87k7779k.",
-            ".k8777k77k7799k.",
-            ".k7777k77k7999k.",
-            ".k7799k79k9999k.",
-            "..k999k99k999k..",
-            "...kkkKKKKkkk...",
-            ".....kkkkkk.....",
-            "................",
-            "................",
-            "................",
-            "................",
-        ],
-    ]
-
-    for row_idx, stages in enumerate([corn_stages, tomato_stages, pumpkin_stages]):
-        for col_idx, grid in enumerate(stages):
-            paste_tile(sheet, render_grid(grid, 16, 16), col_idx * 16, row_idx * 16)
-
-    return sheet
-
-
 # ==============================================================================
-# 7. V1.3.0 WORLD PROPS & SHEEP (112x32 px = 7 cols x 2 rows de 16x16)
+# 6. EXTRA PROPS SHEET (112x32 px = 7 cols x 2 rows de 16x16)
 # Row 0: Sheep0, Sheep1, CheesePressIdle, CheesePressReady, OvenIdle, OvenReady, BeeHive
 # Row 1: Sprinkler, OrderBoard, Fertilizer, GoldStar, Bobber, RainDrop, ReadyExclamation
 # ==============================================================================
@@ -1828,7 +2094,7 @@ def build_v13_props_sheet() -> Image.Image:
 
 
 # ==============================================================================
-# 8. V1.3.0 UI ICONS (256x16 px = 16 ícones de 16x16)
+# 7. EXTRA UI ICONS (256x16 px = 16 ícones de 16x16)
 # ==============================================================================
 def build_v13_icons() -> Image.Image:
     sheet = Image.new("RGBA", (256, 16), TRANSPARENT)
@@ -2062,11 +2328,10 @@ def main() -> None:
 
     outputs: list[tuple[str, Image.Image, tuple[int, int]]] = [
         ("terrain_tileset.png", build_terrain_tileset(), (64, 32)),
-        ("crops_sheet.png", build_crops_sheet(), (80, 48)),
+        ("crops_sheet.png", build_crops_sheet(), (80, 96)),
         ("farmer_sheet.png", build_farmer_sheet(), (64, 64)),
-        ("props_buildings.png", build_props_buildings(), (96, 48)),
-        ("ui_icons.png", build_ui_icons(), (128, 16)),
-        ("crops_extra_sheet.png", build_crops_extra_sheet(), (80, 48)),
+        ("props_buildings.png", build_props_buildings(), (96, 64)),
+        ("ui_icons.png", build_ui_icons(), (256, 16)),
         ("v13_props_sheet.png", build_v13_props_sheet(), (112, 32)),
         ("v13_icons.png", build_v13_icons(), (256, 16)),
     ]

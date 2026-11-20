@@ -9,22 +9,43 @@ Todas as alterações relevantes do projeto **Fazendinha 2D** estão documentada
 
 ---
 
-## [v1.3.0] — 2026-11-20
+## [v1.4.0] — 2026-11-20
 
-**Cultivos com Rebrota, Chuva, Pesca, Máquinas, Ovelha, Aspersores, Pedidos & Álbum**
-- **Release:** [v1.3.0](https://github.com/marlonferreira1800-hue/Fazenda-asclepio-/releases/tag/v1.3.0)
+**Rebrota, Fertilizante Ouro ★, Pesca no Lago, Máquinas Artesanais, Carinho & Diário (J)**
+- **Release (planejada):** [v1.4.0](https://github.com/marlonferreira1800-hue/Fazenda-asclepio-/releases/tag/v1.4.0)
+- **PR:** [#6](https://github.com/marlonferreira1800-hue/Fazenda-asclepio-/pull/6)
 - **Contribuidor:** [@marlonferreira1800-hue](https://github.com/marlonferreira1800-hue)
 
 ### 🔄 Antes vs. Depois
-- **Antes:** Apenas 3 cultivos sem rebrota, sem clima, sem pesca no lago, sem máquinas artesanais, ferramentas fixas `1x1` e sem encomendas diárias ou álbum de descobertas.
-- **Depois:** 6 cultivos (Morango, Milho e Tomate com rebrota + Fertilizante Ouro `1.5x`), chuva diária com partículas, Aspersores `3x3`, upgrades de Enxada/Regador (`3x1` e `3x3`), minigame de pesca, Ovelha (Lã) + carinho/corações (`0..5`), Queijeira, Forno de Pão, Apiário e Diário (`J`) com Encomendas, Álbum e velocidade do dia.
+- **Antes:** Cultivos sem rebrota ou qualidade especial, sem pesca no lago, sem máquinas artesanais, sem carinho/compra de animais nem quadro de encomendas ou álbum.
+- **Depois:** Morango, Milho e Tomate com rebrota contínua; Fertilizante (`$15`) + qualidade Ouro ★ (`1.5x`); minigame de pesca (4 peixes); carinho diário (`♥ 0..5`), Ovo Azul (`$55`) e compra de animais (Galinha/Ovelha/Vaca/Porco); máquinas artesanais (**Queijeira**, **Forno de Pão**, **Apiário**); Diário (`J`) com Encomendas Diárias e Álbum (3 bônus passivos); e controle de velocidade do dia (`0.5x / 1x / 1.5x`).
 
 ### Bugs Resolvidos e Melhorias
-- Expansão de cultivos (`crops_extra_sheet.png`) com **Milho**, **Tomate** e **Abóbora**, sistema de **rebrota** e **Fertilizante** para colheitas **Ouro ★ (`1.5x`)**.
-- **Clima chuvoso** (`30%` ao amanhecer) regando automaticamente o canteiro, **Aspersores** `3x3` e melhorias da Enxada e do Regador (`1x1` → `3x1` → `3x3`).
-- **Minigame de pesca** no lago (`Tilápia`, `Camarão`, `Truta`, `Carpa Dourada`), **Ovelha** (`Lã`), carinho diário em animais (`♥ 0..5` + `Ovo Azul`) e compra de animais na Loja.
-- **Máquinas artesanais** (**Queijeira**, **Forno de Pão**, **Apiário**) e **Diário da Fazenda (`J`)** com Encomendas diárias, Álbum com bônus passivos e controle de velocidade do relógio.
-- Correção do erro de tipagem GDScript em `farm_world.gd` (`_get_affected_tiles`), ajuste de navegação/wraps do Diário e sincronização de `.import`/`.uid` e build Web (`build/web/`).
+- **PR [#6](https://github.com/marlonferreira1800-hue/Fazenda-asclepio-/pull/6):**
+  - **Cultivos & Qualidade:** Rebrota automática em **Morango**, **Milho** e **Tomate** (`regrow_days: 2`), **Fertilizante (`$15`)** no slot `0` elevando a chance de colheita **Ouro ★ (`1.5x`)** de `10%` para `45%`.
+  - **Pesca no Lago:** **Vara de Pesca** no slot `3` com minigame no lago (suporte teclado, mouse e touch mobile) para pescar **Tilápia (`$35`)**, **Camarão (`$45`)**, **Truta (`$55`)** e **Carpa Dourada (`$120`)** + SFX dedicados.
+  - **Animais & Máquinas Artesanais:** Sistema de carinho diário (`♥ 0..5`), **Ovo Azul (`$55`)**, compra de novos animais na Loja (**Galinha**, **Ovelha**, **Vaca**, **Porco** — até 8 no cercado) e 3 máquinas (**Queijeira**, **Forno de Pão**, **Apiário**) produzindo **Queijo (`$95`)**, **Pão (`$80`)** e **Mel (`$70`)**.
+  - **Diário (`J`), Álbum & Auto-Farmer:** Quadro de Encomendas no mapa + modal **Diário (`J`)** com 3 pedidos diários, **Álbum de Descobertas** (18 itens e 3 bônus passivos), controle de **Velocidade do Relógio (`0.5x / 1x / 1.5x`)** no Menu/Diário, compatibilidade retroativa com saves `v1.3.0` e Auto-Farmer (`P`) integrado às máquinas e carinho.
+
+---
+
+## [v1.3.0] — 2026-11-19
+
+**Novos Cultivos, Upgrades 3x3, Aspersores, Clima Chuvoso, BGM Procedural, Ovelha/Porco & Mobile**
+- **Release:** [v1.3.0](https://github.com/marlonferreira1800-hue/Fazenda-asclepio-/releases/tag/v1.3.0)
+- **Issue:** [#7](https://github.com/marlonferreira1800-hue/Fazenda-asclepio-/issues/7)
+- **Contribuidor:** [@marlonferreira1800-hue](https://github.com/marlonferreira1800-hue)
+
+### 🔄 Antes vs. Depois
+- **Antes:** Apenas 3 cultivos, ferramentas sem evolução, clima sempre ensolarado, sem música de fundo, apenas galinha/vaca, sem controles touch na tela nem opção na interface para reiniciar o progresso.
+- **Depois:** 6 cultivos (Trigo, Cenoura, Morango, Milho, Tomate e Abóbora), upgrades de Enxada/Regador (`3x1`/`3x3`) e Resistência, Aspersor automático `3x3`, clima Sol/Chuva com previsão e rega automática, música cozy procedural em loop, Ovelha (`Lã $60`) e Porco (`Trufa $80`), controles touch na tela, Menu (`Esc`) com Reiniciar Fazenda e Auto-Farmer expandido para 12 canteiros.
+
+### Bugs Resolvidos e Melhorias
+- **Issue [#7](https://github.com/marlonferreira1800-hue/Fazenda-asclepio-/issues/7):**
+  - **Gameplay & Economia:** Adicionados **Milho** (`3d`, `$30`/`$90`), **Tomate** (`4d`, `$45`/`$145`) e **Abóbora** (`5d`, `$65`/`$220`) em `CropData`, hotbar expandida para 9 slots (`1-9` + roda do mouse), Loja (`B`) redesenhada com abas (**Sementes** `1x`/`+5` e **Upgrades**) e **Aspersor Automático (`3x3`)** recolhível com `F`.
+  - **Clima & Atmosfera:** Sistema diário de clima (**Sol / Chuva**) com previsão para o dia seguinte na HUD, gotas de chuva pixeladas em movimento, fumaça na chaminé, brilhos no lago e rega automática de todo o canteiro quando chove.
+  - **Áudio & Animais:** Música de fundo *cozy* sintetizada proceduralmente em loop (`AudioStreamWAV`), novos timbres para **Ovelha**, **Porco** e **Upgrade**, e produção diária de **Lã (`$60`)** e **Trufa (`$80`)**.
+  - **UX, Mobile & Auto-Farmer:** Menu (`Esc`/botão `Menu`) com toggles independentes de SFX/Música, seletor de **Controles Touch (`Auto / Sempre ON / OFF`)** com D-Pad + ações na tela, **Reiniciar Fazenda** com confirmação limpando também o mundo, e Auto-Farmer (`P`) atualizado para 12 canteiros e todas as 6 culturas.
 
 ---
 

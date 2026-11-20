@@ -1,5 +1,5 @@
 extends CanvasLayer
-## Cozy pixel-art HUD, Shop, Journal/Orders/Album & Version UI for Fazendinha 2D (640x360 viewport).
+## Cozy pixel-art HUD, Tabbed Shop, Journal (Orders/Album), Menu/Options & Touch UI for Fazendinha 2D (640x360 viewport).
 
 const CropDataScript := preload("res://scripts/data/crop_data.gd")
 const FarmCatalogScript := preload("res://scripts/data/farm_catalog.gd")
@@ -8,11 +8,49 @@ const UI_ICONS_PATH := "res://assets/sprites/ui_icons.png"
 const V13_ICONS_PATH := "res://assets/sprites/v13_icons.png"
 const VERSION_DATA_PATH := "res://scripts/data/version_data.gd"
 
-const FALLBACK_VERSION := "v1.2.0"
+const FALLBACK_VERSION := "v1.4.0"
 const FALLBACK_AUTHOR := "@marlonferreira1800-hue (Marlon Ferreira)"
 const FALLBACK_RELEASES_URL := "https://github.com/marlonferreira1800-hue/Fazenda-asclepio-/releases"
 const FALLBACK_ISSUES_URL := "https://github.com/marlonferreira1800-hue/Fazenda-asclepio-/issues"
 const FALLBACK_CHANGELOG_URL := "https://github.com/marlonferreira1800-hue/Fazenda-asclepio-/blob/main/CHANGELOG.md"
+const FALLBACK_HISTORY: Array[Dictionary] = [
+	{
+		"version": "v1.4.0",
+		"title": "Rebrota, Fertilizante Ouro ★, Pesca, Máquinas, Carinho & Diário (J)",
+		"date": "2026-11-20",
+		"author": "@marlonferreira1800-hue",
+		"highlights": [
+			"Rebrota em Morango/Milho/Tomate + Fertilizante e qualidade Ouro ★ (1.5x)",
+			"Minigame de Pesca (4 peixes), Carinho/Ovo Azul, Compra de animais, Máquinas e Diário (J)",
+		],
+	},
+	{
+		"version": "v1.3.0",
+		"title": "Novos Cultivos, Upgrades, Clima, Música, Animais & Mobile",
+		"date": "2026-11-19",
+		"author": "@marlonferreira1800-hue",
+		"highlights": [
+			"Milho, Tomate e Abóbora (6 culturas), upgrades 3x1/3x3 e Aspersor 3x3",
+			"Clima Sol/Chuva automático, BGM procedural em loop, Ovelha/Porco e Touch Mobile",
+		],
+	},
+]
+
+const DEFAULT_HOTBAR_SLOTS: Array[Dictionary] = [
+	{"id": "hoe", "name": "Enxada", "type": "tool", "sheet": "base", "icon_col": 0, "key_hint": "1"},
+	{"id": "watering_can", "name": "Regador", "type": "tool", "sheet": "base", "icon_col": 1, "key_hint": "2"},
+	{"id": "fishing_rod", "name": "Vara de Pesca", "type": "tool", "sheet": "v13", "icon_col": 0, "key_hint": "3"},
+	{"id": "wheat_seed", "name": "Sem. Trigo", "type": "seed", "crop_id": "wheat", "sheet": "base", "icon_col": 2, "key_hint": "4"},
+	{"id": "carrot_seed", "name": "Sem. Cenoura", "type": "seed", "crop_id": "carrot", "sheet": "base", "icon_col": 3, "key_hint": "5"},
+	{"id": "strawberry_seed", "name": "Sem. Morango", "type": "seed", "crop_id": "strawberry", "sheet": "base", "icon_col": 4, "key_hint": "6"},
+	{"id": "corn_seed", "name": "Sem. Milho", "type": "seed", "crop_id": "corn", "sheet": "base", "icon_col": 8, "key_hint": "7"},
+	{"id": "tomato_seed", "name": "Sem. Tomate", "type": "seed", "crop_id": "tomato", "sheet": "base", "icon_col": 9, "key_hint": "8"},
+	{"id": "pumpkin_seed", "name": "Sem. Abóbora", "type": "seed", "crop_id": "pumpkin", "sheet": "base", "icon_col": 10, "key_hint": "9"},
+	{"id": "fertilizer", "name": "Fertilizante", "type": "supply", "supply_id": "fertilizer", "sheet": "v13", "icon_col": 4, "key_hint": "0"},
+	{"id": "sprinkler", "name": "Aspersor", "type": "supply", "supply_id": "sprinkler", "sheet": "base", "icon_col": 11, "key_hint": "-"},
+]
+
+const CROP_ORDER: Array[String] = ["wheat", "carrot", "strawberry", "corn", "tomato", "pumpkin"]
 
 # Cozy wood & parchment palette
 const COL_WOOD_DARK := Color("#4e2c17")
@@ -33,11 +71,12 @@ var _v13_icons_texture: Texture2D = null
 var _v13_icons_cols: int = 0
 
 var _shop_open: bool = false
-var _changelog_open: bool = false
+var _shop_tab: String = "seeds" # "seeds" | "upgrades" | "farm"
 var _journal_open: bool = false
-var _shop_tab: int = 0
-var _journal_tab: int = 0
-var _reset_confirm_armed: bool = false
+var _journal_tab: int = 0 # 0: Pedidos, 1: Álbum, 2: Dicas & Vel.
+var _changelog_open: bool = false
+var _menu_open: bool = false
+var _touch_seen: bool = false
 var _toast_tween: Tween = null
 var _open_external_links: bool = true
 
@@ -48,19 +87,28 @@ var _issues_url: String = FALLBACK_ISSUES_URL
 var _changelog_url: String = FALLBACK_CHANGELOG_URL
 var _version_history: Array[Dictionary] = []
 
-# Top HUD references
+# UI references
 var _ui_root: Control
 var _day_time_label: Label
 var _money_label: Label
 var _version_button: Button
+var _weather_today_icon: TextureRect
+var _weather_today_label: Label
+var _weather_next_icon: TextureRect
+var _weather_next_label: Label
 var _stamina_bar: ProgressBar
 var _stamina_fill_style: StyleBoxFlat
 var _stamina_value_label: Label
 var _water_bar: ProgressBar
 var _water_value_label: Label
 
-var _basket_summary_label: Label
-var _basket_detail_label: Label
+var _harvest_label: Label
+var _basket_extra_label: Label
+var _egg_label: Label
+var _blue_egg_label: Label
+var _milk_label: Label
+var _wool_label: Label
+var _truffle_label: Label
 var _sound_button: Button
 var _auto_button: Button
 var _journal_button: Button
@@ -75,25 +123,46 @@ var _slot_active_style: StyleBoxFlat
 var _toast_panel: PanelContainer
 var _toast_label: Label
 
-# Shop modal references
 var _shop_backdrop: ColorRect
 var _shop_panel: PanelContainer
 var _shop_money_label: Label
 var _shop_harvest_label: Label
-var _shop_tab_buttons: Array[Button] = []
-var _shop_content_vbox: VBoxContainer
+var _shop_tab_seeds_btn: Button
+var _shop_tab_upgrades_btn: Button
+var _shop_tab_farm_btn: Button
+var _shop_seeds_grid: GridContainer
+var _shop_upgrades_vbox: VBoxContainer
+var _shop_farm_scroll: ScrollContainer
+var _shop_farm_vbox: VBoxContainer
+var _shop_crop_info_labels: Dictionary = {}
+var _shop_buy_buttons: Dictionary = {}
+var _shop_upgrade_title_labels: Dictionary = {}
+var _shop_upgrade_desc_labels: Dictionary = {}
+var _shop_upgrade_buttons: Dictionary = {}
+var _shop_fertilizer_desc_label: Label
+var _shop_sprinkler_desc_label: Label
 
-# Journal (Orders / Album / Options) modal references
 var _journal_backdrop: ColorRect
 var _journal_panel: PanelContainer
 var _journal_tab_buttons: Array[Button] = []
 var _journal_content_vbox: VBoxContainer
 
-# Changelog modal references
 var _changelog_backdrop: ColorRect
 var _changelog_panel: PanelContainer
 var _changelog_title_label: Label
 var _changelog_author_label: Label
+
+var _menu_backdrop: ColorRect
+var _menu_panel: PanelContainer
+var _menu_sfx_btn: Button
+var _menu_music_btn: Button
+var _menu_touch_btn: Button
+var _menu_speed_btn: Button
+var _menu_reset_btn: Button
+var _menu_reset_confirm_box: PanelContainer
+
+var _touch_layer: Control
+var _touch_dir_active := Vector2.ZERO
 
 
 func _ready() -> void:
@@ -113,31 +182,26 @@ func _ready() -> void:
 
 
 func _load_texture_safe(res_path: String) -> Texture2D:
-	if FileAccess.file_exists(res_path + ".import") or not OS.has_feature("editor"):
-		if ResourceLoader.exists(res_path):
-			var res: Resource = load(res_path)
-			if res is Texture2D:
-				return res
-	var abs_path: String = ProjectSettings.globalize_path(res_path)
-	if FileAccess.file_exists(abs_path):
-		var img := Image.load_from_file(abs_path)
+	var tex: Texture2D = null
+	if ResourceLoader.exists(res_path):
+		tex = load(res_path) as Texture2D
+	if tex == null and FileAccess.file_exists(res_path):
+		var img := Image.load_from_file(ProjectSettings.globalize_path(res_path))
 		if img != null and not img.is_empty():
-			return ImageTexture.create_from_image(img)
-	return null
+			tex = ImageTexture.create_from_image(img)
+	return tex
+
+
+func _input(event: InputEvent) -> void:
+	if (event is InputEventScreenTouch or event is InputEventScreenDrag) and not _touch_seen:
+		_touch_seen = true
+		_refresh_touch_controls()
 
 
 func _unhandled_input(event: InputEvent) -> void:
 	var parent := get_parent()
 	if parent != null and parent.has_method("is_fishing_active") and bool(parent.call("is_fishing_active")):
 		return
-
-	if not is_shop_open():
-		for i in range(5):
-			var action_name := "slot_%d" % (i + 1)
-			if InputMap.has_action(action_name) and event.is_action_pressed(action_name):
-				_select_slot(i)
-				get_viewport().set_input_as_handled()
-				return
 
 	var key_event := event as InputEventKey
 	var key_pressed: bool = key_event != null and key_event.pressed and not key_event.echo
@@ -150,35 +214,78 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 
 	if (InputMap.has_action("ui_cancel") and event.is_action_pressed("ui_cancel")) or (key_pressed and keycode == KEY_ESCAPE):
-		if is_shop_open():
-			_play_click()
-			close_all_modals()
-			get_viewport().set_input_as_handled()
-			return
-
-	if _changelog_open and (
-		(InputMap.has_action("toggle_demo") and event.is_action_pressed("toggle_demo")) or (key_pressed and keycode == KEY_P)
-	):
-		_set_changelog_open(false)
+		_play_click()
+		if _changelog_open:
+			_set_changelog_open(false)
+		elif _journal_open:
+			_set_journal_open(false)
+		elif _menu_open:
+			if _menu_reset_confirm_box != null and _menu_reset_confirm_box.visible:
+				_menu_reset_confirm_box.visible = false
+			else:
+				_set_menu_open(false)
+		elif _shop_open:
+			_set_shop_open(false)
+		else:
+			_set_menu_open(true)
+		get_viewport().set_input_as_handled()
 		return
 
-	if key_pressed and not is_shop_open():
-		var mapped_idx: int = -1
-		match keycode:
-			KEY_1, KEY_KP_1: mapped_idx = 0
-			KEY_2, KEY_KP_2: mapped_idx = 1
-			KEY_3, KEY_KP_3: mapped_idx = 2
-			KEY_4, KEY_KP_4: mapped_idx = 3
-			KEY_5, KEY_KP_5: mapped_idx = 4
-			KEY_6, KEY_KP_6: mapped_idx = 5
-			KEY_7, KEY_KP_7: mapped_idx = 6
-			KEY_8, KEY_KP_8: mapped_idx = 7
-			KEY_9, KEY_KP_9: mapped_idx = 8
-			KEY_0, KEY_KP_0: mapped_idx = 9
-			KEY_MINUS, KEY_KP_SUBTRACT: mapped_idx = 10
-		if mapped_idx >= 0 and mapped_idx < _slot_panels.size():
-			_select_slot(mapped_idx)
-			get_viewport().set_input_as_handled()
+	if (_changelog_open or _menu_open or _journal_open) and (
+		(InputMap.has_action("toggle_demo") and event.is_action_pressed("toggle_demo")) or (key_pressed and keycode == KEY_P)
+	):
+		close_all_modals()
+		return
+
+	if not is_shop_open():
+		for i in range(9):
+			var action_name := "slot_%d" % (i + 1)
+			if InputMap.has_action(action_name) and event.is_action_pressed(action_name):
+				_select_slot(i)
+				get_viewport().set_input_as_handled()
+				return
+
+		if key_pressed:
+			var matched_slot := -1
+			match keycode:
+				KEY_1, KEY_KP_1:
+					matched_slot = 0
+				KEY_2, KEY_KP_2:
+					matched_slot = 1
+				KEY_3, KEY_KP_3:
+					matched_slot = 2
+				KEY_4, KEY_KP_4:
+					matched_slot = 3
+				KEY_5, KEY_KP_5:
+					matched_slot = 4
+				KEY_6, KEY_KP_6:
+					matched_slot = 5
+				KEY_7, KEY_KP_7:
+					matched_slot = 6
+				KEY_8, KEY_KP_8:
+					matched_slot = 7
+				KEY_9, KEY_KP_9:
+					matched_slot = 8
+				KEY_0, KEY_KP_0:
+					matched_slot = 9
+				KEY_MINUS, KEY_KP_SUBTRACT:
+					matched_slot = 10
+			if matched_slot >= 0:
+				_select_slot(matched_slot)
+				get_viewport().set_input_as_handled()
+				return
+
+		if event is InputEventMouseButton and event.pressed:
+			var mb := event as InputEventMouseButton
+			if mb.button_index == MOUSE_BUTTON_WHEEL_UP or mb.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+				var slots := _get_hotbar_slots()
+				if not slots.is_empty():
+					var gs := _get_game_state()
+					var cur: int = int(gs.selected_slot) if gs != null else 0
+					var step: int = -1 if mb.button_index == MOUSE_BUTTON_WHEEL_UP else 1
+					var nxt: int = (cur + step + slots.size()) % slots.size()
+					_select_slot(nxt)
+					get_viewport().set_input_as_handled()
 
 
 func toggle_shop() -> void:
@@ -189,7 +296,6 @@ func toggle_journal(tab_idx: int = -1) -> void:
 	var clamped_tab: int = clampi(tab_idx, 0, 2) if tab_idx >= 0 else _journal_tab
 	if _journal_open and tab_idx >= 0 and _journal_tab != clamped_tab:
 		_journal_tab = clamped_tab
-		_reset_confirm_armed = false
 		_refresh_journal()
 		return
 	if tab_idx >= 0:
@@ -197,14 +303,19 @@ func toggle_journal(tab_idx: int = -1) -> void:
 	_set_journal_open(not _journal_open)
 
 
-func close_all_modals() -> void:
-	_set_shop_open(false)
-	_set_journal_open(false)
-	_set_changelog_open(false)
-
-
 func is_shop_open() -> bool:
-	return _shop_open or _changelog_open or _journal_open
+	return _shop_open or _changelog_open or _menu_open or _journal_open
+
+
+func close_all_modals() -> void:
+	if _shop_open:
+		_set_shop_open(false)
+	if _journal_open:
+		_set_journal_open(false)
+	if _changelog_open:
+		_set_changelog_open(false)
+	if _menu_open:
+		_set_menu_open(false)
 
 
 func toggle_changelog() -> void:
@@ -215,10 +326,18 @@ func is_changelog_open() -> bool:
 	return _changelog_open
 
 
+func toggle_menu() -> void:
+	_set_menu_open(not _menu_open)
+
+
 func _set_shop_open(open: bool) -> void:
 	if open:
-		_set_changelog_open(false)
-		_set_journal_open(false)
+		if _changelog_open:
+			_set_changelog_open(false)
+		if _menu_open:
+			_set_menu_open(false)
+		if _journal_open:
+			_set_journal_open(false)
 	_shop_open = open
 	if _shop_backdrop != null:
 		_shop_backdrop.visible = _shop_open
@@ -230,9 +349,12 @@ func _set_shop_open(open: bool) -> void:
 
 func _set_journal_open(open: bool) -> void:
 	if open:
-		_set_shop_open(false)
-		_set_changelog_open(false)
-		_reset_confirm_armed = false
+		if _shop_open:
+			_set_shop_open(false)
+		if _changelog_open:
+			_set_changelog_open(false)
+		if _menu_open:
+			_set_menu_open(false)
 	_journal_open = open
 	if _journal_backdrop != null:
 		_journal_backdrop.visible = _journal_open
@@ -244,13 +366,36 @@ func _set_journal_open(open: bool) -> void:
 
 func _set_changelog_open(open: bool) -> void:
 	if open:
-		_set_shop_open(false)
-		_set_journal_open(false)
+		if _shop_open:
+			_set_shop_open(false)
+		if _journal_open:
+			_set_journal_open(false)
+		if _menu_open:
+			_set_menu_open(false)
 	_changelog_open = open
 	if _changelog_backdrop != null:
 		_changelog_backdrop.visible = _changelog_open
 	if _changelog_panel != null:
 		_changelog_panel.visible = _changelog_open
+
+
+func _set_menu_open(open: bool) -> void:
+	if open:
+		if _shop_open:
+			_set_shop_open(false)
+		if _journal_open:
+			_set_journal_open(false)
+		if _changelog_open:
+			_set_changelog_open(false)
+	_menu_open = open
+	if _menu_reset_confirm_box != null:
+		_menu_reset_confirm_box.visible = false
+	if _menu_backdrop != null:
+		_menu_backdrop.visible = _menu_open
+	if _menu_panel != null:
+		_menu_panel.visible = _menu_open
+	if _menu_open:
+		_refresh_menu_buttons()
 
 
 func _load_version_metadata() -> void:
@@ -274,6 +419,10 @@ func _load_version_metadata() -> void:
 				for item in raw_history:
 					if item is Dictionary:
 						_version_history.append((item as Dictionary).duplicate(true))
+
+	if _version_history.is_empty():
+		for item in FALLBACK_HISTORY:
+			_version_history.append(item.duplicate(true))
 
 
 func _emit_toast(text: String) -> void:
@@ -302,7 +451,7 @@ func _get_hotbar_slots() -> Array:
 	var gs := _get_game_state()
 	if gs != null:
 		return gs.HOTBAR_SLOTS
-	return []
+	return DEFAULT_HOTBAR_SLOTS
 
 
 func _get_crops() -> Dictionary:
@@ -327,8 +476,6 @@ func _connect_signals() -> void:
 			gs.money_changed.connect(_on_money_changed)
 		if gs.has_signal("day_changed"):
 			gs.day_changed.connect(_on_day_changed)
-		if gs.has_signal("weather_changed"):
-			gs.weather_changed.connect(_on_weather_changed)
 		if gs.has_signal("inventory_changed"):
 			gs.inventory_changed.connect(_on_inventory_changed)
 		if gs.has_signal("tool_changed"):
@@ -339,18 +486,27 @@ func _connect_signals() -> void:
 			gs.water_changed.connect(_on_water_changed)
 		if gs.has_signal("toast_message"):
 			gs.toast_message.connect(_on_toast_message)
+		if gs.has_signal("upgrades_changed"):
+			gs.upgrades_changed.connect(_on_upgrades_changed)
+		if gs.has_signal("weather_changed"):
+			gs.weather_changed.connect(_on_weather_changed)
+		if gs.has_signal("touch_mode_changed"):
+			gs.touch_mode_changed.connect(_on_touch_mode_changed)
 		if gs.has_signal("orders_changed"):
 			gs.orders_changed.connect(_on_orders_or_album_changed)
 		if gs.has_signal("album_changed"):
 			gs.album_changed.connect(_on_orders_or_album_changed)
-		if gs.has_signal("upgrades_changed"):
-			gs.upgrades_changed.connect(_on_upgrades_or_machines_changed)
 		if gs.has_signal("machines_changed"):
-			gs.machines_changed.connect(_on_upgrades_or_machines_changed)
+			gs.machines_changed.connect(_on_machines_changed)
+		if gs.has_signal("animal_purchased"):
+			gs.animal_purchased.connect(_on_animal_purchased)
 
 	var audio := _get_audio_manager()
-	if audio != null and audio.has_signal("mute_changed"):
-		audio.mute_changed.connect(_on_mute_changed)
+	if audio != null:
+		if audio.has_signal("mute_changed"):
+			audio.mute_changed.connect(_on_mute_changed)
+		if audio.has_signal("music_mute_changed"):
+			audio.music_mute_changed.connect(_on_music_mute_changed)
 
 	var parent := get_parent()
 	if parent != null and parent.has_signal("demo_mode_changed"):
@@ -364,6 +520,7 @@ func _sync_all_from_state() -> void:
 		_on_money_changed(100)
 		_on_stamina_changed(100, 100)
 		_on_water_changed(20, 20)
+		_on_weather_changed("sunny", "sunny")
 		_on_inventory_changed()
 		_on_tool_changed(0)
 	else:
@@ -371,12 +528,15 @@ func _sync_all_from_state() -> void:
 		_on_money_changed(gs.money)
 		_on_stamina_changed(gs.stamina, gs.max_stamina)
 		_on_water_changed(gs.water_level, gs.max_water)
+		_on_weather_changed(str(gs.get("weather")), str(gs.get("tomorrow_weather")))
 		_on_inventory_changed()
 		_on_tool_changed(gs.selected_slot)
 
 	_refresh_sound_button()
 	_refresh_auto_button()
 	_refresh_journal_button()
+	_refresh_menu_buttons()
+	_refresh_touch_controls()
 
 
 func _build_ui() -> void:
@@ -388,11 +548,13 @@ func _build_ui() -> void:
 
 	_build_stats_panel()
 	_build_basket_panel()
+	_build_touch_controls()
 	_build_hotbar_section()
 	_build_controls_hint()
 	_build_shop_modal()
 	_build_journal_modal()
 	_build_changelog_modal()
+	_build_menu_modal()
 	_build_toast_panel()
 
 
@@ -400,20 +562,21 @@ func _build_stats_panel() -> void:
 	var panel := PanelContainer.new()
 	panel.name = "StatsPanel"
 	panel.position = Vector2(6, 6)
-	panel.add_theme_stylebox_override("panel", _make_parchment_style(6, 4))
+	panel.add_theme_stylebox_override("panel", _make_parchment_style(7, 4))
 	_ui_root.add_child(panel)
 
 	var vbox := VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 3)
+	vbox.add_theme_constant_override("separation", 2)
 	vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.add_child(vbox)
 
+	# Row 1: Day/Time + Money + Version badge
 	var top_row := HBoxContainer.new()
 	top_row.add_theme_constant_override("separation", 5)
 	top_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	vbox.add_child(top_row)
 
-	_day_time_label = _make_label("Dia 1 · 06:00 · Sol", 8, COL_INK)
+	_day_time_label = _make_label("Dia 1 - 06:00", 9, COL_INK)
 	_day_time_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top_row.add_child(_day_time_label)
 
@@ -423,12 +586,13 @@ func _build_stats_panel() -> void:
 	top_row.add_child(money_row)
 
 	money_row.add_child(_make_icon_rect("base", 5, Vector2(14, 14)))
+
 	_money_label = _make_label("$100", 9, COL_GOLD_TEXT)
 	money_row.add_child(_money_label)
 
 	_version_button = _make_colored_button(
 		"%s (V)" % _current_version,
-		Vector2(44, 15),
+		Vector2(46, 15),
 		7,
 		Color("#5a442d"),
 		Color("#72583b"),
@@ -442,13 +606,32 @@ func _build_stats_panel() -> void:
 	_version_button.pressed.connect(_on_version_button_pressed)
 	top_row.add_child(_version_button)
 
+	# Row 2: Weather & Forecast
+	var weather_row := HBoxContainer.new()
+	weather_row.add_theme_constant_override("separation", 4)
+	weather_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vbox.add_child(weather_row)
+
+	_weather_today_icon = _make_icon_rect("base", 14, Vector2(13, 13))
+	weather_row.add_child(_weather_today_icon)
+	_weather_today_label = _make_label("Hoje: Sol", 8, COL_INK)
+	weather_row.add_child(_weather_today_label)
+
+	weather_row.add_child(_make_label("|", 8, COL_INK_MUTED))
+
+	_weather_next_icon = _make_icon_rect("base", 14, Vector2(13, 13))
+	weather_row.add_child(_weather_next_icon)
+	_weather_next_label = _make_label("Amanhã: Sol", 8, COL_INK_MUTED)
+	weather_row.add_child(_weather_next_label)
+
+	# Row 3: Stamina bar
 	var stamina_row := HBoxContainer.new()
 	stamina_row.add_theme_constant_override("separation", 4)
 	stamina_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	vbox.add_child(stamina_row)
 
 	var stamina_lbl := _make_label("Energia", 8, COL_INK)
-	stamina_lbl.custom_minimum_size = Vector2(34, 0)
+	stamina_lbl.custom_minimum_size = Vector2(36, 0)
 	stamina_row.add_child(stamina_lbl)
 
 	_stamina_fill_style = _make_bar_fill_style(Color("#5ab549"))
@@ -458,13 +641,14 @@ func _build_stats_panel() -> void:
 	_stamina_value_label = stamina_built["label"]
 	stamina_row.add_child(_stamina_bar)
 
+	# Row 4: Water bar
 	var water_row := HBoxContainer.new()
 	water_row.add_theme_constant_override("separation", 4)
 	water_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	vbox.add_child(water_row)
 
 	var water_lbl := _make_label("Água", 8, COL_INK)
-	water_lbl.custom_minimum_size = Vector2(34, 0)
+	water_lbl.custom_minimum_size = Vector2(36, 0)
 	water_row.add_child(water_lbl)
 
 	var water_fill := _make_bar_fill_style(Color("#3a9be0"))
@@ -483,24 +667,49 @@ func _build_basket_panel() -> void:
 	panel.anchor_top = 0.0
 	panel.anchor_bottom = 0.0
 	panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	panel.offset_left = -296
+	panel.offset_left = -332
 	panel.offset_top = 6
 	panel.offset_right = -6
 	panel.add_theme_stylebox_override("panel", _make_parchment_style(6, 4))
 	_ui_root.add_child(panel)
 
 	var vbox := VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 3)
+	vbox.add_theme_constant_override("separation", 2)
 	vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.add_child(vbox)
 
-	_basket_summary_label = _make_label("Cesta: 0 itens ($0)", 8, COL_GOLD_TEXT)
-	_basket_summary_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	vbox.add_child(_basket_summary_label)
+	_harvest_label = _make_label("Tri:0 Cen:0 Mor:0 | Mil:0 Tom:0 Abo:0", 8, COL_INK)
+	_harvest_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	vbox.add_child(_harvest_label)
 
-	_basket_detail_label = _make_label("Colh: 0 | Anim: 0 | Peixe: 0 | Art: 0", 8, COL_INK)
-	_basket_detail_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	vbox.add_child(_basket_detail_label)
+	var animal_row := HBoxContainer.new()
+	animal_row.add_theme_constant_override("separation", 3)
+	animal_row.alignment = BoxContainer.ALIGNMENT_END
+	animal_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vbox.add_child(animal_row)
+
+	animal_row.add_child(_make_icon_rect("base", 6, Vector2(12, 12)))
+	_egg_label = _make_label("0", 8, COL_INK)
+	animal_row.add_child(_egg_label)
+
+	animal_row.add_child(_make_icon_rect("v13", 9, Vector2(12, 12)))
+	_blue_egg_label = _make_label("0", 8, COL_INK)
+	animal_row.add_child(_blue_egg_label)
+
+	animal_row.add_child(_make_icon_rect("base", 7, Vector2(12, 12)))
+	_milk_label = _make_label("0", 8, COL_INK)
+	animal_row.add_child(_milk_label)
+
+	animal_row.add_child(_make_icon_rect("base", 12, Vector2(12, 12)))
+	_wool_label = _make_label("0", 8, COL_INK)
+	animal_row.add_child(_wool_label)
+
+	animal_row.add_child(_make_icon_rect("base", 13, Vector2(12, 12)))
+	_truffle_label = _make_label("0", 8, COL_INK)
+	animal_row.add_child(_truffle_label)
+
+	_basket_extra_label = _make_label("| Peixe:0 Art:0 ($0)", 8, COL_GOLD_TEXT)
+	animal_row.add_child(_basket_extra_label)
 
 	var btn_row := HBoxContainer.new()
 	btn_row.add_theme_constant_override("separation", 2)
@@ -512,25 +721,30 @@ func _build_basket_panel() -> void:
 	_auto_button.pressed.connect(_on_auto_button_pressed)
 	btn_row.add_child(_auto_button)
 
-	var save_btn := _make_wood_button("Salvar", Vector2(36, 17), 7)
+	var save_btn := _make_wood_button("Salvar", Vector2(34, 17), 7)
 	save_btn.pressed.connect(_on_save_button_pressed)
 	btn_row.add_child(save_btn)
 
-	_sound_button = _make_wood_button("Som: ON", Vector2(44, 17), 7)
+	_sound_button = _make_wood_button("Som: ON", Vector2(42, 17), 7)
 	_sound_button.pressed.connect(_on_sound_button_pressed)
 	btn_row.add_child(_sound_button)
 
-	var shop_btn := _make_wood_button("Loja (B)", Vector2(45, 17), 7)
+	var shop_btn := _make_wood_button("Loja (B)", Vector2(42, 17), 7)
 	shop_btn.pressed.connect(_on_shop_button_pressed)
 	btn_row.add_child(shop_btn)
 
-	_journal_button = _make_wood_button("Diário (J)", Vector2(50, 17), 7)
+	_journal_button = _make_wood_button("Diário (J)", Vector2(48, 17), 7)
 	_journal_button.pressed.connect(_on_journal_button_pressed)
 	btn_row.add_child(_journal_button)
 
-	var sleep_btn := _make_wood_button("Dormir (N)", Vector2(52, 17), 7)
+	var sleep_btn := _make_wood_button("Dormir (N)", Vector2(48, 17), 7)
 	sleep_btn.pressed.connect(_on_sleep_button_pressed)
 	btn_row.add_child(sleep_btn)
+
+	var menu_btn := _make_wood_button("Menu", Vector2(32, 17), 7)
+	menu_btn.name = "MenuButton"
+	menu_btn.pressed.connect(_on_menu_button_pressed)
+	btn_row.add_child(menu_btn)
 
 
 func _build_hotbar_section() -> void:
@@ -559,7 +773,7 @@ func _build_hotbar_section() -> void:
 	container.add_child(tray)
 
 	var hbox := HBoxContainer.new()
-	hbox.add_theme_constant_override("separation", 3)
+	hbox.add_theme_constant_override("separation", 2)
 	hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	tray.add_child(hbox)
 
@@ -588,25 +802,29 @@ func _build_hotbar_section() -> void:
 		icon_center.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		inner.add_child(icon_center)
 
-		var sheet_name := str(slot_data.get("sheet", "base"))
+		var icon_sheet := str(slot_data.get("sheet", "base"))
 		var icon_col := int(slot_data.get("icon_col", i))
-		var icon_rect := _make_icon_rect(sheet_name, icon_col, Vector2(16, 16))
+		var icon_rect := _make_icon_rect(icon_sheet, icon_col, Vector2(15, 15))
 		icon_center.add_child(icon_rect)
 
-		var key_lbl := _make_label(str(slot_data.get("key_hint", str(i + 1))), 6, COL_INK_MUTED)
+		var key_hint := str(slot_data.get("key_hint", str(i + 1)))
+		var key_lbl := _make_label(key_hint, 7, COL_INK_MUTED)
 		key_lbl.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		key_lbl.offset_left = 1
-		key_lbl.offset_top = -1
+		key_lbl.offset_left = 0
+		key_lbl.offset_top = -2
 		key_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 		key_lbl.vertical_alignment = VERTICAL_ALIGNMENT_TOP
 		inner.add_child(key_lbl)
 
+		var s_type: String = str(slot_data.get("type", ""))
+		var s_id: String = str(slot_data.get("id", ""))
 		var count_lbl := _make_outlined_label("", 7, Color.WHITE)
 		count_lbl.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		count_lbl.offset_right = 0
-		count_lbl.offset_bottom = 1
+		count_lbl.offset_bottom = 2
 		count_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		count_lbl.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
+		count_lbl.visible = (s_type == "seed" or s_type == "supply" or s_id == "hoe" or s_id == "watering_can")
 		inner.add_child(count_lbl)
 
 		_slot_panels.append(slot_panel)
@@ -623,7 +841,7 @@ func _build_controls_hint() -> void:
 	panel.anchor_bottom = 1.0
 	panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	panel.offset_bottom = -2
+	panel.offset_bottom = -1
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.add_theme_stylebox_override(
 		"panel",
@@ -632,12 +850,100 @@ func _build_controls_hint() -> void:
 	_ui_root.add_child(panel)
 
 	var lbl := _make_label(
-		"WASD: Mover | Espaço/Clique: Usar | F: Interagir | 1-0/Scroll: Slot | B: Loja | J: Diário | N: Dormir | P: Auto",
+		"WASD: Mover | Espaço: Usar | F: Interagir | 1-0,-: Slot | B: Loja | J: Diário | N: Dormir | P: Auto | Esc: Menu",
 		7,
 		Color(0.96, 0.93, 0.84)
 	)
 	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	panel.add_child(lbl)
+
+
+func _build_touch_controls() -> void:
+	_touch_layer = Control.new()
+	_touch_layer.name = "TouchControls"
+	_touch_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_touch_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_touch_layer.visible = false
+	_ui_root.add_child(_touch_layer)
+
+	# Bottom-left D-Pad
+	var dpad := Control.new()
+	dpad.name = "TouchDPad"
+	dpad.anchor_left = 0.0
+	dpad.anchor_top = 1.0
+	dpad.anchor_bottom = 1.0
+	dpad.offset_left = 10
+	dpad.offset_top = -94
+	dpad.offset_right = 94
+	dpad.offset_bottom = -10
+	dpad.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_touch_layer.add_child(dpad)
+
+	var dir_specs := [
+		{"text": "▲", "pos": Vector2(28, 0), "dir": Vector2(0, -1)},
+		{"text": "▼", "pos": Vector2(28, 56), "dir": Vector2(0, 1)},
+		{"text": "◀", "pos": Vector2(0, 28), "dir": Vector2(-1, 0)},
+		{"text": "▶", "pos": Vector2(56, 28), "dir": Vector2(1, 0)},
+	]
+	for spec in dir_specs:
+		var btn := _make_colored_button(
+			str(spec["text"]),
+			Vector2(26, 26),
+			9,
+			Color(0.24, 0.14, 0.08, 0.72),
+			Color(0.35, 0.21, 0.12, 0.85),
+			Color(0.55, 0.36, 0.18, 0.92),
+			COL_GOLD_BORDER,
+			Color(1.0, 0.96, 0.82)
+		)
+		btn.position = spec["pos"]
+		btn.size = Vector2(26, 26)
+		var dir_vec: Vector2 = spec["dir"]
+		btn.button_down.connect(_on_touch_dir_down.bind(dir_vec))
+		btn.button_up.connect(_on_touch_dir_up)
+		btn.mouse_exited.connect(_on_touch_dir_up)
+		dpad.add_child(btn)
+
+	# Bottom-right Action buttons
+	var actions_box := VBoxContainer.new()
+	actions_box.name = "TouchActions"
+	actions_box.anchor_left = 1.0
+	actions_box.anchor_right = 1.0
+	actions_box.anchor_top = 1.0
+	actions_box.anchor_bottom = 1.0
+	actions_box.offset_left = -88
+	actions_box.offset_top = -80
+	actions_box.offset_right = -10
+	actions_box.offset_bottom = -14
+	actions_box.add_theme_constant_override("separation", 5)
+	actions_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_touch_layer.add_child(actions_box)
+
+	var use_btn := _make_colored_button(
+		"Usar",
+		Vector2(76, 28),
+		9,
+		Color(0.28, 0.56, 0.24, 0.82),
+		Color(0.35, 0.68, 0.30, 0.90),
+		Color(0.22, 0.44, 0.19, 0.95),
+		COL_GOLD_BORDER,
+		Color.WHITE
+	)
+	use_btn.pressed.connect(_on_touch_use_pressed)
+	actions_box.add_child(use_btn)
+
+	var interact_btn := _make_colored_button(
+		"Interagir",
+		Vector2(76, 28),
+		9,
+		Color(0.24, 0.48, 0.68, 0.82),
+		Color(0.30, 0.58, 0.80, 0.90),
+		Color(0.18, 0.38, 0.54, 0.95),
+		COL_GOLD_BORDER,
+		Color.WHITE
+	)
+	interact_btn.pressed.connect(_on_touch_interact_pressed)
+	actions_box.add_child(interact_btn)
 
 
 func _build_shop_modal() -> void:
@@ -655,9 +961,11 @@ func _build_shop_modal() -> void:
 	_shop_panel.anchor_right = 0.5
 	_shop_panel.anchor_top = 0.5
 	_shop_panel.anchor_bottom = 0.5
-	_shop_panel.offset_left = -196
-	_shop_panel.offset_right = 196
-	_shop_panel.offset_top = -124
+	_shop_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_shop_panel.grow_vertical = Control.GROW_DIRECTION_BOTH
+	_shop_panel.offset_left = -222
+	_shop_panel.offset_right = 222
+	_shop_panel.offset_top = -132
 	_shop_panel.offset_bottom = 112
 	_shop_panel.visible = false
 	_shop_panel.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -669,46 +977,222 @@ func _build_shop_modal() -> void:
 	main_vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_shop_panel.add_child(main_vbox)
 
+	# Header with 3 tabs + money
 	var header := HBoxContainer.new()
-	header.add_theme_constant_override("separation", 6)
+	header.add_theme_constant_override("separation", 4)
 	header.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	main_vbox.add_child(header)
 
 	var title := _make_label("Loja da Fazenda", 10, COL_WOOD_DARK)
-	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(title)
 
-	var tab_titles := ["Sementes", "Fazenda", "Máquinas"]
-	_shop_tab_buttons.clear()
-	for i in range(tab_titles.size()):
-		var t_btn := _make_wood_button(tab_titles[i], Vector2(56, 17), 7)
-		t_btn.pressed.connect(_on_shop_tab_pressed.bind(i))
-		header.add_child(t_btn)
-		_shop_tab_buttons.append(t_btn)
+	_shop_tab_seeds_btn = _make_wood_button("Sementes", Vector2(56, 17), 7)
+	_shop_tab_seeds_btn.pressed.connect(_on_shop_tab_pressed.bind("seeds"))
+	header.add_child(_shop_tab_seeds_btn)
+
+	_shop_tab_upgrades_btn = _make_wood_button("Upgrades", Vector2(56, 17), 7)
+	_shop_tab_upgrades_btn.pressed.connect(_on_shop_tab_pressed.bind("upgrades"))
+	header.add_child(_shop_tab_upgrades_btn)
+
+	_shop_tab_farm_btn = _make_wood_button("Animais & Máq.", Vector2(72, 17), 7)
+	_shop_tab_farm_btn.pressed.connect(_on_shop_tab_pressed.bind("farm"))
+	header.add_child(_shop_tab_farm_btn)
+
+	var header_spacer := Control.new()
+	header_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header_spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	header.add_child(header_spacer)
 
 	var money_box := HBoxContainer.new()
 	money_box.add_theme_constant_override("separation", 3)
 	money_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	header.add_child(money_box)
+
 	money_box.add_child(_make_icon_rect("base", 5, Vector2(14, 14)))
-	_shop_money_label = _make_label("$100", 9, COL_GOLD_TEXT)
+	_shop_money_label = _make_label("$100", 10, COL_GOLD_TEXT)
 	money_box.add_child(_shop_money_label)
 
 	main_vbox.add_child(_make_separator())
 
-	var scroll := ScrollContainer.new()
-	scroll.custom_minimum_size = Vector2(0, 148)
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	main_vbox.add_child(scroll)
+	# Tab 1: Seeds Grid (2 columns x 3 rows)
+	_shop_seeds_grid = GridContainer.new()
+	_shop_seeds_grid.name = "SeedsGrid"
+	_shop_seeds_grid.columns = 2
+	_shop_seeds_grid.add_theme_constant_override("h_separation", 6)
+	_shop_seeds_grid.add_theme_constant_override("v_separation", 4)
+	_shop_seeds_grid.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	main_vbox.add_child(_shop_seeds_grid)
 
-	_shop_content_vbox = VBoxContainer.new()
-	_shop_content_vbox.add_theme_constant_override("separation", 4)
-	_shop_content_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.add_child(_shop_content_vbox)
+	var crops := _get_crops()
+	for crop_id in CROP_ORDER:
+		var crop: Dictionary = crops.get(crop_id, {})
+		var row_panel := PanelContainer.new()
+		row_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row_panel.add_theme_stylebox_override("panel", _make_flat_style(COL_PARCHMENT_ALT, Color("#b89563"), 1, 5, 3, 2))
+		_shop_seeds_grid.add_child(row_panel)
+
+		var row_hbox := HBoxContainer.new()
+		row_hbox.add_theme_constant_override("separation", 4)
+		row_hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row_panel.add_child(row_hbox)
+
+		var icon_sheet := str(crop.get("icon_sheet", "base"))
+		var icon_col := int(crop.get("icon_col", 2))
+		var icon_rect := _make_icon_rect(icon_sheet, icon_col, Vector2(16, 16))
+		icon_rect.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		row_hbox.add_child(icon_rect)
+
+		var info_vbox := VBoxContainer.new()
+		info_vbox.add_theme_constant_override("separation", 0)
+		info_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		info_vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row_hbox.add_child(info_vbox)
+
+		var crop_name := str(crop.get("name", crop_id.capitalize()))
+		var regrow := int(crop.get("regrow_days", 0))
+		var title_txt := "%s ★Reb" % crop_name if regrow > 0 else crop_name
+		var title_lbl := _make_label(title_txt, 8, COL_INK)
+		info_vbox.add_child(title_lbl)
+
+		var days := int(crop.get("days_to_grow", 2))
+		var sell_price := int(crop.get("sell_price", 25))
+		var sub_lbl := _make_label("%dd | $%d | Est:0" % [days, sell_price], 7, COL_INK_MUTED)
+		info_vbox.add_child(sub_lbl)
+		_shop_crop_info_labels[crop_id] = sub_lbl
+
+		var seed_price := int(crop.get("seed_price", 10))
+		var buy_btn := _make_wood_button("1x $%d" % seed_price, Vector2(44, 19), 7)
+		buy_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		buy_btn.pressed.connect(_on_buy_seed_pressed.bind(crop_id, 1))
+		row_hbox.add_child(buy_btn)
+		_shop_buy_buttons[crop_id] = buy_btn
+
+		var buy5_btn := _make_wood_button("+5", Vector2(22, 19), 7)
+		buy5_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		buy5_btn.pressed.connect(_on_buy_seed_pressed.bind(crop_id, 5))
+		row_hbox.add_child(buy5_btn)
+
+	# Tab 2: Upgrades & Supplies (Hoe, Can, Stamina, Fertilizer, Sprinkler)
+	_shop_upgrades_vbox = VBoxContainer.new()
+	_shop_upgrades_vbox.name = "UpgradesVBox"
+	_shop_upgrades_vbox.add_theme_constant_override("separation", 3)
+	_shop_upgrades_vbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_shop_upgrades_vbox.visible = false
+	main_vbox.add_child(_shop_upgrades_vbox)
+
+	var upgrade_specs := [
+		{"id": "hoe", "title": "Enxada", "icon": 0},
+		{"id": "can", "title": "Regador", "icon": 1},
+		{"id": "stamina", "title": "Resistência", "icon": 5},
+	]
+	for u in upgrade_specs:
+		var uid: String = str(u["id"])
+		var row_p := PanelContainer.new()
+		row_p.add_theme_stylebox_override("panel", _make_flat_style(COL_PARCHMENT_ALT, Color("#b89563"), 1, 6, 2, 2))
+		_shop_upgrades_vbox.add_child(row_p)
+
+		var row_h := HBoxContainer.new()
+		row_h.add_theme_constant_override("separation", 6)
+		row_p.add_child(row_h)
+
+		var u_icon := _make_icon_rect("base", int(u["icon"]), Vector2(15, 15))
+		u_icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		row_h.add_child(u_icon)
+
+		var u_vbox := VBoxContainer.new()
+		u_vbox.add_theme_constant_override("separation", 0)
+		u_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row_h.add_child(u_vbox)
+
+		var u_title := _make_label("%s (Nv. 1/3)" % str(u["title"]), 8, COL_INK)
+		u_vbox.add_child(u_title)
+		_shop_upgrade_title_labels[uid] = u_title
+
+		var u_desc := _make_label("", 7, COL_INK_MUTED)
+		u_vbox.add_child(u_desc)
+		_shop_upgrade_desc_labels[uid] = u_desc
+
+		var u_btn := _make_wood_button("Melhorar ($150)", Vector2(88, 18), 7)
+		u_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		u_btn.pressed.connect(_on_buy_upgrade_pressed.bind(uid))
+		row_h.add_child(u_btn)
+		_shop_upgrade_buttons[uid] = u_btn
+
+	# Fertilizer row inside Upgrades tab
+	var ft_panel := PanelContainer.new()
+	ft_panel.add_theme_stylebox_override("panel", _make_flat_style(COL_PARCHMENT_ALT, Color("#b89563"), 1, 6, 2, 2))
+	_shop_upgrades_vbox.add_child(ft_panel)
+
+	var ft_hbox := HBoxContainer.new()
+	ft_hbox.add_theme_constant_override("separation", 6)
+	ft_panel.add_child(ft_hbox)
+
+	var ft_icon := _make_icon_rect("v13", 4, Vector2(15, 15))
+	ft_icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	ft_hbox.add_child(ft_icon)
+
+	var ft_vbox := VBoxContainer.new()
+	ft_vbox.add_theme_constant_override("separation", 0)
+	ft_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	ft_hbox.add_child(ft_vbox)
+
+	ft_vbox.add_child(_make_label("Fertilizante (Slot 0) — Ouro ★ 1.5x", 8, COL_INK))
+	_shop_fertilizer_desc_label = _make_label("Aumenta chance de colheita ★ | Estoque: 2", 7, COL_INK_MUTED)
+	ft_vbox.add_child(_shop_fertilizer_desc_label)
+
+	var ft_btn := _make_wood_button("1x ($15)", Vector2(54, 18), 7)
+	ft_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	ft_btn.pressed.connect(_on_buy_supply_pressed.bind("fertilizer", 1))
+	ft_hbox.add_child(ft_btn)
+
+	var ft5_btn := _make_wood_button("+5", Vector2(26, 18), 7)
+	ft5_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	ft5_btn.pressed.connect(_on_buy_supply_pressed.bind("fertilizer", 5))
+	ft_hbox.add_child(ft5_btn)
+
+	# Sprinkler row inside Upgrades tab
+	var sp_panel := PanelContainer.new()
+	sp_panel.add_theme_stylebox_override("panel", _make_flat_style(COL_PARCHMENT_ALT, Color("#b89563"), 1, 6, 2, 2))
+	_shop_upgrades_vbox.add_child(sp_panel)
+
+	var sp_hbox := HBoxContainer.new()
+	sp_hbox.add_theme_constant_override("separation", 6)
+	sp_panel.add_child(sp_hbox)
+
+	var sp_icon := _make_icon_rect("base", 11, Vector2(15, 15))
+	sp_icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	sp_hbox.add_child(sp_icon)
+
+	var sp_vbox := VBoxContainer.new()
+	sp_vbox.add_theme_constant_override("separation", 0)
+	sp_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sp_hbox.add_child(sp_vbox)
+
+	sp_vbox.add_child(_make_label("Aspersor Automático (Slot -)", 8, COL_INK))
+	_shop_sprinkler_desc_label = _make_label("Rega 3x3 toda manhã | Estoque: 0", 7, COL_INK_MUTED)
+	sp_vbox.add_child(_shop_sprinkler_desc_label)
+
+	var sp_btn := _make_wood_button("Comprar ($180)", Vector2(88, 18), 7)
+	sp_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	sp_btn.pressed.connect(_on_buy_sprinkler_pressed)
+	sp_hbox.add_child(sp_btn)
+
+	# Tab 3: Animals & Artisanal Machines (ScrollContainer)
+	_shop_farm_scroll = ScrollContainer.new()
+	_shop_farm_scroll.name = "FarmShopScroll"
+	_shop_farm_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_shop_farm_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_shop_farm_scroll.visible = false
+	main_vbox.add_child(_shop_farm_scroll)
+
+	_shop_farm_vbox = VBoxContainer.new()
+	_shop_farm_vbox.add_theme_constant_override("separation", 4)
+	_shop_farm_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_shop_farm_scroll.add_child(_shop_farm_vbox)
 
 	main_vbox.add_child(_make_separator())
 
+	# Sell all + Close footer
 	var footer := HBoxContainer.new()
 	footer.add_theme_constant_override("separation", 6)
 	footer.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -721,7 +1205,7 @@ func _build_shop_modal() -> void:
 
 	var sell_btn := _make_colored_button(
 		"Vender Tudo",
-		Vector2(74, 19),
+		Vector2(74, 20),
 		8,
 		Color("#5a9640"),
 		Color("#6eb050"),
@@ -734,7 +1218,7 @@ func _build_shop_modal() -> void:
 
 	var close_btn := _make_colored_button(
 		"Fechar (B)",
-		Vector2(62, 19),
+		Vector2(64, 20),
 		8,
 		Color("#b84b3e"),
 		Color("#cf5a4c"),
@@ -761,8 +1245,8 @@ func _build_journal_modal() -> void:
 	_journal_panel.anchor_right = 0.5
 	_journal_panel.anchor_top = 0.5
 	_journal_panel.anchor_bottom = 0.5
-	_journal_panel.offset_left = -200
-	_journal_panel.offset_right = 200
+	_journal_panel.offset_left = -204
+	_journal_panel.offset_right = 204
 	_journal_panel.offset_top = -124
 	_journal_panel.offset_bottom = 112
 	_journal_panel.visible = false
@@ -784,10 +1268,10 @@ func _build_journal_modal() -> void:
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(title)
 
-	var tab_titles := ["Pedidos", "Álbum", "Opções"]
+	var tab_titles := ["Pedidos", "Álbum", "Dicas & Vel."]
 	_journal_tab_buttons.clear()
 	for i in range(tab_titles.size()):
-		var t_btn := _make_wood_button(tab_titles[i], Vector2(54, 17), 7)
+		var t_btn := _make_wood_button(tab_titles[i], Vector2(58, 17), 7)
 		t_btn.pressed.connect(_on_journal_tab_pressed.bind(i))
 		header.add_child(t_btn)
 		_journal_tab_buttons.append(t_btn)
@@ -830,6 +1314,123 @@ func _build_journal_modal() -> void:
 	footer.add_child(close_btn)
 
 
+func _build_menu_modal() -> void:
+	_menu_backdrop = ColorRect.new()
+	_menu_backdrop.name = "MenuBackdrop"
+	_menu_backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_menu_backdrop.color = Color(0.08, 0.05, 0.03, 0.58)
+	_menu_backdrop.mouse_filter = Control.MOUSE_FILTER_STOP
+	_menu_backdrop.visible = false
+	_ui_root.add_child(_menu_backdrop)
+
+	_menu_panel = PanelContainer.new()
+	_menu_panel.name = "MenuPanel"
+	_menu_panel.anchor_left = 0.5
+	_menu_panel.anchor_right = 0.5
+	_menu_panel.anchor_top = 0.5
+	_menu_panel.anchor_bottom = 0.5
+	_menu_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_menu_panel.grow_vertical = Control.GROW_DIRECTION_BOTH
+	_menu_panel.offset_left = -134
+	_menu_panel.offset_right = 134
+	_menu_panel.offset_top = -120
+	_menu_panel.offset_bottom = 108
+	_menu_panel.visible = false
+	_menu_panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	_menu_panel.add_theme_stylebox_override("panel", _make_flat_style(COL_PARCHMENT, COL_WOOD_BORDER, 3, 10, 7, 3))
+	_menu_backdrop.add_child(_menu_panel)
+
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 4)
+	_menu_panel.add_child(vbox)
+
+	var title := _make_label("Menu & Opções", 10, COL_WOOD_DARK)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(title)
+	vbox.add_child(_make_separator())
+
+	_menu_sfx_btn = _make_wood_button("Efeitos Sonoros: ON", Vector2(0, 19), 8)
+	_menu_sfx_btn.pressed.connect(_on_sound_button_pressed)
+	vbox.add_child(_menu_sfx_btn)
+
+	_menu_music_btn = _make_wood_button("Música de Fundo: ON", Vector2(0, 19), 8)
+	_menu_music_btn.pressed.connect(_on_music_button_pressed)
+	vbox.add_child(_menu_music_btn)
+
+	_menu_touch_btn = _make_wood_button("Controles Touch: Auto", Vector2(0, 19), 8)
+	_menu_touch_btn.pressed.connect(_on_touch_mode_button_pressed)
+	vbox.add_child(_menu_touch_btn)
+
+	_menu_speed_btn = _make_wood_button("Velocidade do Dia: 1x", Vector2(0, 19), 8)
+	_menu_speed_btn.pressed.connect(_on_menu_speed_cycle_pressed)
+	vbox.add_child(_menu_speed_btn)
+
+	var ver_btn := _make_wood_button("Atualizações & Changelog (V)", Vector2(0, 19), 8)
+	ver_btn.pressed.connect(_on_version_button_pressed)
+	vbox.add_child(ver_btn)
+
+	_menu_reset_btn = _make_colored_button(
+		"Reiniciar Fazenda (Dia 1)",
+		Vector2(0, 19),
+		8,
+		Color("#a84336"),
+		Color("#c25244"),
+		Color("#853126"),
+		Color("#591d15"),
+		Color.WHITE
+	)
+	_menu_reset_btn.pressed.connect(_on_menu_reset_pressed)
+	vbox.add_child(_menu_reset_btn)
+
+	_menu_reset_confirm_box = PanelContainer.new()
+	_menu_reset_confirm_box.visible = false
+	_menu_reset_confirm_box.add_theme_stylebox_override("panel", _make_flat_style(Color(0.95, 0.84, 0.72), Color("#9e382b"), 1, 6, 4, 2))
+	vbox.add_child(_menu_reset_confirm_box)
+
+	var confirm_vbox := VBoxContainer.new()
+	confirm_vbox.add_theme_constant_override("separation", 3)
+	_menu_reset_confirm_box.add_child(confirm_vbox)
+
+	var warn_lbl := _make_label("Apagar o save e voltar ao Dia 1?", 8, Color("#731e15"))
+	warn_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	confirm_vbox.add_child(warn_lbl)
+
+	var confirm_row := HBoxContainer.new()
+	confirm_row.add_theme_constant_override("separation", 6)
+	confirm_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	confirm_vbox.add_child(confirm_row)
+
+	var cancel_rst := _make_wood_button("Cancelar", Vector2(70, 18), 8)
+	cancel_rst.pressed.connect(_on_cancel_reset_pressed)
+	confirm_row.add_child(cancel_rst)
+
+	var do_rst := _make_colored_button(
+		"Confirmar",
+		Vector2(76, 18),
+		8,
+		Color("#b8392c"),
+		Color("#d14739"),
+		Color("#8f281e"),
+		Color("#5e1912"),
+		Color.WHITE
+	)
+	do_rst.pressed.connect(_on_confirm_reset_pressed)
+	confirm_row.add_child(do_rst)
+
+	var close_menu_btn := _make_colored_button(
+		"Voltar ao Jogo (Esc)",
+		Vector2(0, 19),
+		8,
+		Color("#5a9640"),
+		Color("#6eb050"),
+		Color("#487a32"),
+		Color("#2e4f1e"),
+		Color.WHITE
+	)
+	close_menu_btn.pressed.connect(_on_close_menu_pressed)
+	vbox.add_child(close_menu_btn)
+
+
 func _format_author_badge(author: String) -> String:
 	var handle := author.strip_edges()
 	var space_idx := handle.find(" ")
@@ -867,6 +1468,7 @@ func _build_changelog_modal() -> void:
 	main_vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_changelog_panel.add_child(main_vbox)
 
+	# Header
 	var header := HBoxContainer.new()
 	header.add_theme_constant_override("separation", 6)
 	header.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -889,6 +1491,7 @@ func _build_changelog_modal() -> void:
 
 	main_vbox.add_child(_make_separator())
 
+	# Scrollable release history list
 	var scroll := ScrollContainer.new()
 	scroll.name = "ChangelogScroll"
 	scroll.custom_minimum_size = Vector2(0, 108)
@@ -959,6 +1562,7 @@ func _build_changelog_modal() -> void:
 
 	main_vbox.add_child(_make_separator())
 
+	# Footer buttons
 	var footer := HBoxContainer.new()
 	footer.add_theme_constant_override("separation", 6)
 	footer.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1052,15 +1656,20 @@ func _on_day_changed(day: int, time_minutes: float) -> void:
 	var total_mins := int(floor(time_minutes))
 	var hours := (total_mins / 60) % 24
 	var mins := total_mins % 60
-	var gs := _get_game_state()
-	var w_txt := "Chuva" if (gs != null and bool(gs.call("is_raining"))) else "Sol"
-	_day_time_label.text = "Dia %d · %02d:%02d · %s" % [day, hours, mins, w_txt]
+	_day_time_label.text = "Dia %d - %02d:%02d" % [day, hours, mins]
 
 
-func _on_weather_changed(_new_weather: String) -> void:
-	var gs := _get_game_state()
-	if gs != null:
-		_on_day_changed(gs.day, gs.time_minutes)
+func _on_weather_changed(weather: String, tomorrow_weather: String) -> void:
+	var today_rain := (weather == "rainy" or weather == "rain")
+	var next_rain := (tomorrow_weather == "rainy" or tomorrow_weather == "rain")
+	if _weather_today_icon != null:
+		_weather_today_icon.texture = _make_icon_texture("base", 15 if today_rain else 14)
+	if _weather_today_label != null:
+		_weather_today_label.text = "Hoje: %s" % ("Chuva" if today_rain else "Sol")
+	if _weather_next_icon != null:
+		_weather_next_icon.texture = _make_icon_texture("base", 15 if next_rain else 14)
+	if _weather_next_label != null:
+		_weather_next_label.text = "Amanhã: %s" % ("Chuva" if next_rain else "Sol")
 
 
 func _on_stamina_changed(stamina: int, max_stamina: int) -> void:
@@ -1087,6 +1696,35 @@ func _on_water_changed(water: int, max_water: int) -> void:
 	_water_value_label.text = "%d/%d" % [water, max_water]
 
 
+func _on_upgrades_changed() -> void:
+	var gs := _get_game_state()
+	var selected: int = int(gs.selected_slot) if gs != null else 0
+	_update_active_item_label(selected)
+	if _shop_open:
+		_refresh_shop()
+
+
+func _on_touch_mode_changed(_mode: String) -> void:
+	_refresh_touch_controls()
+	_refresh_menu_buttons()
+
+
+func _on_orders_or_album_changed() -> void:
+	_refresh_journal_button()
+	if _journal_open:
+		_refresh_journal()
+
+
+func _on_machines_changed() -> void:
+	if _shop_open:
+		_refresh_shop()
+
+
+func _on_animal_purchased(_animal_type: String) -> void:
+	if _shop_open:
+		_refresh_shop()
+
+
 func _sum_dict(d: Dictionary) -> int:
 	var s: int = 0
 	for v in d.values():
@@ -1096,84 +1734,90 @@ func _sum_dict(d: Dictionary) -> int:
 
 func _on_inventory_changed() -> void:
 	var gs := _get_game_state()
-	if gs == null:
-		return
+	var harvested: Dictionary = gs.get("harvested") if gs != null and gs.get("harvested") != null else {}
+	var animal_products: Dictionary = gs.get("animal_products") if gs != null and gs.get("animal_products") != null else {}
+	var fish_dict: Dictionary = gs.get("fish") if gs != null and gs.get("fish") != null else {}
+	var artisan_dict: Dictionary = gs.get("artisan") if gs != null and gs.get("artisan") != null else {}
+	var seeds: Dictionary = gs.get("seeds") if gs != null and gs.get("seeds") != null else {}
+	var supplies: Dictionary = gs.get("supplies") if gs != null and gs.get("supplies") != null else {}
+	var gold_items: Dictionary = gs.get("gold_items") if gs != null and gs.get("gold_items") != null else {}
 
-	var harvested: Dictionary = gs.get("harvested")
-	var animal_products: Dictionary = gs.get("animal_products")
-	var fish_dict: Dictionary = gs.get("fish")
-	var artisan_dict: Dictionary = gs.get("artisan")
-	var seeds: Dictionary = gs.get("seeds")
-	var supplies: Dictionary = gs.get("supplies")
-	var gold_items: Dictionary = gs.get("gold_items")
+	if _harvest_label != null:
+		var w := int(harvested.get("wheat", 0))
+		var c := int(harvested.get("carrot", 0))
+		var s := int(harvested.get("strawberry", 0))
+		var co := int(harvested.get("corn", 0))
+		var t := int(harvested.get("tomato", 0))
+		var p := int(harvested.get("pumpkin", 0))
+		_harvest_label.text = "Tri:%d Cen:%d Mor:%d | Mil:%d Tom:%d Abo:%d" % [w, c, s, co, t, p]
 
-	var total_items := int(gs.call("get_total_basket_count"))
-	var total_value := int(gs.call("get_total_basket_value"))
-	var gold_total := _sum_dict(gold_items)
+	if _egg_label != null:
+		_egg_label.text = str(int(animal_products.get("egg", 0)))
+	if _blue_egg_label != null:
+		_blue_egg_label.text = str(int(animal_products.get("blue_egg", 0)))
+	if _milk_label != null:
+		_milk_label.text = str(int(animal_products.get("milk", 0)))
+	if _wool_label != null:
+		_wool_label.text = str(int(animal_products.get("wool", 0)))
+	if _truffle_label != null:
+		_truffle_label.text = str(int(animal_products.get("truffle", 0)))
 
-	if _basket_summary_label != null:
-		var star_part := " · %d★" % gold_total if gold_total > 0 else ""
-		_basket_summary_label.text = "Cesta: %d itens ($%d)%s" % [total_items, total_value, star_part]
-
-	if _basket_detail_label != null:
-		_basket_detail_label.text = "Colh: %d | Anim: %d | Peixe: %d | Art: %d" % [
-			_sum_dict(harvested),
-			_sum_dict(animal_products),
-			_sum_dict(fish_dict),
-			_sum_dict(artisan_dict),
-		]
+	if _basket_extra_label != null:
+		var f_cnt := _sum_dict(fish_dict)
+		var a_cnt := _sum_dict(artisan_dict)
+		var gold_cnt := _sum_dict(gold_items)
+		var basket_val := int(gs.call("get_total_basket_value")) if gs != null and gs.has_method("get_total_basket_value") else 0
+		var star_part := " · %d★" % gold_cnt if gold_cnt > 0 else ""
+		_basket_extra_label.text = "| P:%d A:%d ($%d)%s" % [f_cnt, a_cnt, basket_val, star_part]
 
 	var slots := _get_hotbar_slots()
 	for i in range(mini(slots.size(), _slot_counts.size())):
 		var slot_data: Dictionary = slots[i]
-		var s_type := str(slot_data.get("type", ""))
-		var s_id := str(slot_data.get("id", ""))
+		var s_type: String = str(slot_data.get("type", ""))
+		var s_id: String = str(slot_data.get("id", ""))
 		if s_type == "seed":
 			var crop_id := str(slot_data.get("crop_id", ""))
 			var qty := int(seeds.get(crop_id, 0))
 			_slot_counts[i].visible = true
 			_slot_counts[i].text = str(qty)
-			_slot_counts[i].add_theme_color_override("font_color", Color(1.0, 0.80, 0.76) if qty <= 0 else Color.WHITE)
-			_slot_icons[i].modulate.a = 0.45 if qty <= 0 else 1.0
+			_slot_counts[i].add_theme_color_override(
+				"font_color",
+				Color(1.0, 0.80, 0.76) if qty <= 0 else Color.WHITE
+			)
+			_slot_icons[i].modulate.a = 0.55 if qty <= 0 else 1.0
 		elif s_type == "supply":
 			var sup_id := str(slot_data.get("supply_id", ""))
 			var qty_s := int(supplies.get(sup_id, 0))
 			_slot_counts[i].visible = true
 			_slot_counts[i].text = str(qty_s)
-			_slot_counts[i].add_theme_color_override("font_color", Color(1.0, 0.80, 0.76) if qty_s <= 0 else Color.WHITE)
-			_slot_icons[i].modulate.a = 0.45 if qty_s <= 0 else 1.0
-		elif s_id == "hoe":
-			_slot_counts[i].visible = int(gs.hoe_level) > 1
-			_slot_counts[i].text = "N%d" % int(gs.hoe_level)
+			_slot_counts[i].add_theme_color_override(
+				"font_color",
+				Color(1.0, 0.80, 0.76) if qty_s <= 0 else Color.WHITE
+			)
+			_slot_icons[i].modulate.a = 0.55 if qty_s <= 0 else 1.0
+		elif s_id == "hoe" and gs != null:
+			var lvl_h := int(gs.get("hoe_level"))
+			_slot_counts[i].visible = lvl_h > 1
+			_slot_counts[i].text = "N%d" % lvl_h
 			_slot_counts[i].add_theme_color_override("font_color", COL_GOLD_BORDER)
 			_slot_icons[i].modulate.a = 1.0
-		elif s_id == "watering_can":
-			_slot_counts[i].visible = int(gs.watering_can_level) > 1
-			_slot_counts[i].text = "N%d" % int(gs.watering_can_level)
+		elif s_id == "watering_can" and gs != null:
+			var lvl_c := int(gs.get("can_level"))
+			_slot_counts[i].visible = lvl_c > 1
+			_slot_counts[i].text = "N%d" % lvl_c
 			_slot_counts[i].add_theme_color_override("font_color", COL_GOLD_BORDER)
 			_slot_icons[i].modulate.a = 1.0
 		else:
 			_slot_counts[i].visible = false
 			_slot_icons[i].modulate.a = 1.0
 
-	_update_active_item_label(int(gs.selected_slot))
+	var selected: int = int(gs.selected_slot) if gs != null else 0
+	_update_active_item_label(selected)
 	_refresh_journal_button()
 	if _shop_open:
 		_refresh_shop()
 	if _journal_open:
 		_refresh_journal()
-
-
-func _on_orders_or_album_changed() -> void:
-	_refresh_journal_button()
-	if _journal_open:
-		_refresh_journal()
-
-
-func _on_upgrades_or_machines_changed() -> void:
-	_on_inventory_changed()
-	if _shop_open:
-		_refresh_shop()
 
 
 func _on_tool_changed(slot_index: int) -> void:
@@ -1221,10 +1865,44 @@ func _on_sound_button_pressed() -> void:
 	if audio != null and audio.has_method("toggle_mute"):
 		audio.call("toggle_mute")
 	_refresh_sound_button()
+	_refresh_menu_buttons()
+
+
+func _on_music_button_pressed() -> void:
+	var audio := _get_audio_manager()
+	if audio != null and audio.has_method("toggle_music_mute"):
+		audio.call("toggle_music_mute")
+	_refresh_menu_buttons()
+
+
+func _on_touch_mode_button_pressed() -> void:
+	_play_click()
+	var gs := _get_game_state()
+	if gs != null and gs.has_method("set_touch_mode"):
+		var cur: String = str(gs.get("touch_mode"))
+		var nxt: String = "on" if cur == "auto" else ("off" if cur == "on" else "auto")
+		gs.call("set_touch_mode", nxt)
+
+
+func _on_menu_speed_cycle_pressed() -> void:
+	_play_click()
+	var gs := _get_game_state()
+	if gs != null and gs.has_method("set_time_speed_multiplier"):
+		var cur: float = float(gs.get("time_speed_multiplier"))
+		var nxt: float = 1.0 if cur < 0.8 else (1.5 if cur < 1.25 else 0.5)
+		gs.call("set_time_speed_multiplier", nxt)
+	_refresh_menu_buttons()
+	if _journal_open:
+		_refresh_journal()
 
 
 func _on_mute_changed(_is_muted: bool) -> void:
 	_refresh_sound_button()
+	_refresh_menu_buttons()
+
+
+func _on_music_mute_changed(_is_muted: bool) -> void:
+	_refresh_menu_buttons()
 
 
 func _on_auto_button_pressed() -> void:
@@ -1236,8 +1914,8 @@ func _on_auto_button_pressed() -> void:
 
 
 func _on_demo_mode_changed(active: bool) -> void:
-	if active and _changelog_open:
-		_set_changelog_open(false)
+	if active:
+		close_all_modals()
 	_apply_auto_button_state(active)
 
 
@@ -1251,22 +1929,51 @@ func _on_journal_button_pressed() -> void:
 	toggle_journal()
 
 
-func _on_shop_tab_pressed(tab_idx: int) -> void:
+func _on_shop_tab_pressed(tab_id: String) -> void:
 	_play_click()
-	_shop_tab = tab_idx
+	_shop_tab = tab_id
 	_refresh_shop()
 
 
 func _on_journal_tab_pressed(tab_idx: int) -> void:
 	_play_click()
 	_journal_tab = tab_idx
-	_reset_confirm_armed = false
 	_refresh_journal()
 
 
 func _on_close_shop_pressed() -> void:
 	_play_click()
 	_set_shop_open(false)
+
+
+func _on_menu_button_pressed() -> void:
+	_play_click()
+	toggle_menu()
+
+
+func _on_close_menu_pressed() -> void:
+	_play_click()
+	_set_menu_open(false)
+
+
+func _on_menu_reset_pressed() -> void:
+	_play_click()
+	if _menu_reset_confirm_box != null:
+		_menu_reset_confirm_box.visible = not _menu_reset_confirm_box.visible
+
+
+func _on_cancel_reset_pressed() -> void:
+	_play_click()
+	if _menu_reset_confirm_box != null:
+		_menu_reset_confirm_box.visible = false
+
+
+func _on_confirm_reset_pressed() -> void:
+	_play_click()
+	var gs := _get_game_state()
+	if gs != null and gs.has_method("reset_save"):
+		gs.call("reset_save")
+	_set_menu_open(false)
 
 
 func _on_version_button_pressed() -> void:
@@ -1302,11 +2009,97 @@ func _on_sleep_button_pressed() -> void:
 		gs.advance_day()
 
 
+func _on_buy_seed_pressed(crop_id: String, qty: int) -> void:
+	_play_click()
+	var gs := _get_game_state()
+	if gs != null:
+		gs.buy_seed(crop_id, qty)
+
+
+func _on_buy_upgrade_pressed(upgrade_id: String) -> void:
+	_play_click()
+	var gs := _get_game_state()
+	if gs != null and gs.has_method("buy_upgrade"):
+		gs.call("buy_upgrade", upgrade_id)
+
+
+func _on_buy_supply_pressed(supply_id: String, qty: int) -> void:
+	_play_click()
+	var gs := _get_game_state()
+	if gs != null and gs.has_method("buy_supply"):
+		gs.call("buy_supply", supply_id, qty)
+
+
+func _on_buy_sprinkler_pressed() -> void:
+	_play_click()
+	var gs := _get_game_state()
+	if gs != null and gs.has_method("buy_sprinkler"):
+		gs.call("buy_sprinkler", 1)
+
+
+func _on_buy_animal_pressed(animal_type: String) -> void:
+	_play_click()
+	var gs := _get_game_state()
+	if gs != null and gs.has_method("buy_animal"):
+		gs.call("buy_animal", animal_type)
+
+
+func _on_buy_machine_pressed(machine_id: String) -> void:
+	_play_click()
+	var gs := _get_game_state()
+	if gs != null and gs.has_method("buy_machine"):
+		gs.call("buy_machine", machine_id)
+
+
+func _on_deliver_order_pressed(order_idx: int) -> void:
+	_play_click()
+	var gs := _get_game_state()
+	if gs != null and gs.has_method("deliver_order"):
+		gs.call("deliver_order", order_idx)
+
+
+func _on_speed_pressed(speed_val: float) -> void:
+	_play_click()
+	var gs := _get_game_state()
+	if gs != null and gs.has_method("set_time_speed_multiplier"):
+		gs.call("set_time_speed_multiplier", speed_val)
+	_refresh_journal()
+	_refresh_menu_buttons()
+
+
 func _on_sell_all_pressed() -> void:
 	_play_click()
 	var gs := _get_game_state()
 	if gs != null:
 		gs.sell_all_harvested()
+
+
+func _on_touch_dir_down(dir: Vector2) -> void:
+	_touch_dir_active = dir
+	var parent := get_parent()
+	if parent != null and parent.has_method("set_touch_move_dir"):
+		parent.call("set_touch_move_dir", dir)
+
+
+func _on_touch_dir_up() -> void:
+	if _touch_dir_active == Vector2.ZERO:
+		return
+	_touch_dir_active = Vector2.ZERO
+	var parent := get_parent()
+	if parent != null and parent.has_method("set_touch_move_dir"):
+		parent.call("set_touch_move_dir", Vector2.ZERO)
+
+
+func _on_touch_use_pressed() -> void:
+	var parent := get_parent()
+	if parent != null and parent.has_method("trigger_touch_use"):
+		parent.call("trigger_touch_use")
+
+
+func _on_touch_interact_pressed() -> void:
+	var parent := get_parent()
+	if parent != null and parent.has_method("trigger_touch_interact"):
+		parent.call("trigger_touch_interact")
 
 
 # --- Refresh helpers ---
@@ -1317,6 +2110,41 @@ func _refresh_sound_button() -> void:
 	var audio := _get_audio_manager()
 	var is_muted: bool = bool(audio.get("muted")) if audio != null and audio.get("muted") != null else false
 	_sound_button.text = "Som: OFF" if is_muted else "Som: ON"
+
+
+func _refresh_menu_buttons() -> void:
+	var audio := _get_audio_manager()
+	var is_muted: bool = bool(audio.get("muted")) if audio != null and audio.get("muted") != null else false
+	var is_bgm_muted: bool = bool(audio.get("music_muted")) if audio != null and audio.get("music_muted") != null else false
+	if _menu_sfx_btn != null:
+		_menu_sfx_btn.text = "Efeitos Sonoros (SFX): %s" % ("OFF" if is_muted else "ON")
+	if _menu_music_btn != null:
+		_menu_music_btn.text = "Música de Fundo: %s" % ("OFF" if is_bgm_muted else "ON")
+
+	var gs := _get_game_state()
+	var t_mode: String = str(gs.get("touch_mode")) if gs != null and gs.get("touch_mode") != null else "auto"
+	if _menu_touch_btn != null:
+		var lbl := "Auto" if t_mode == "auto" else ("Sempre ON" if t_mode == "on" else "OFF")
+		_menu_touch_btn.text = "Controles Touch: %s" % lbl
+
+	if _menu_speed_btn != null:
+		var spd: float = float(gs.get("time_speed_multiplier")) if gs != null and gs.get("time_speed_multiplier") != null else 1.0
+		var spd_lbl := "Lento (0.5x)" if spd < 0.8 else ("Rápido (1.5x)" if spd > 1.25 else "Normal (1x)")
+		_menu_speed_btn.text = "Velocidade do Dia: %s" % spd_lbl
+
+
+func _refresh_touch_controls() -> void:
+	if _touch_layer == null:
+		return
+	var gs := _get_game_state()
+	var t_mode: String = str(gs.get("touch_mode")) if gs != null and gs.get("touch_mode") != null else "auto"
+	if t_mode == "on":
+		_touch_layer.visible = true
+	elif t_mode == "off":
+		_touch_layer.visible = false
+		_on_touch_dir_up()
+	else:
+		_touch_layer.visible = DisplayServer.is_touchscreen_available() or _touch_seen
 
 
 func _refresh_auto_button() -> void:
@@ -1334,17 +2162,31 @@ func _apply_auto_button_state(active: bool) -> void:
 		return
 	if active:
 		_auto_button.text = "Auto: ON"
-		_apply_button_theme(_auto_button, Color("#4d9938"), Color("#61b54a"), Color("#3b782a"), COL_GOLD_BORDER, Color(1.0, 0.99, 0.90))
+		_apply_button_theme(
+			_auto_button,
+			Color("#4d9938"),
+			Color("#61b54a"),
+			Color("#3b782a"),
+			COL_GOLD_BORDER,
+			Color(1.0, 0.99, 0.90)
+		)
 	else:
 		_auto_button.text = "Auto (P)"
-		_apply_button_theme(_auto_button, Color("#d8b982"), Color("#ebd09d"), Color("#bd9b63"), COL_WOOD_BORDER, COL_INK)
+		_apply_button_theme(
+			_auto_button,
+			Color("#d8b982"),
+			Color("#ebd09d"),
+			Color("#bd9b63"),
+			COL_WOOD_BORDER,
+			COL_INK
+		)
 
 
 func _refresh_journal_button() -> void:
 	if _journal_button == null:
 		return
 	var gs := _get_game_state()
-	var has_ready: bool = gs != null and bool(gs.call("has_deliverable_order"))
+	var has_ready: bool = gs != null and gs.has_method("has_deliverable_order") and bool(gs.call("has_deliverable_order"))
 	if has_ready:
 		_journal_button.text = "Diário !"
 		_apply_button_theme(_journal_button, Color("#e8b848"), Color("#ffd066"), Color("#c99932"), COL_GOLD_BORDER, COL_INK)
@@ -1356,7 +2198,10 @@ func _refresh_journal_button() -> void:
 func _update_hotbar_selection(slot_index: int) -> void:
 	for i in range(_slot_panels.size()):
 		var is_selected := (i == slot_index)
-		_slot_panels[i].add_theme_stylebox_override("panel", _slot_active_style if is_selected else _slot_normal_style)
+		_slot_panels[i].add_theme_stylebox_override(
+			"panel",
+			_slot_active_style if is_selected else _slot_normal_style
+		)
 	_update_active_item_label(slot_index)
 
 
@@ -1368,17 +2213,25 @@ func _update_active_item_label(slot_index: int) -> void:
 		return
 	var slot_data: Dictionary = slots[slot_index]
 	var item_name := str(slot_data.get("name", ""))
+	var s_type: String = str(slot_data.get("type", ""))
+	var s_id: String = str(slot_data.get("id", ""))
 	var gs := _get_game_state()
-	var s_type := str(slot_data.get("type", ""))
 	if s_type == "seed" and gs != null:
 		var crop_id := str(slot_data.get("crop_id", ""))
-		_active_item_label.text = "%s (%d)" % [item_name, int(gs.seeds.get(crop_id, 0))]
+		var qty := int(gs.seeds.get(crop_id, 0))
+		_active_item_label.text = "%s (%d)" % [item_name, qty]
 	elif s_type == "supply" and gs != null:
 		var sup_id := str(slot_data.get("supply_id", ""))
-		_active_item_label.text = "%s (%d)" % [item_name, int(gs.supplies.get(sup_id, 0))]
-	elif str(slot_data.get("id", "")) in ["hoe", "watering_can"] and gs != null:
-		var mode := str(gs.call("get_tool_reach_mode", str(slot_data.get("id", ""))))
-		_active_item_label.text = "%s (%s)" % [item_name, mode]
+		var qty_s := int(gs.supplies.get(sup_id, 0))
+		_active_item_label.text = "%s (%d)" % [item_name, qty_s]
+	elif s_id == "hoe" and gs != null:
+		var lvl := int(gs.get("hoe_level"))
+		var mode := str(gs.call("get_tool_reach_mode", "hoe"))
+		_active_item_label.text = "%s (Nv.%d · %s)" % [item_name, lvl, mode]
+	elif s_id == "watering_can" and gs != null:
+		var lvl := int(gs.get("can_level"))
+		var mode := str(gs.call("get_tool_reach_mode", "watering_can"))
+		_active_item_label.text = "%s (Nv.%d · %s)" % [item_name, lvl, mode]
 	else:
 		_active_item_label.text = item_name
 
@@ -1393,98 +2246,113 @@ func _clear_children(container: Node) -> void:
 func _style_tab_buttons(buttons: Array[Button], active_idx: int) -> void:
 	for i in range(buttons.size()):
 		if i == active_idx:
-			_apply_button_theme(buttons[i], Color("#6a3d1e"), Color("#7d4925"), Color("#4e2c17"), COL_GOLD_BORDER, Color("#fff4cf"))
+			_apply_button_theme(buttons[i], Color("#5a9640"), Color("#6eb050"), Color("#487a32"), COL_GOLD_BORDER, Color.WHITE)
 		else:
 			_apply_button_theme(buttons[i], Color("#d8b982"), Color("#ebd09d"), Color("#bd9b63"), COL_WOOD_BORDER, COL_INK)
 
 
 func _refresh_shop() -> void:
-	if _shop_panel == null or _shop_content_vbox == null:
+	if _shop_panel == null:
 		return
-	_style_tab_buttons(_shop_tab_buttons, _shop_tab)
-	_clear_children(_shop_content_vbox)
-
 	var gs := _get_game_state()
 	var crops := _get_crops()
-	var seeds: Dictionary = gs.get("seeds") if gs != null else {}
-	var supplies: Dictionary = gs.get("supplies") if gs != null else {}
-	var money: int = int(gs.get("money")) if gs != null else 100
+	var seeds: Dictionary = gs.get("seeds") if gs != null and gs.get("seeds") != null else {}
+	var supplies: Dictionary = gs.get("supplies") if gs != null and gs.get("supplies") != null else {}
+	var money: int = int(gs.get("money")) if gs != null and gs.get("money") != null else 100
 
 	if _shop_money_label != null:
 		_shop_money_label.text = "$%d" % money
 
-	if _shop_tab == 0:
-		for crop_id in CropDataScript.get_crop_order():
-			var crop: Dictionary = crops.get(crop_id, {})
-			var days := int(crop.get("days_to_grow", 2))
-			var regrow := int(crop.get("regrow_days", 0))
-			var sell_price := int(crop.get("sell_price", 25))
-			var seed_price := int(crop.get("seed_price", 10))
-			var owned := int(seeds.get(crop_id, 0))
-			var regrow_txt := " · Rebrota %dd" % regrow if regrow > 0 else ""
-			var sub := "Cresce: %dd%s | Venda: $%d | Estoque: %d" % [days, regrow_txt, sell_price, owned]
-			_add_shop_row(
-				str(crop.get("icon_sheet", "base")),
-				int(crop.get("icon_col", 2)),
-				"Semente de %s" % str(crop.get("name", crop_id)),
-				sub,
-				"Comprar ($%d)" % seed_price,
-				false,
-				Callable(self, "_on_buy_seed_pressed").bind(crop_id)
-			)
-	elif _shop_tab == 1:
-		for sup_id in ["fertilizer", "sprinkler"]:
-			var s_def: Dictionary = FarmCatalogScript.SUPPLIES[sup_id]
-			var owned_s := int(supplies.get(sup_id, 0))
-			_add_shop_row(
-				str(s_def.get("icon_sheet", "v13")),
-				int(s_def.get("icon_col", 4)),
-				"%s (Estoque: %d)" % [str(s_def["name"]), owned_s],
-				str(s_def["desc"]),
-				"Comprar ($%d)" % int(s_def["buy_price"]),
-				false,
-				Callable(self, "_on_buy_supply_pressed").bind(sup_id)
-			)
+	if _shop_seeds_grid != null:
+		_shop_seeds_grid.visible = (_shop_tab == "seeds")
+	if _shop_upgrades_vbox != null:
+		_shop_upgrades_vbox.visible = (_shop_tab == "upgrades")
+	if _shop_farm_scroll != null:
+		_shop_farm_scroll.visible = (_shop_tab == "farm")
 
-		for tool_id in ["hoe", "watering_can"]:
-			var t_def: Dictionary = FarmCatalogScript.TOOL_UPGRADES[tool_id]
-			var cur_lvl: int = (int(gs.hoe_level) if tool_id == "hoe" else int(gs.watering_can_level)) if gs != null else 1
-			var icon_col := 0 if tool_id == "hoe" else 1
-			if cur_lvl >= 3:
-				_add_shop_row("base", icon_col, "%s (Nv.3)" % str(t_def["name"]), "Alcance máximo 3x3 desbloqueado!", "Máximo", true, Callable())
-			else:
-				var next_lvl := cur_lvl + 1
-				var next_def: Dictionary = t_def["levels"][next_lvl]
-				var cost := int(next_def["cost"])
-				_add_shop_row(
-					"base",
-					icon_col,
-					"%s -> %s" % [str(t_def["name"]), str(next_def["label"])],
-					"Aumenta área de trabalho" + (" e água" if tool_id == "watering_can" else ""),
-					"Melhorar ($%d)" % cost,
-					false,
-					Callable(self, "_on_upgrade_tool_pressed").bind(tool_id)
-				)
+	if _shop_tab_seeds_btn != null:
+		_apply_tab_style(_shop_tab_seeds_btn, _shop_tab == "seeds")
+	if _shop_tab_upgrades_btn != null:
+		_apply_tab_style(_shop_tab_upgrades_btn, _shop_tab == "upgrades")
+	if _shop_tab_farm_btn != null:
+		_apply_tab_style(_shop_tab_farm_btn, _shop_tab == "farm")
 
-		var cur_animals: int = int(gs.animal_count) if gs != null else 4
+	for crop_id in CROP_ORDER:
+		var crop: Dictionary = crops.get(crop_id, {})
+		var days := int(crop.get("days_to_grow", 2))
+		var regrow := int(crop.get("regrow_days", 0))
+		var sell_price := int(crop.get("sell_price", 25))
+		var seed_price := int(crop.get("seed_price", 10))
+		var owned := int(seeds.get(crop_id, 0))
+
+		if _shop_crop_info_labels.has(crop_id):
+			var info_lbl: Label = _shop_crop_info_labels[crop_id]
+			var reb_txt := " Reb%dd" % regrow if regrow > 0 else ""
+			info_lbl.text = "%dd%s | $%d | Est:%d" % [days, reb_txt, sell_price, owned]
+
+		if _shop_buy_buttons.has(crop_id):
+			var btn: Button = _shop_buy_buttons[crop_id]
+			btn.text = "1x $%d" % seed_price
+
+	# Refresh Upgrades tab
+	if gs != null and gs.has_method("get_upgrade_level") and gs.has_method("get_upgrade_cost"):
+		var defs: Dictionary = gs.UPGRADE_DEFS
+		for uid in ["hoe", "can", "stamina"]:
+			var def: Dictionary = defs.get(uid, {})
+			var lvl: int = int(gs.call("get_upgrade_level", uid))
+			var max_lvl: int = int(def.get("max_level", 3))
+			var cost: int = int(gs.call("get_upgrade_cost", uid))
+			var descs: Array = def.get("descriptions", [])
+			var cur_desc: String = str(descs[clampi(lvl - 1, 0, descs.size() - 1)]) if not descs.is_empty() else ""
+			var nxt_desc: String = str(descs[clampi(lvl, 0, descs.size() - 1)]) if lvl < max_lvl and not descs.is_empty() else "Nível Máximo"
+
+			if _shop_upgrade_title_labels.has(uid):
+				(_shop_upgrade_title_labels[uid] as Label).text = "%s (Nv. %d/%d)" % [str(def.get("name", uid)), lvl, max_lvl]
+			if _shop_upgrade_desc_labels.has(uid):
+				var desc_text := "%s → Próx: %s" % [cur_desc, nxt_desc] if lvl < max_lvl else "%s (MAX)" % cur_desc
+				(_shop_upgrade_desc_labels[uid] as Label).text = desc_text
+			if _shop_upgrade_buttons.has(uid):
+				var u_btn: Button = _shop_upgrade_buttons[uid]
+				if cost < 0:
+					u_btn.text = "MAX"
+					u_btn.disabled = true
+				else:
+					u_btn.text = "Melhorar ($%d)" % cost
+					u_btn.disabled = false
+
+	var fert_owned: int = int(supplies.get("fertilizer", 0))
+	if _shop_fertilizer_desc_label != null:
+		_shop_fertilizer_desc_label.text = "Aumenta chance de colheita ★ | Estoque: %d" % fert_owned
+
+	var sp_owned: int = int(supplies.get("sprinkler", 0))
+	if _shop_sprinkler_desc_label != null:
+		_shop_sprinkler_desc_label.text = "Rega 3x3 toda manhã | Estoque: %d" % sp_owned
+
+	# Refresh Farm tab (Animals + Machines)
+	if _shop_tab == "farm" and _shop_farm_vbox != null:
+		_clear_children(_shop_farm_vbox)
+		var cur_animals: int = int(gs.get("animal_count")) if gs != null else 5
+		_shop_farm_vbox.add_child(_make_label("Animais do Cercado (%d/%d)" % [cur_animals, FarmCatalogScript.MAX_FARM_ANIMALS], 8, COL_WOOD_DARK))
 		for a_type in FarmCatalogScript.ANIMAL_SHOP_ORDER:
 			var a_def: Dictionary = FarmCatalogScript.ANIMAL_SHOP[a_type]
 			var full := cur_animals >= FarmCatalogScript.MAX_FARM_ANIMALS
-			_add_shop_row(
+			_add_shop_farm_row(
 				str(a_def["icon_sheet"]),
 				int(a_def["icon_col"]),
-				"%s (%d/%d no cercado)" % [str(a_def["name"]), cur_animals, FarmCatalogScript.MAX_FARM_ANIMALS],
+				str(a_def["name"]),
 				str(a_def["desc"]),
 				"Lotado" if full else "Comprar ($%d)" % int(a_def["buy_price"]),
 				full,
 				Callable(self, "_on_buy_animal_pressed").bind(a_type)
 			)
-	else:
+
+		_shop_farm_vbox.add_child(_make_separator())
+		_shop_farm_vbox.add_child(_make_label("Máquinas Artesanais", 8, COL_WOOD_DARK))
 		var owned_m: Dictionary = gs.get("owned_machines") if gs != null else {}
 		for m_id in FarmCatalogScript.MACHINE_ORDER:
 			var m_def: Dictionary = FarmCatalogScript.MACHINES[m_id]
 			var has_it := bool(owned_m.get(m_id, false))
-			_add_shop_row(
+			_add_shop_farm_row(
 				str(m_def["icon_sheet"]),
 				int(m_def["icon_col"]),
 				str(m_def["name"]),
@@ -1494,63 +2362,19 @@ func _refresh_shop() -> void:
 				Callable(self, "_on_buy_machine_pressed").bind(m_id)
 			)
 
-	if _shop_harvest_label != null and gs != null:
-		var total_items := int(gs.call("get_total_basket_count"))
-		var total_value := int(gs.call("get_total_basket_value"))
-		_shop_harvest_label.text = "Cesta: %d itens ($%d)" % [total_items, total_value]
+	if _shop_harvest_label != null:
+		var total_items := 0
+		var total_value := 0
+		if gs != null and gs.has_method("get_total_basket_count") and gs.has_method("get_total_basket_value"):
+			total_items = int(gs.call("get_total_basket_count"))
+			total_value = int(gs.call("get_total_basket_value"))
+		var gold_dict: Dictionary = gs.get("gold_items") if gs != null and gs.get("gold_items") is Dictionary else {}
+		var gold_cnt := _sum_dict(gold_dict)
+		var star_part := " · %d★" % gold_cnt if gold_cnt > 0 else ""
+		_shop_harvest_label.text = "Cesta: %d itens ($%d)%s" % [total_items, total_value, star_part]
 
 
-func _on_buy_seed_pressed(crop_id: String) -> void:
-	_play_click()
-	var gs := _get_game_state()
-	if gs != null:
-		gs.buy_seed(crop_id, 1)
-
-
-func _on_buy_supply_pressed(supply_id: String) -> void:
-	_play_click()
-	var gs := _get_game_state()
-	if gs != null:
-		gs.buy_supply(supply_id, 1)
-
-
-func _on_upgrade_tool_pressed(tool_id: String) -> void:
-	_play_click()
-	var gs := _get_game_state()
-	if gs != null:
-		gs.buy_tool_upgrade(tool_id)
-
-
-func _on_buy_animal_pressed(animal_type: String) -> void:
-	_play_click()
-	var gs := _get_game_state()
-	if gs != null:
-		gs.buy_animal(animal_type)
-
-
-func _on_buy_machine_pressed(machine_id: String) -> void:
-	_play_click()
-	var gs := _get_game_state()
-	if gs != null:
-		gs.buy_machine(machine_id)
-
-
-func _on_deliver_order_pressed(order_idx: int) -> void:
-	_play_click()
-	var gs := _get_game_state()
-	if gs != null:
-		gs.deliver_order(order_idx)
-
-
-func _on_speed_pressed(speed_val: float) -> void:
-	_play_click()
-	var gs := _get_game_state()
-	if gs != null:
-		gs.set_time_speed_multiplier(speed_val)
-	_refresh_journal()
-
-
-func _add_shop_row(
+func _add_shop_farm_row(
 	icon_sheet: String,
 	icon_col: int,
 	title_txt: String,
@@ -1561,7 +2385,7 @@ func _add_shop_row(
 ) -> void:
 	var row_panel := PanelContainer.new()
 	row_panel.add_theme_stylebox_override("panel", _make_flat_style(COL_PARCHMENT_ALT, Color("#b89563"), 1, 6, 3, 2))
-	_shop_content_vbox.add_child(row_panel)
+	_shop_farm_vbox.add_child(row_panel)
 
 	var row_hbox := HBoxContainer.new()
 	row_hbox.add_theme_constant_override("separation", 6)
@@ -1582,9 +2406,7 @@ func _add_shop_row(
 	var btn := _make_wood_button(btn_txt, Vector2(88, 19), 7)
 	btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	btn.disabled = disabled
-	if disabled:
-		_apply_button_theme(btn, Color("#b9a888"), Color("#b9a888"), Color("#b9a888"), Color("#8f7c5c"), Color("#5c4f3d"))
-	elif on_press.is_valid():
+	if not disabled and on_press.is_valid():
 		btn.pressed.connect(on_press)
 	row_hbox.add_child(btn)
 
@@ -1702,10 +2524,11 @@ func _refresh_journal() -> void:
 			speed_row.add_child(s_btn)
 
 		_journal_content_vbox.add_child(_make_separator())
-		_journal_content_vbox.add_child(_make_label("Dicas rápidas da v1.3.0:", 8, COL_WOOD_DARK))
+		_journal_content_vbox.add_child(_make_label("Dicas rápidas da v1.4.0:", 8, COL_WOOD_DARK))
 		for tip_txt in [
 			"• Morango, Milho e Tomate rebrotam após a colheita sem gastar semente!",
-			"• Dias de chuva regam automaticamente todo o canteiro.",
+			"• Use Fertilizante (slot 0) para aumentar chance de colheita Ouro ★ (1.5x).",
+			"• Use a Vara de Pesca (slot 3) na beira do lago para pescar 4 espécies.",
 			"• Carinho diário nos animais aumenta chance de Ovo Azul e itens Ouro ★.",
 		]:
 			var tip_lbl := _make_label(tip_txt, 7, COL_INK)
@@ -1713,34 +2536,12 @@ func _refresh_journal() -> void:
 			tip_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			_journal_content_vbox.add_child(tip_lbl)
 
-		_journal_content_vbox.add_child(_make_separator())
-		var reset_btn := _make_colored_button(
-			"Confirmar Reset?" if _reset_confirm_armed else "Reiniciar Fazenda (Dia 1)",
-			Vector2(140, 19),
-			7,
-			Color("#b84b3e"),
-			Color("#cf5a4c"),
-			Color("#94392e"),
-			Color("#61231c"),
-			Color.WHITE
-		)
-		reset_btn.pressed.connect(func() -> void:
-			_play_click()
-			if not _reset_confirm_armed:
-				_reset_confirm_armed = true
-				_refresh_journal()
-				return
-			_reset_confirm_armed = false
-			gs.reset_save()
-			var parent := get_parent()
-			if parent != null and parent.has_method("_restore_world_state"):
-				parent.call("_restore_world_state", {})
-				parent.call("_spawn_animals")
-				parent.call("_refresh_machines")
-				parent.call("_update_weather_visuals")
-			_set_journal_open(false)
-		)
-		_journal_content_vbox.add_child(reset_btn)
+
+func _apply_tab_style(btn: Button, active: bool) -> void:
+	if active:
+		_apply_button_theme(btn, Color("#5a9640"), Color("#6eb050"), Color("#487a32"), COL_GOLD_BORDER, Color.WHITE)
+	else:
+		_apply_button_theme(btn, Color("#d8b982"), Color("#ebd09d"), Color("#bd9b63"), COL_WOOD_BORDER, COL_INK)
 
 
 # --- Style & widget factory helpers ---
@@ -1838,7 +2639,16 @@ func _make_flat_style(
 
 
 func _make_wood_button(text: String, min_size: Vector2, font_size: int) -> Button:
-	return _make_colored_button(text, min_size, font_size, Color("#d8b982"), Color("#ebd09d"), Color("#bd9b63"), COL_WOOD_BORDER, COL_INK)
+	return _make_colored_button(
+		text,
+		min_size,
+		font_size,
+		Color("#d8b982"),
+		Color("#ebd09d"),
+		Color("#bd9b63"),
+		COL_WOOD_BORDER,
+		COL_INK
+	)
 
 
 func _make_colored_button(
@@ -1872,9 +2682,11 @@ func _apply_button_theme(
 	btn.add_theme_color_override("font_color", font_col)
 	btn.add_theme_color_override("font_hover_color", font_col)
 	btn.add_theme_color_override("font_pressed_color", font_col)
+	btn.add_theme_color_override("font_disabled_color", Color(0.32, 0.25, 0.18, 0.85))
 	btn.add_theme_stylebox_override("normal", _make_flat_style(normal_col, border_col, 1, 3, 2, 2))
 	btn.add_theme_stylebox_override("hover", _make_flat_style(hover_col, border_col, 1, 3, 2, 2))
 	btn.add_theme_stylebox_override("pressed", _make_flat_style(pressed_col, border_col, 1, 3, 2, 2))
+	btn.add_theme_stylebox_override("disabled", _make_flat_style(Color(0.76, 0.70, 0.56, 0.85), Color("#8c7352"), 1, 3, 2, 2))
 
 
 func _make_separator() -> HSeparator:

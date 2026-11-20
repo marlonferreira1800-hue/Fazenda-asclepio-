@@ -1,5 +1,5 @@
 extends Node
-## Autoload global de estado de jogo, inventário, economia, clima, máquinas, pedidos, álbum e persistência.
+## Autoload global de estado de jogo, inventário, upgrades, clima, máquinas, pedidos, álbum e persistência.
 
 const CropDataScript := preload("res://scripts/data/crop_data.gd")
 const FarmCatalogScript := preload("res://scripts/data/farm_catalog.gd")
@@ -12,10 +12,12 @@ signal stamina_changed(stamina: int, max_stamina: int)
 signal water_changed(water: int, max_water: int)
 signal toast_message(text: String)
 signal day_advanced(new_day: int)
-signal weather_changed(new_weather: String)
+signal upgrades_changed()
+signal weather_changed(weather: String, tomorrow_weather: String)
+signal touch_mode_changed(mode: String)
+signal game_reset()
 signal orders_changed()
 signal album_changed()
-signal upgrades_changed()
 signal machines_changed()
 signal animal_purchased(animal_type: String)
 
@@ -24,6 +26,10 @@ const MINUTES_PER_DAY: float = 1440.0
 const START_OF_DAY_MINUTES: float = 360.0
 const TIME_SCALE_MINUTES_PER_SECOND: float = 4.0
 
+const WEATHER_SUNNY := "sunny"
+const WEATHER_RAINY := "rainy"
+const SPRINKLER_PRICE: int = 180
+
 const HOTBAR_SLOTS: Array[Dictionary] = [
 	{"id": "hoe", "name": "Enxada", "type": "tool", "sheet": "base", "icon_col": 0, "key_hint": "1"},
 	{"id": "watering_can", "name": "Regador", "type": "tool", "sheet": "base", "icon_col": 1, "key_hint": "2"},
@@ -31,16 +37,17 @@ const HOTBAR_SLOTS: Array[Dictionary] = [
 	{"id": "wheat_seed", "name": "Sem. Trigo", "type": "seed", "crop_id": "wheat", "sheet": "base", "icon_col": 2, "key_hint": "4"},
 	{"id": "carrot_seed", "name": "Sem. Cenoura", "type": "seed", "crop_id": "carrot", "sheet": "base", "icon_col": 3, "key_hint": "5"},
 	{"id": "strawberry_seed", "name": "Sem. Morango", "type": "seed", "crop_id": "strawberry", "sheet": "base", "icon_col": 4, "key_hint": "6"},
-	{"id": "corn_seed", "name": "Sem. Milho", "type": "seed", "crop_id": "corn", "sheet": "v13", "icon_col": 1, "key_hint": "7"},
-	{"id": "tomato_seed", "name": "Sem. Tomate", "type": "seed", "crop_id": "tomato", "sheet": "v13", "icon_col": 2, "key_hint": "8"},
-	{"id": "pumpkin_seed", "name": "Sem. Abóbora", "type": "seed", "crop_id": "pumpkin", "sheet": "v13", "icon_col": 3, "key_hint": "9"},
+	{"id": "corn_seed", "name": "Sem. Milho", "type": "seed", "crop_id": "corn", "sheet": "base", "icon_col": 8, "key_hint": "7"},
+	{"id": "tomato_seed", "name": "Sem. Tomate", "type": "seed", "crop_id": "tomato", "sheet": "base", "icon_col": 9, "key_hint": "8"},
+	{"id": "pumpkin_seed", "name": "Sem. Abóbora", "type": "seed", "crop_id": "pumpkin", "sheet": "base", "icon_col": 10, "key_hint": "9"},
 	{"id": "fertilizer", "name": "Fertilizante", "type": "supply", "supply_id": "fertilizer", "sheet": "v13", "icon_col": 4, "key_hint": "0"},
-	{"id": "sprinkler", "name": "Aspersor", "type": "supply", "supply_id": "sprinkler", "sheet": "v13", "icon_col": 5, "key_hint": "-"},
+	{"id": "sprinkler", "name": "Aspersor", "type": "supply", "supply_id": "sprinkler", "sheet": "base", "icon_col": 11, "key_hint": "-"},
 ]
 
-var ANIMAL_PRODUCTS: Dictionary = FarmCatalogScript.ANIMAL_PRODUCTS
-var FISH: Dictionary = FarmCatalogScript.FISH
-var ARTISAN: Dictionary = FarmCatalogScript.ARTISAN
+const UPGRADE_DEFS: Dictionary = FarmCatalogScript.UPGRADE_DEFS
+const ANIMAL_PRODUCTS: Dictionary = FarmCatalogScript.ANIMAL_PRODUCTS
+const FISH: Dictionary = FarmCatalogScript.FISH
+const ARTISAN: Dictionary = FarmCatalogScript.ARTISAN
 
 var CROPS: Dictionary = CropDataScript.get_all_definitions()
 
@@ -49,7 +56,6 @@ var day: int = 1
 var time_minutes: float = START_OF_DAY_MINUTES
 var time_paused: bool = false
 var time_speed_multiplier: float = 1.0
-var weather: String = "sunny" # "sunny" | "rain"
 var stamina: int = 100
 var max_stamina: int = 100
 var water_level: int = 20
@@ -57,7 +63,13 @@ var max_water: int = 20
 var selected_slot: int = 0
 
 var hoe_level: int = 1
-var watering_can_level: int = 1
+var can_level: int = 1
+var stamina_level: int = 1
+var sprinklers_owned: int = 0
+
+var weather: String = WEATHER_SUNNY
+var tomorrow_weather: String = WEATHER_SUNNY
+var touch_mode: String = "auto"
 
 var seeds: Dictionary = {
 	"wheat": 6,
@@ -80,6 +92,7 @@ var animal_products: Dictionary = {
 	"blue_egg": 0,
 	"milk": 0,
 	"wool": 0,
+	"truffle": 0,
 }
 var fish: Dictionary = {
 	"tilapia": 0,
@@ -108,7 +121,7 @@ var machine_states: Dictionary = {}
 
 var daily_orders: Array[Dictionary] = []
 var album_discovered: Dictionary = {}
-var animal_count: int = 4
+var animal_count: int = 5
 
 var auto_save_enabled: bool = true
 
@@ -133,6 +146,17 @@ func _get_audio() -> Node:
 	if not is_inside_tree():
 		return null
 	return get_node_or_null("/root/AudioManager")
+
+
+func _sync_caps_from_levels() -> void:
+	var stamina_caps := [100, 140, 180]
+	var water_caps := [20, 40, 60]
+	max_stamina = stamina_caps[clampi(stamina_level - 1, 0, stamina_caps.size() - 1)]
+	max_water = water_caps[clampi(can_level - 1, 0, water_caps.size() - 1)]
+
+
+func _sync_sprinkler_cache() -> void:
+	sprinklers_owned = maxi(0, int(supplies.get("sprinkler", 0)))
 
 
 func tick_time(delta: float) -> void:
@@ -197,7 +221,7 @@ func get_selected_slot() -> Dictionary:
 
 
 func get_tool_reach_mode(tool_id: String) -> String:
-	var lvl: int = hoe_level if tool_id == "hoe" else (watering_can_level if tool_id == "watering_can" else 1)
+	var lvl: int = hoe_level if tool_id == "hoe" else (can_level if tool_id == "watering_can" else 1)
 	if lvl >= 3:
 		return "3x3"
 	if lvl == 2:
@@ -206,7 +230,21 @@ func get_tool_reach_mode(tool_id: String) -> String:
 
 
 func is_raining() -> bool:
-	return weather == "rain"
+	return weather == WEATHER_RAINY
+
+
+func _spend_money(cost: int) -> bool:
+	var audio := _get_audio()
+	if money < cost:
+		if audio != null and audio.has_method("play_error"):
+			audio.play_error()
+		emit_toast("Moedas insuficientes! Precisa de $%d." % cost)
+		return false
+	money -= cost
+	money_changed.emit(money)
+	if audio != null and audio.has_method("play_coin"):
+		audio.play_coin()
+	return true
 
 
 func buy_seed(crop_id: String, qty: int = 1) -> bool:
@@ -232,61 +270,105 @@ func buy_supply(supply_id: String, qty: int = 1) -> bool:
 	if not _spend_money(cost):
 		return false
 	supplies[supply_id] = int(supplies.get(supply_id, 0)) + qty
+	_sync_sprinkler_cache()
 	inventory_changed.emit()
-	emit_toast("Comprou %dx %s (-$%d)" % [qty, str(info.get("name", supply_id)), cost])
+	if supply_id == "sprinkler":
+		emit_toast("Comprou %dx Aspersor (-$%d)! Selecione o slot -." % [qty, cost])
+	else:
+		emit_toast("Comprou %dx %s (-$%d)" % [qty, str(info.get("name", supply_id)), cost])
 	if auto_save_enabled:
 		save_game(false)
 	return true
 
 
-func buy_tool_upgrade(tool_id: String) -> bool:
-	if not FarmCatalogScript.TOOL_UPGRADES.has(tool_id):
+func buy_sprinkler(qty: int = 1) -> bool:
+	return buy_supply("sprinkler", qty)
+
+
+func add_sprinkler(qty: int = 1) -> void:
+	if qty <= 0:
+		return
+	supplies["sprinkler"] = int(supplies.get("sprinkler", 0)) + qty
+	_sync_sprinkler_cache()
+	inventory_changed.emit()
+
+
+func consume_sprinkler_item() -> bool:
+	var cur := int(supplies.get("sprinkler", 0))
+	if cur <= 0:
 		return false
-	var cur_lvl: int = hoe_level if tool_id == "hoe" else watering_can_level
-	if cur_lvl >= 3:
-		emit_toast("Ferramenta já está no nível máximo!")
+	supplies["sprinkler"] = cur - 1
+	_sync_sprinkler_cache()
+	inventory_changed.emit()
+	return true
+
+
+func get_upgrade_level(upgrade_id: String) -> int:
+	match upgrade_id:
+		"hoe":
+			return hoe_level
+		"can":
+			return can_level
+		"stamina":
+			return stamina_level
+	return 1
+
+
+func get_upgrade_cost(upgrade_id: String) -> int:
+	if not UPGRADE_DEFS.has(upgrade_id):
+		return -1
+	var def: Dictionary = UPGRADE_DEFS[upgrade_id]
+	var lvl: int = get_upgrade_level(upgrade_id)
+	var max_lvl: int = int(def["max_level"])
+	if lvl >= max_lvl:
+		return -1
+	var costs: Array = def["costs"]
+	var idx: int = lvl - 1
+	if idx < 0 or idx >= costs.size():
+		return -1
+	return int(costs[idx])
+
+
+func buy_upgrade(upgrade_id: String) -> bool:
+	if not UPGRADE_DEFS.has(upgrade_id):
 		return false
-	var next_lvl: int = cur_lvl + 1
-	var tool_def: Dictionary = FarmCatalogScript.TOOL_UPGRADES[tool_id]
-	var lvls: Dictionary = tool_def["levels"]
-	var next_def: Dictionary = lvls.get(next_lvl, {})
-	var cost: int = int(next_def.get("cost", 180))
-	if not _spend_money(cost):
+	var cost: int = get_upgrade_cost(upgrade_id)
+	var audio := _get_audio()
+	if cost < 0:
+		emit_toast("Upgrade já está no nível máximo!")
+		return false
+	if money < cost:
+		if audio != null and audio.has_method("play_error"):
+			audio.play_error()
+		emit_toast("Moedas insuficientes! Precisa de $%d." % cost)
 		return false
 
-	if tool_id == "hoe":
-		hoe_level = next_lvl
-	else:
-		watering_can_level = next_lvl
-		max_water = int(next_def.get("max_water", max_water))
-		water_level = max_water
-		water_changed.emit(water_level, max_water)
+	money -= cost
+	match upgrade_id:
+		"hoe":
+			hoe_level = mini(3, hoe_level + 1)
+		"can":
+			can_level = mini(3, can_level + 1)
+			_sync_caps_from_levels()
+			water_level = max_water
+			water_changed.emit(water_level, max_water)
+		"stamina":
+			stamina_level = mini(3, stamina_level + 1)
+			_sync_caps_from_levels()
+			stamina = max_stamina
+			stamina_changed.emit(stamina, max_stamina)
 
+	_sync_caps_from_levels()
+	money_changed.emit(money)
 	upgrades_changed.emit()
 	inventory_changed.emit()
-	emit_toast("%s melhorada para %s!" % [str(tool_def.get("name", tool_id)), str(next_def.get("label", ""))])
-	if auto_save_enabled:
-		save_game(false)
-	return true
-
-
-func buy_machine(machine_id: String) -> bool:
-	if not FarmCatalogScript.MACHINES.has(machine_id):
-		return false
-	if bool(owned_machines.get(machine_id, false)):
-		emit_toast("Você já instalou esta máquina!")
-		return false
-	var m_def: Dictionary = FarmCatalogScript.MACHINES[machine_id]
-	var cost: int = int(m_def.get("buy_price", 150))
-	if not _spend_money(cost):
-		return false
-	owned_machines[machine_id] = true
-	if machine_id == "bee_hive":
-		machine_states[machine_id] = {"busy": false, "ready": true, "remaining": 0.0, "output_id": "honey"}
-	else:
-		machine_states[machine_id] = {"busy": false, "ready": false, "remaining": 0.0, "output_id": str(m_def.get("output_id", ""))}
-	machines_changed.emit()
-	emit_toast("%s instalada na fazenda!" % str(m_def.get("name", machine_id)))
+	if audio != null and audio.has_method("play_upgrade"):
+		audio.play_upgrade()
+	elif audio != null and audio.has_method("play_coin"):
+		audio.play_coin()
+	var def: Dictionary = UPGRADE_DEFS[upgrade_id]
+	var new_lvl: int = get_upgrade_level(upgrade_id)
+	emit_toast("%s evoluída para Nv.%d! (-$%d)" % [str(def["name"]), new_lvl, cost])
 	if auto_save_enabled:
 		save_game(false)
 	return true
@@ -299,31 +381,42 @@ func buy_animal(animal_type: String) -> bool:
 		var audio := _get_audio()
 		if audio != null and audio.has_method("play_error"):
 			audio.play_error()
-		emit_toast("Cercado cheio! (Máx. %d animais)" % FarmCatalogScript.MAX_FARM_ANIMALS)
+		emit_toast("Cercado lotado! Máximo de %d animais." % FarmCatalogScript.MAX_FARM_ANIMALS)
 		return false
-	var def: Dictionary = FarmCatalogScript.ANIMAL_SHOP[animal_type]
-	var cost: int = int(def.get("buy_price", 100))
+	var a_def: Dictionary = FarmCatalogScript.ANIMAL_SHOP[animal_type]
+	var cost: int = int(a_def["buy_price"])
 	if not _spend_money(cost):
 		return false
 	animal_count += 1
 	animal_purchased.emit(animal_type)
-	emit_toast("Nova %s chegou ao cercado!" % str(def.get("name", animal_type)))
+	emit_toast("Comprou %s! Veja no cercado (-$%d)" % [str(a_def["name"]), cost])
 	if auto_save_enabled:
 		save_game(false)
 	return true
 
 
-func _spend_money(cost: int) -> bool:
-	var audio := _get_audio()
-	if money < cost:
-		if audio != null and audio.has_method("play_error"):
-			audio.play_error()
-		emit_toast("Moedas insuficientes! Precisa de $%d." % cost)
+func buy_machine(machine_id: String) -> bool:
+	if not FarmCatalogScript.MACHINES.has(machine_id):
 		return false
-	money -= cost
-	money_changed.emit(money)
-	if audio != null and audio.has_method("play_coin"):
-		audio.play_coin()
+	if bool(owned_machines.get(machine_id, false)):
+		emit_toast("Você já possui esta máquina!")
+		return false
+	var m_def: Dictionary = FarmCatalogScript.MACHINES[machine_id]
+	var cost: int = int(m_def["buy_price"])
+	if not _spend_money(cost):
+		return false
+	owned_machines[machine_id] = true
+	var init_ready := (machine_id == "bee_hive")
+	machine_states[machine_id] = {
+		"busy": false,
+		"ready": init_ready,
+		"remaining": 0.0,
+		"output_id": str(m_def.get("output_id", "")),
+	}
+	machines_changed.emit()
+	emit_toast("Instalou %s na fazenda! (-$%d)" % [str(m_def["name"]), cost])
+	if auto_save_enabled:
+		save_game(false)
 	return true
 
 
@@ -372,31 +465,35 @@ func add_artisan(artisan_id: String, qty: int = 1, is_gold: bool = false) -> voi
 
 
 func discover_item(item_id: String) -> void:
-	if item_id.is_empty():
+	if item_id.is_empty() or bool(album_discovered.get(item_id, false)):
 		return
-	if not bool(album_discovered.get(item_id, false)):
-		album_discovered[item_id] = true
-		album_changed.emit()
+	album_discovered[item_id] = true
+	album_changed.emit()
+	for grp_id_var in FarmCatalogScript.ALBUM_GROUPS.keys():
+		var grp_id: String = str(grp_id_var)
+		var grp: Dictionary = FarmCatalogScript.ALBUM_GROUPS[grp_id]
+		var grp_items: Array = grp.get("items", [])
+		if grp_items.has(item_id) and has_album_bonus(grp_id):
+			emit_toast("Álbum Completo: %s (%s)!" % [str(grp["title"]), str(grp["bonus_desc"])])
 
 
 func has_album_bonus(group_id: String) -> bool:
 	if not FarmCatalogScript.ALBUM_GROUPS.has(group_id):
 		return false
 	var items: Array = FarmCatalogScript.ALBUM_GROUPS[group_id].get("items", [])
-	for id_var in items:
-		if not bool(album_discovered.get(str(id_var), false)):
+	for item_var in items:
+		if not bool(album_discovered.get(str(item_var), false)):
 			return false
-	return not items.is_empty()
+	return true
 
 
 func get_album_progress() -> Dictionary:
 	var total: int = 0
 	var found: int = 0
-	for group_id in FarmCatalogScript.ALBUM_GROUPS.keys():
-		var items: Array = FarmCatalogScript.ALBUM_GROUPS[group_id].get("items", [])
-		for id_var in items:
+	for grp in FarmCatalogScript.ALBUM_GROUPS.values():
+		for item_var in grp.get("items", []):
 			total += 1
-			if bool(album_discovered.get(str(id_var), false)):
+			if bool(album_discovered.get(str(item_var), false)):
 				found += 1
 	return {"found": found, "total": total}
 
@@ -413,10 +510,10 @@ func get_item_count(item_id: String) -> int:
 	return 0
 
 
-func consume_inventory_item(item_id: String, qty: int) -> bool:
-	if qty <= 0 or get_item_count(item_id) < qty:
-		return false
-	var target_dict: Dictionary
+func consume_inventory_item(item_id: String, qty: int = 1) -> bool:
+	if qty <= 0:
+		return true
+	var target_dict: Dictionary = {}
 	if harvested.has(item_id):
 		target_dict = harvested
 	elif animal_products.has(item_id):
@@ -426,6 +523,9 @@ func consume_inventory_item(item_id: String, qty: int) -> bool:
 	elif artisan.has(item_id):
 		target_dict = artisan
 	else:
+		return false
+
+	if int(target_dict.get(item_id, 0)) < qty:
 		return false
 
 	var new_total: int = maxi(0, int(target_dict.get(item_id, 0)) - qty)
@@ -575,7 +675,7 @@ func _generate_daily_orders() -> void:
 	if day >= 2:
 		pool.append_array(["strawberry", "tomato", "wool", "shrimp", "trout"])
 	if day >= 3:
-		pool.append_array(["corn", "pumpkin", "blue_egg", "golden_carp"])
+		pool.append_array(["corn", "pumpkin", "blue_egg", "truffle", "golden_carp"])
 	if bool(owned_machines.get("cheese_press", false)):
 		pool.append("cheese")
 	if bool(owned_machines.get("bakery_oven", false)):
@@ -647,16 +747,37 @@ func use_water(amount: int = 1) -> bool:
 	return true
 
 
+func set_weather(today_w: String, next_w: String = "") -> void:
+	weather = WEATHER_RAINY if (today_w == WEATHER_RAINY or today_w == "rain") else WEATHER_SUNNY
+	if not next_w.is_empty():
+		tomorrow_weather = WEATHER_RAINY if (next_w == WEATHER_RAINY or next_w == "rain") else WEATHER_SUNNY
+	weather_changed.emit(weather, tomorrow_weather)
+
+
+func get_weather_label(w: String = weather) -> String:
+	return "Chuva" if (w == WEATHER_RAINY or w == "rain") else "Sol"
+
+
+func set_touch_mode(mode: String) -> void:
+	if mode not in ["auto", "on", "off"]:
+		return
+	if touch_mode == mode:
+		return
+	touch_mode = mode
+	touch_mode_changed.emit(touch_mode)
+	if auto_save_enabled:
+		save_game(false)
+
+
 func advance_day() -> void:
 	day += 1
 	time_minutes = START_OF_DAY_MINUTES
 	_last_emitted_minute = int(time_minutes)
 	stamina = max_stamina
 
-	var next_weather: String = "rain" if _rng.randf() < 0.30 else "sunny"
-	if next_weather != weather:
-		weather = next_weather
-		weather_changed.emit(weather)
+	weather = tomorrow_weather
+	var rain_chance: float = 0.14 if weather == WEATHER_RAINY else 0.30
+	tomorrow_weather = WEATHER_RAINY if _rng.randf() < rain_chance else WEATHER_SUNNY
 
 	for m_id_var in owned_machines.keys():
 		var m_id: String = str(m_id_var)
@@ -670,6 +791,7 @@ func advance_day() -> void:
 			machine_states[m_id]["remaining"] = 0.0
 
 	_generate_daily_orders()
+	weather_changed.emit(weather, tomorrow_weather)
 	day_advanced.emit(day)
 	day_changed.emit(day, time_minutes)
 	stamina_changed.emit(stamina, max_stamina)
@@ -678,8 +800,10 @@ func advance_day() -> void:
 	var audio := _get_audio()
 	if audio != null and audio.has_method("play_sleep"):
 		audio.play_sleep()
-	var w_txt: String = "Dia chuvoso (canteiro regado!)" if weather == "rain" else "Dia ensolarado!"
-	emit_toast("Dia %d começou — %s" % [day, w_txt])
+	if weather == WEATHER_RAINY:
+		emit_toast("Dia %d começou com chuva! Canteiros regados automaticamente." % day)
+	else:
+		emit_toast("Bom dia! Dia %d começou — energia restaurada." % day)
 	if auto_save_enabled:
 		save_game(false)
 
@@ -743,19 +867,29 @@ func save_game(show_toast: bool = true) -> bool:
 		if provided is Dictionary:
 			world_data = provided
 
+	var audio := _get_audio()
+	var sfx_muted: bool = bool(audio.get("muted")) if audio != null and audio.get("muted") != null else false
+	var bgm_muted: bool = bool(audio.get("music_muted")) if audio != null and audio.get("music_muted") != null else false
+
+	_sync_sprinkler_cache()
 	var payload: Dictionary = {
-		"version": 2,
+		"version": 3,
 		"money": money,
 		"day": day,
 		"time_minutes": time_minutes,
 		"time_speed_multiplier": time_speed_multiplier,
-		"weather": weather,
 		"stamina": stamina,
 		"water_level": water_level,
-		"max_water": max_water,
 		"selected_slot": selected_slot,
 		"hoe_level": hoe_level,
-		"watering_can_level": watering_can_level,
+		"can_level": can_level,
+		"stamina_level": stamina_level,
+		"sprinklers_owned": sprinklers_owned,
+		"weather": weather,
+		"tomorrow_weather": tomorrow_weather,
+		"touch_mode": touch_mode,
+		"muted": sfx_muted,
+		"music_muted": bgm_muted,
 		"seeds": seeds.duplicate(true),
 		"harvested": harvested.duplicate(true),
 		"animal_products": animal_products.duplicate(true),
@@ -812,25 +946,45 @@ func load_game() -> bool:
 	time_minutes = clampf(float(data.get("time_minutes", START_OF_DAY_MINUTES)), 0.0, MINUTES_PER_DAY - 1.0)
 	_last_emitted_minute = int(floor(time_minutes))
 	time_speed_multiplier = clampf(float(data.get("time_speed_multiplier", 1.0)), 0.5, 2.0)
-	var loaded_weather := str(data.get("weather", "sunny"))
-	weather = loaded_weather if loaded_weather in ["sunny", "rain"] else "sunny"
 
 	hoe_level = clampi(int(data.get("hoe_level", 1)), 1, 3)
-	watering_can_level = clampi(int(data.get("watering_can_level", 1)), 1, 3)
-	var wc_levels: Dictionary = FarmCatalogScript.TOOL_UPGRADES["watering_can"]["levels"]
-	max_water = int(wc_levels.get(watering_can_level, {}).get("max_water", 20))
+	var raw_can_lvl: int = int(data.get("can_level", data.get("watering_can_level", 1)))
+	can_level = clampi(raw_can_lvl, 1, 3)
+	stamina_level = clampi(int(data.get("stamina_level", 1)), 1, 3)
+	_sync_caps_from_levels()
 
 	stamina = clampi(int(data.get("stamina", max_stamina)), 0, max_stamina)
 	water_level = clampi(int(data.get("water_level", max_water)), 0, max_water)
 	selected_slot = clampi(int(data.get("selected_slot", 0)), 0, HOTBAR_SLOTS.size() - 1)
-	animal_count = clampi(int(data.get("animal_count", 4)), 1, FarmCatalogScript.MAX_FARM_ANIMALS)
+	animal_count = clampi(int(data.get("animal_count", 5)), 1, FarmCatalogScript.MAX_FARM_ANIMALS)
+
+	var loaded_weather: String = str(data.get("weather", WEATHER_SUNNY))
+	weather = WEATHER_RAINY if (loaded_weather == WEATHER_RAINY or loaded_weather == "rain") else WEATHER_SUNNY
+	var loaded_tomorrow: String = str(data.get("tomorrow_weather", WEATHER_SUNNY))
+	tomorrow_weather = WEATHER_RAINY if (loaded_tomorrow == WEATHER_RAINY or loaded_tomorrow == "rain") else WEATHER_SUNNY
+
+	var loaded_touch: String = str(data.get("touch_mode", "auto"))
+	if loaded_touch in ["auto", "on", "off"]:
+		touch_mode = loaded_touch
+
+	var audio := _get_audio()
+	if audio != null:
+		if data.has("muted") and audio.has_method("set_muted"):
+			audio.call("set_muted", bool(data["muted"]))
+		if data.has("music_muted") and audio.has_method("set_music_muted"):
+			audio.call("set_music_muted", bool(data["music_muted"]))
 
 	_load_dict_int_keys(seeds, data.get("seeds", {}))
 	_load_dict_int_keys(harvested, data.get("harvested", {}))
 	_load_dict_int_keys(animal_products, data.get("animal_products", {}))
 	_load_dict_int_keys(fish, data.get("fish", {}))
 	_load_dict_int_keys(artisan, data.get("artisan", {}))
-	_load_dict_int_keys(supplies, data.get("supplies", {}))
+
+	if data.has("supplies") and data.get("supplies") is Dictionary:
+		_load_dict_int_keys(supplies, data.get("supplies", {}))
+	elif data.has("sprinklers_owned"):
+		supplies["sprinkler"] = maxi(0, int(data.get("sprinklers_owned", 0)))
+	_sync_sprinkler_cache()
 
 	gold_items.clear()
 	var loaded_gold = data.get("gold_items", {})
@@ -875,15 +1029,16 @@ func load_game() -> bool:
 
 	money_changed.emit(money)
 	day_changed.emit(day, time_minutes)
-	weather_changed.emit(weather)
 	stamina_changed.emit(stamina, max_stamina)
 	water_changed.emit(water_level, max_water)
 	tool_changed.emit(selected_slot)
-	inventory_changed.emit()
 	upgrades_changed.emit()
+	weather_changed.emit(weather, tomorrow_weather)
+	touch_mode_changed.emit(touch_mode)
 	machines_changed.emit()
 	orders_changed.emit()
 	album_changed.emit()
+	inventory_changed.emit()
 	return true
 
 
@@ -896,22 +1051,62 @@ func reset_save() -> void:
 	time_minutes = START_OF_DAY_MINUTES
 	_last_emitted_minute = int(START_OF_DAY_MINUTES)
 	time_speed_multiplier = 1.0
-	weather = "sunny"
 	hoe_level = 1
-	watering_can_level = 1
-	max_water = 20
+	can_level = 1
+	stamina_level = 1
+	_sync_caps_from_levels()
 	stamina = max_stamina
 	water_level = max_water
 	selected_slot = 0
-	animal_count = 4
-	seeds = {"wheat": 6, "carrot": 4, "strawberry": 2, "corn": 0, "tomato": 0, "pumpkin": 0}
-	harvested = {"wheat": 0, "carrot": 0, "strawberry": 0, "corn": 0, "tomato": 0, "pumpkin": 0}
-	animal_products = {"egg": 0, "blue_egg": 0, "milk": 0, "wool": 0}
-	fish = {"tilapia": 0, "shrimp": 0, "trout": 0, "golden_carp": 0}
-	artisan = {"cheese": 0, "bread": 0, "honey": 0}
-	supplies = {"fertilizer": 2, "sprinkler": 0}
+	weather = WEATHER_SUNNY
+	tomorrow_weather = WEATHER_SUNNY
+	animal_count = 5
+
+	seeds = {
+		"wheat": 6,
+		"carrot": 4,
+		"strawberry": 2,
+		"corn": 0,
+		"tomato": 0,
+		"pumpkin": 0,
+	}
+	harvested = {
+		"wheat": 0,
+		"carrot": 0,
+		"strawberry": 0,
+		"corn": 0,
+		"tomato": 0,
+		"pumpkin": 0,
+	}
+	animal_products = {
+		"egg": 0,
+		"blue_egg": 0,
+		"milk": 0,
+		"wool": 0,
+		"truffle": 0,
+	}
+	fish = {
+		"tilapia": 0,
+		"shrimp": 0,
+		"trout": 0,
+		"golden_carp": 0,
+	}
+	artisan = {
+		"cheese": 0,
+		"bread": 0,
+		"honey": 0,
+	}
+	supplies = {
+		"fertilizer": 2,
+		"sprinkler": 0,
+	}
+	_sync_sprinkler_cache()
 	gold_items.clear()
-	owned_machines = {"cheese_press": false, "bakery_oven": false, "bee_hive": false}
+	owned_machines = {
+		"cheese_press": false,
+		"bakery_oven": false,
+		"bee_hive": false,
+	}
 	machine_states.clear()
 	album_discovered.clear()
 	_pending_world_save.clear()
@@ -919,12 +1114,13 @@ func reset_save() -> void:
 
 	money_changed.emit(money)
 	day_changed.emit(day, time_minutes)
-	weather_changed.emit(weather)
 	stamina_changed.emit(stamina, max_stamina)
 	water_changed.emit(water_level, max_water)
 	tool_changed.emit(selected_slot)
-	inventory_changed.emit()
 	upgrades_changed.emit()
+	weather_changed.emit(weather, tomorrow_weather)
 	machines_changed.emit()
 	album_changed.emit()
-	emit_toast("Jogo reiniciado para o Dia 1.")
+	inventory_changed.emit()
+	game_reset.emit()
+	emit_toast("Fazenda reiniciada para o Dia 1!")

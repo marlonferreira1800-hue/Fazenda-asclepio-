@@ -1,7 +1,7 @@
 class_name FarmCatalog
 extends RefCounted
-## Catálogo central da v1.3.0: produtos animais, peixes, máquinas artesanais,
-## suprimentos, upgrades de ferramentas, compra de animais e metas do Álbum.
+## Catálogo central da Fazendinha 2D (v1.4.0): produtos animais, peixes, máquinas artesanais,
+## suprimentos, upgrades, compra de animais e metas do Álbum.
 
 const ANIMAL_PRODUCTS: Dictionary = {
 	"egg": {
@@ -32,13 +32,21 @@ const ANIMAL_PRODUCTS: Dictionary = {
 		"id": "wool",
 		"name": "Lã",
 		"sell_price": 60,
-		"icon_sheet": "v13",
-		"icon_col": 10,
+		"icon_sheet": "base",
+		"icon_col": 12,
+		"album_group": "artisan",
+	},
+	"truffle": {
+		"id": "truffle",
+		"name": "Trufa",
+		"sell_price": 80,
+		"icon_sheet": "base",
+		"icon_col": 13,
 		"album_group": "artisan",
 	},
 }
 
-const ANIMAL_PRODUCT_ORDER: Array[String] = ["egg", "blue_egg", "milk", "wool"]
+const ANIMAL_PRODUCT_ORDER: Array[String] = ["egg", "blue_egg", "milk", "wool", "truffle"]
 
 const FISH: Dictionary = {
 	"tilapia": {
@@ -170,11 +178,11 @@ const SUPPLIES: Dictionary = {
 	},
 	"sprinkler": {
 		"id": "sprinkler",
-		"name": "Aspersor",
-		"desc": "Rega 3x3 tiles todo amanhecer",
-		"buy_price": 85,
-		"icon_sheet": "v13",
-		"icon_col": 5,
+		"name": "Aspersor Automático",
+		"desc": "Rega 3x3 todo amanhecer (recolhível com F)",
+		"buy_price": 180,
+		"icon_sheet": "base",
+		"icon_col": 11,
 	},
 }
 
@@ -192,8 +200,8 @@ const ANIMAL_SHOP: Dictionary = {
 		"name": "Ovelha",
 		"buy_price": 160,
 		"desc": "Produz Lã ($60) diariamente",
-		"icon_sheet": "v13",
-		"icon_col": 10,
+		"icon_sheet": "base",
+		"icon_col": 12,
 	},
 	"cow": {
 		"id": "cow",
@@ -203,26 +211,36 @@ const ANIMAL_SHOP: Dictionary = {
 		"icon_sheet": "base",
 		"icon_col": 7,
 	},
+	"pig": {
+		"id": "pig",
+		"name": "Porco",
+		"buy_price": 260,
+		"desc": "Encontra Trufa ($80) diariamente",
+		"icon_sheet": "base",
+		"icon_col": 13,
+	},
 }
 
-const ANIMAL_SHOP_ORDER: Array[String] = ["chicken", "sheep", "cow"]
+const ANIMAL_SHOP_ORDER: Array[String] = ["chicken", "sheep", "cow", "pig"]
 
-const TOOL_UPGRADES: Dictionary = {
+const UPGRADE_DEFS: Dictionary = {
 	"hoe": {
 		"name": "Enxada",
-		"levels": {
-			1: {"label": "Básica (1x1)", "cost": 0, "reach_mode": "1x1"},
-			2: {"label": "Cobre (3x1)", "cost": 180, "reach_mode": "3x1"},
-			3: {"label": "Ferro (3x3)", "cost": 420, "reach_mode": "3x3"},
-		},
+		"max_level": 3,
+		"costs": [150, 350],
+		"descriptions": ["Ara 1x1", "Ara 3x1 em linha", "Ara 3x3 em área"],
 	},
-	"watering_can": {
+	"can": {
 		"name": "Regador",
-		"levels": {
-			1: {"label": "Básico (1x1)", "cost": 0, "max_water": 20, "reach_mode": "1x1"},
-			2: {"label": "Cobre (3x1)", "cost": 180, "max_water": 30, "reach_mode": "3x1"},
-			3: {"label": "Ferro (3x3)", "cost": 420, "max_water": 50, "reach_mode": "3x3"},
-		},
+		"max_level": 3,
+		"costs": [150, 350],
+		"descriptions": ["20 água (1x1)", "40 água (3x1)", "60 água (3x3)"],
+	},
+	"stamina": {
+		"name": "Resistência",
+		"max_level": 3,
+		"costs": [120, 280],
+		"descriptions": ["100 Energia", "140 Energia", "180 Energia"],
 	},
 }
 
@@ -240,9 +258,9 @@ const ALBUM_GROUPS: Dictionary = {
 		"items": ["tilapia", "shrimp", "trout", "golden_carp"],
 	},
 	"artisan": {
-		"title": "Mestre Artesão (7/7 Animais & Artesanais)",
+		"title": "Mestre Artesão (8/8 Animais & Artesanais)",
 		"bonus_desc": "Máquinas produzem 30% mais rápido",
-		"items": ["egg", "blue_egg", "milk", "wool", "cheese", "bread", "honey"],
+		"items": ["egg", "blue_egg", "milk", "wool", "truffle", "cheese", "bread", "honey"],
 	},
 }
 

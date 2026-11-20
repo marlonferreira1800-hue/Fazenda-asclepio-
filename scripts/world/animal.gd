@@ -1,6 +1,6 @@
 extends CharacterBody2D
 
-@export_enum("chicken", "cow", "sheep") var animal_type: String = "chicken"
+@export_enum("chicken", "cow", "sheep", "pig") var animal_type: String = "chicken"
 @export var wander_bounds: Rect2 = Rect2(456.0, 88.0, 112.0, 64.0)
 @export var move_speed: float = 18.0
 
@@ -36,12 +36,15 @@ func _ready() -> void:
 func setup(p_type: String, p_bounds: Rect2) -> void:
 	animal_type = p_type
 	wander_bounds = p_bounds
-	if p_type == "chicken":
-		move_speed = 22.0
-	elif p_type == "sheep":
-		move_speed = 16.0
-	else:
-		move_speed = 13.0
+	match p_type:
+		"chicken":
+			move_speed = 22.0
+		"pig":
+			move_speed = 18.0
+		"sheep":
+			move_speed = 16.0
+		_:
+			move_speed = 13.0
 	if is_node_ready():
 		_load_frames()
 		_update_indicator()
@@ -95,29 +98,37 @@ func collect_product_info() -> Dictionary:
 	var prod_id: String = "egg"
 	var is_gold: bool = false
 
-	if animal_type == "cow":
-		prod_id = "milk"
-		is_gold = _rng.randf() < bonus_chance
-	elif animal_type == "sheep":
-		prod_id = "wool"
-		is_gold = _rng.randf() < bonus_chance
-	else:
-		if hearts >= 2 and _rng.randf() < bonus_chance:
-			prod_id = "blue_egg"
-			is_gold = hearts >= 4 and _rng.randf() < 0.35
-		else:
-			prod_id = "egg"
-			is_gold = hearts >= 3 and _rng.randf() < (bonus_chance * 0.6)
+	match animal_type:
+		"cow":
+			prod_id = "milk"
+			is_gold = _rng.randf() < bonus_chance
+		"sheep":
+			prod_id = "wool"
+			is_gold = _rng.randf() < bonus_chance
+		"pig":
+			prod_id = "truffle"
+			is_gold = _rng.randf() < bonus_chance
+		_:
+			if hearts >= 2 and _rng.randf() < bonus_chance:
+				prod_id = "blue_egg"
+				is_gold = hearts >= 4 and _rng.randf() < 0.35
+			else:
+				prod_id = "egg"
+				is_gold = hearts >= 3 and _rng.randf() < (bonus_chance * 0.6)
 
 	return {"id": prod_id, "gold": is_gold}
 
 
 func get_display_name() -> String:
-	if animal_type == "cow":
-		return "Vaca"
-	if animal_type == "sheep":
-		return "Ovelha"
-	return "Galinha"
+	match animal_type:
+		"cow":
+			return "Vaca"
+		"sheep":
+			return "Ovelha"
+		"pig":
+			return "Porco"
+		_:
+			return "Galinha"
 
 
 func export_state() -> Dictionary:
@@ -164,12 +175,15 @@ func _update_indicator() -> void:
 		return
 	_indicator.visible = not collected_today
 	if _indicator_fill != null:
-		if animal_type == "cow":
-			_indicator_fill.color = Color(0.84, 0.96, 1.0, 1.0)
-		elif animal_type == "sheep":
-			_indicator_fill.color = Color(1.0, 0.98, 0.88, 1.0)
-		else:
-			_indicator_fill.color = Color(1.0, 0.92, 0.38, 1.0)
+		match animal_type:
+			"cow":
+				_indicator_fill.color = Color(0.84, 0.96, 1.0, 1.0)
+			"sheep":
+				_indicator_fill.color = Color(1.0, 1.0, 1.0, 1.0)
+			"pig":
+				_indicator_fill.color = Color(1.0, 0.68, 0.80, 1.0)
+			_:
+				_indicator_fill.color = Color(1.0, 0.92, 0.38, 1.0)
 
 
 func _play_happy_hop() -> void:
@@ -201,21 +215,21 @@ func _load_texture_safe(res_path: String) -> Texture2D:
 
 
 func _load_frames() -> void:
+	var tex: Texture2D = _load_texture_safe("res://assets/sprites/props_buildings.png")
 	_frames.clear()
-	var tex: Texture2D
-	var regions: Array[Rect2]
-	if animal_type == "sheep":
-		tex = _load_texture_safe("res://assets/sprites/v13_props_sheet.png")
-		regions = [Rect2(0, 0, 16, 16), Rect2(16, 0, 16, 16)]
-	elif animal_type == "cow":
-		tex = _load_texture_safe("res://assets/sprites/props_buildings.png")
-		regions = [Rect2(32, 32, 16, 16), Rect2(48, 32, 16, 16)]
-	else:
-		tex = _load_texture_safe("res://assets/sprites/props_buildings.png")
-		regions = [Rect2(0, 32, 16, 16), Rect2(16, 32, 16, 16)]
-
 	if tex == null:
 		return
+
+	var regions: Array[Rect2]
+	match animal_type:
+		"cow":
+			regions = [Rect2(32, 32, 16, 16), Rect2(48, 32, 16, 16)]
+		"sheep":
+			regions = [Rect2(64, 32, 16, 16), Rect2(80, 32, 16, 16)]
+		"pig":
+			regions = [Rect2(0, 48, 16, 16), Rect2(16, 48, 16, 16)]
+		_:
+			regions = [Rect2(0, 32, 16, 16), Rect2(16, 32, 16, 16)]
 
 	for r in regions:
 		var atlas := AtlasTexture.new()
@@ -280,7 +294,7 @@ func _clamp_to_bounds() -> void:
 func _update_anim(delta: float) -> void:
 	if _frames.size() < 2:
 		return
-	var interval: float = (0.20 if animal_type == "chicken" else 0.28) if _is_walking else 0.95
+	var interval: float = (0.20 if animal_type == "chicken" else 0.30) if _is_walking else 0.95
 	_anim_timer += delta
 	if _anim_timer >= interval:
 		_anim_timer = 0.0
