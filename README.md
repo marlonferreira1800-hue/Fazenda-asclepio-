@@ -36,7 +36,7 @@ Jogo 2D pixel art estilo *cozy farming* desenvolvido para **Godot 4.7.2-stable**
 | Mover personagem | `W`, `A`, `S`, `D`, `Setas Direcionais` ou **D-Pad Touch** (mobile) |
 | Usar ferramenta / Plantar / Pescar / Instalar Aspersor / Colher | `Espaço`, `E`, `Clique do Mouse` ou botão **Usar** (touch) |
 | Interagir (Animais, Máquinas, Caixa de Venda, Loja, Encomendas, Poço, Porta, Recolher Aspersor, Colheita) | `F` ou botão **Interagir** (touch) |
-| Selecionar slot da Hotbar (11 slots) | `1`–`9`, `0`, `-`, **Roda do Mouse** ou clique na Hotbar |
+| Selecionar slot da Hotbar (12 slots) | `1`–`9`, `0`, `-`, `=`, **Roda do Mouse** ou clique na Hotbar |
 | Abrir / Fechar Loja da Fazenda (Sementes, Upgrades e Fazenda) | `B` |
 | Abrir / Fechar Diário da Fazenda (Pedidos e Álbum) | `J` |
 | Dormir / Avançar para o próximo dia | `N` (ou interagir com a porta da casinha) |
@@ -48,40 +48,43 @@ Jogo 2D pixel art estilo *cozy farming* desenvolvido para **Godot 4.7.2-stable**
 
 ---
 
-## Como Jogar (Ciclo da Fazenda)
+## Como Jogar (Ciclo da Fazenda & 4 Estações)
 
-1. **Arar e Fertilizar:** Selecione a **Enxada** (`1`) e use (`Espaço`/`E`/clique) na área arável para preparar o solo (evoluindo a Enxada na Loja libera áreas `3x1` e `3x3`). Opcionalmente aplique **Fertilizante (`0`)** para aumentar a chance de colheitas **Ouro ★ (`1.5x`)**.
-2. **Plantar (com Rebrota):** Selecione uma semente (`4`–`9`) e plante sobre a terra arada. **Morango, Milho e Tomate** rebrotam a cada 2 dias após a colheita sem gastar nova semente!
-3. **Regar, Aspersores e Chuva:** Selecione o **Regador** (`2`) e molhe os canteiros (reabasteça no **lago** ou **poço**). Você também pode comprar **Aspersores Automáticos (`-`)** na aba *Upgrades* da Loja (`B`) para regar `3x3` todo amanhecer — e em **dias de Chuva**, todos os canteiros são regados automaticamente!
-4. **Pescar no Lago:** Selecione a **Vara de Pesca (`3`)** perto do lago e acerte a zona verde no minigame para pescar **Tilápia**, **Camarão**, **Truta** e **Carpa Dourada**.
-5. **Cuidar dos Animais & Carinho:** Entre no cercado pelo portão e interaja (`F` ou clique) com **galinhas**, **vacas**, **ovelhas** e **porcos** para coletar **Ovo/Ovo Azul**, **Leite**, **Lã** e **Trufa**, aumentar corações de amizade (`♥ 0..5`) e comprar mais animais na aba *Fazenda* da Loja (`B`).
-6. **Máquinas Artesanais, Encomendas & Álbum:** Instale **Queijeira**, **Forno de Pão** e **Apiário** na aba *Fazenda* da Loja (`B`) para produzir **Queijo**, **Pão** e **Mel**, entregue pedidos no **Quadro / Diário (`J`)** e complete o **Álbum** para liberar bônus permanentes!
-7. **Entrar na Casa do Personagem:** Aproxime-se da porta da **Casinha da Fazenda** e caminhe para cima em direção à porta (ou pressione `F` / `E` / `Espaço` / clique na porta) para entrar no interior mobiliado (`18x12` tiles) com **Cama** (dormir até as `06:00`), **Fogão** (Chá da Fazenda `+20 Energia` 1x/dia), **Lareira animada**, **Estante de Livros** (Guia da Fazenda), **Escrivaninha / Diário** (salvar partida), **Baú**, **Mesa Posta** e **Capacho de Saída**.
-8. **Avançar os dias e Vender:** O relógio começa às `06:00` e avança até `24:00` (ajuste `0.5x/1x/1.5x` no Menu `Esc`), ou durma com `N` / na **Cama** dentro da casinha. Venda na **Caixa de Venda** (`F`) ou via **Vender Tudo** na Loja (`B`).
+1. **4 Estações do Ano (28 dias cada / 112 dias por ano):** O calendário percorre **Primavera**, **Verão**, **Outono** e **Inverno** com paletas sazonais completas (grama, flores, caminhos, lago, neve nos telhados/cercas e janelas acesas no Inverno), partículas climáticas (pétalas, pólen/vaga-lumes noturnos, folhas secas e neve) e bônus sazonais (**Modo Cozy**: nenhum cultivo murcha na virada de estação!).
+2. **Arar e Fertilizar:** Selecione a **Enxada** (`1`) e use (`Espaço`/`E`/clique) na área arável para preparar o solo (evoluindo a Enxada na Loja libera áreas `3x1` e `3x3`). Opcionalmente aplique **Fertilizante (`0`)** para aumentar a chance de colheitas **Ouro ★ (`1.5x`)**.
+3. **Plantar (com Rebrota e Bônus Sazonal):** Selecione uma semente (`4`–`9` ou `=` para Nabo) e plante sobre a terra arada. Na estação ideal do cultivo, ele cresce **1 dia mais rápido (mín. 1d)** e vende por **`+35%`**! **Morango, Milho e Tomate** rebrotam a cada 2 dias após a colheita sem gastar nova semente.
+4. **Regar, Aspersores e Chuva/Neve:** Selecione o **Regador** (`2`) e molhe os canteiros (reabasteça no **lago** ou **poço**). Você também pode comprar **Aspersores Automáticos (`-`)** na aba *Upgrades* da Loja (`B`) para regar `3x3` todo amanhecer — e em **dias de Chuva (ou Neve no Inverno)**, todos os canteiros são regados automaticamente!
+5. **Pescar no Lago:** Selecione a **Vara de Pesca (`3`)** perto do lago e acerte a zona verde no minigame para pescar **Tilápia**, **Camarão**, **Truta** e **Carpa Dourada**.
+6. **Cuidar dos Animais & Carinho:** Entre no cercado pelo portão e interaja (`F` ou clique) com **galinhas**, **vacas**, **ovelhas** e **porcos** para coletar **Ovo/Ovo Azul**, **Leite**, **Lã** e **Trufa**, aumentar corações de amizade (`♥ 0..5`) e comprar mais animais na aba *Fazenda* da Loja (`B`). No **Inverno**, produtos animais e artesanais vendem por **`+20%`**!
+7. **Máquinas Artesanais, Encomendas & Álbum:** Instale **Queijeira**, **Forno de Pão** e **Apiário** na aba *Fazenda* da Loja (`B`) para produzir **Queijo**, **Pão** e **Mel**, entregue pedidos no **Quadro / Diário (`J`)** e complete o **Álbum** para liberar bônus permanentes!
+8. **Entrar na Casa do Personagem:** Aproxime-se da porta da **Casinha da Fazenda** e caminhe para cima em direção à porta (ou pressione `F` / `E` / `Espaço` / clique na porta) para entrar no interior mobiliado (`18x12` tiles) com **Cama** (dormir até as `06:00`), **Fogão** (Chá da Fazenda `+20 Energia` 1x/dia), **Lareira animada**, **Estante de Livros** (Guia da Fazenda), **Escrivaninha / Diário** (salvar partida), **Baú**, **Mesa Posta** e **Capacho de Saída**.
+9. **Avançar os dias e Vender:** O relógio começa às `06:00` e avança até `24:00` (ajuste `0.5x/1x/1.5x` no Menu `Esc`), ou durma com `N` / na **Cama** dentro da casinha. Venda na **Caixa de Venda** (`F`) ou via **Vender Tudo** na Loja (`B`).
 
 ---
 
 ## Cultivos, Produtos Animais, Upgrades e Economia
 
-### Cultivos
+### Cultivos & Estações Ideais (Modo Cozy)
 
-| Cultivo | Dias para Crescer (regado) | Preço da Semente | Preço de Venda |
-| :--- | :---: | :---: | :---: |
-| **Trigo** (`wheat`) | 2 dias | $10 | $25 |
-| **Cenoura** (`carrot`) | 3 dias | $20 | $55 |
-| **Morango** (`strawberry`) | 4 dias | $35 | $110 |
-| **Milho** (`corn`) | 3 dias | $30 | $90 |
-| **Tomate** (`tomato`) | 4 dias | $45 | $145 |
-| **Abóbora** (`pumpkin`) | 5 dias | $65 | $220 |
+| Cultivo | Estação Ideal (`-1d` e `+35%`) | Dias Base (Ideal) | Preço da Semente | Venda Base (Na Estação) |
+| :--- | :---: | :---: | :---: | :---: |
+| **Trigo** (`wheat`) | 🌸 **Primavera** | 2 dias (1d) | $10 | $25 (**$34**) |
+| **Morango** (`strawberry`) | 🌸 **Primavera** | 4 dias (3d, rebrota 2d) | $35 | $110 (**$149**) |
+| **Milho** (`corn`) | ☀️ **Verão** | 3 dias (2d, rebrota 2d) | $30 | $90 (**$122**) |
+| **Tomate** (`tomato`) | ☀️ **Verão** | 4 dias (3d, rebrota 2d) | $45 | $145 (**$196**) |
+| **Cenoura** (`carrot`) | 🍂 **Outono** | 3 dias (2d) | $20 | $55 (**$74**) |
+| **Abóbora** (`pumpkin`) | 🍂 **Outono** | 5 dias (4d) | $65 | $220 (**$297**) |
+| **Nabo** (`turnip`) | ❄️ **Inverno** | 3 dias (2d) | $25 | $70 (**$95**) |
 
-### Produtos Animais
+### Produtos Animais (+20% no Inverno)
 
-| Produto | Origem | Preço de Venda |
+| Produto | Origem | Preço de Venda (Inverno) |
 | :--- | :--- | :---: |
-| **Ovo** (`egg`) | Galinhas (1x por dia cada) | $30 |
-| **Leite** (`milk`) | Vaca (1x por dia) | $45 |
-| **Lã** (`wool`) | Ovelha (1x por dia) | $60 |
-| **Trufa** (`truffle`) | Porco (1x por dia) | $80 |
+| **Ovo** (`egg`) | Galinhas (1x por dia cada) | $30 (**$36**) |
+| **Ovo Azul** (`blue_egg`) | Galinhas com amizade alta (`♥`) | $55 (**$66**) |
+| **Leite** (`milk`) | Vaca (1x por dia) | $45 (**$54**) |
+| **Lã** (`wool`) | Ovelha (1x por dia) | $60 (**$72**) |
+| **Trufa** (`truffle`) | Porco (1x por dia) | $80 (**$96**) |
 
 ### Upgrades & Automação (Loja `B` -> Aba Upgrades)
 
@@ -90,7 +93,7 @@ Jogo 2D pixel art estilo *cozy farming* desenvolvido para **Godot 4.7.2-stable**
 | **Enxada** | Ara `3x1` ($150) | Ara `3x3` ($350) |
 | **Regador** | `40` água, `3x1` ($150) | `60` água, `3x3` ($350) |
 | **Resistência (Energia)** | `140` Energia ($120) | `180` Energia ($280) |
-| **Aspersor Automático** | $180 cada (slot `9`) — rega `3x3` todo amanhecer | — |
+| **Aspersor Automático** | $180 cada (slot `-`) — rega `3x3` todo amanhecer | — |
 
 - Recursos iniciais: **$100** moedas, **6** sementes de Trigo, **4** de Cenoura e **2** de Morango.
 
@@ -98,20 +101,21 @@ Jogo 2D pixel art estilo *cozy farming* desenvolvido para **Godot 4.7.2-stable**
 
 ## Áudio Procedural e Save/Load
 
-- **Efeitos Sonoros & Música (`AudioManager`):** Todos os efeitos sonoros e a **música de fundo cozy em loop** são sintetizados proceduralmente em memória via `AudioStreamWAV` (PCM 16-bit mono 22050Hz), funcionando offline tanto no Desktop quanto no export Web HTML5 sem depender de arquivos externos. Você pode silenciar SFX e música separadamente no **Menu (`Esc`)** ou pelo botão **Som** na HUD.
-- **Persistência (`user://savegame.json`):** O progresso (moedas, dia, horário, clima/previsão, energia, água, upgrades, aspersores instalados, inventário, solo arado/molhado, cultivos, animais e preferências de áudio/touch) é salvo **automaticamente** ao avançar o dia, comprar na loja ou vender na cesta, e também **manualmente** pelo botão **Salvar**. Você pode reiniciar a fazenda para o Dia 1 com confirmação no **Menu (`Esc`)**.
+- **Efeitos Sonoros & Música (`AudioManager`):** Todos os efeitos sonoros (incluindo o carrilhão de mudança de estação) e a **música de fundo cozy em loop** são sintetizados proceduralmente em memória via `AudioStreamWAV` (PCM 16-bit mono 22050Hz), funcionando offline tanto no Desktop quanto no export Web HTML5 sem depender de arquivos externos. Você pode silenciar SFX e música separadamente no **Menu (`Esc`)** ou pelo botão **Som** na HUD.
+- **Persistência (`user://savegame.json`):** O progresso (moedas, dia, estação/ano, horário, clima/previsão, energia, água, upgrades, aspersores instalados, inventário, solo arado/molhado, cultivos, animais e preferências de áudio/touch) é salvo **automaticamente** ao avançar o dia, comprar na loja ou vender na cesta, e também **manualmente** pelo botão **Salvar**. Você pode reiniciar a fazenda para o Dia 1 com confirmação no **Menu (`Esc`)**.
 
 ---
 
 ## Estrutura Principal do Projeto
 
-- `project.godot` — Configurações de entrada (`1-9`), viewport (`640x360` -> janela `1280x720`), filtro pixel art, versão (`1.3.0`) e Autoloads (`GameState`, `AudioManager`).
-- `scripts/data/crop_data.gd` — Definições e recurso `CropData` dos 6 cultivos.
-- `scripts/data/version_data.gd` — Versão atual (`v1.3.0`), histórico de versões (`v1.0.0`–`v1.3.0`), autoria e URLs de Releases/Issues.
-- `scripts/autoload/game_state.gd` — Estado global (`GameState`), inventário, upgrades, clima/previsão, save/load JSON, reset completo e relógio diário.
+- `project.godot` — Configurações de entrada (`1-9`), viewport (`640x360` -> janela `1280x720`), filtro pixel art, versão (`1.4.0`) e Autoloads (`GameState`, `AudioManager`).
+- `scripts/data/season_data.gd` — Definições e calendário das **4 Estações do Ano** (`SeasonData`, 28 dias por estação, paletas, ícones e bônus).
+- `scripts/data/crop_data.gd` — Definições e recurso `CropData` dos 7 cultivos (incluindo Nabo de Inverno e cálculo sazonal Cozy).
+- `scripts/data/version_data.gd` — Versão atual (`v1.4.0`), histórico de versões (`v1.0.0`–`v1.4.0`), autoria e URLs de Releases/Issues.
+- `scripts/autoload/game_state.gd` — Estado global (`GameState`), calendário sazonal, inventário, upgrades, clima/previsão, save/load JSON, reset completo e relógio diário.
 - `scripts/autoload/audio_manager.gd` — Sintetizador procedural de efeitos sonoros e música de fundo em loop (`AudioManager`).
-- `scripts/world/` e `scenes/` — Mundo da fazenda, clima visual, aspersores, jogador (com suporte touch), animais e HUD/Menu/Loja.
-- `assets/sprites/` — Spritesheets 16x16 de terreno, cultivos (`80x96`), personagens, construções/animais (`96x64`) e ícones (`ui_icons.png` `256x16`).
+- `scripts/world/` e `scenes/` — Mundo da fazenda, troca dinâmica de tilesets/props por estação, partículas sazonais, clima visual, aspersores, jogador (com suporte touch), animais e HUD/Menu/Loja.
+- `assets/sprites/` e `assets/sprites/seasons/` — Spritesheets 16x16 de terreno, cultivos (`80x96` + `turnip_sheet.png`), personagens, construções/animais (`96x64`), variantes das 4 estações (`terrain_<season>.png`, `props_<season>.png`) e ícones (`ui_icons.png`, `v13_icons.png`, `season_icons.png`, `turnip_icon.png`).
 - `tools/import_pack.py` — Ferramenta CLI para importar pacotes externos (como *Sprout Lands* ou *Kenney Tiny Town*) para `assets/sprites/` com backup automático em `assets/sprites_backup/`.
 - `tools/auto_release_bot.py` e `Robozinho_Release.bat` — Robô automatizador de auditoria das 5 Barreiras e publicação de Releases (`Antes vs. Depois`).
 - `RELEASE_RULES.md` — Critérios obrigatórios verificados pelo robô antes de subir qualquer nova versão.

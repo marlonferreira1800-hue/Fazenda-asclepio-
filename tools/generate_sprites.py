@@ -2321,6 +2321,471 @@ def build_v13_icons() -> Image.Image:
     return sheet
 
 
+# ==============================================================================
+# 6. SEASONAL SPRITES IN assets/sprites/seasons/
+# ==============================================================================
+def _remap_pixels(
+    img: Image.Image,
+    mapping: dict[RGBA, RGBA],
+    region: tuple[int, int, int, int] | None = None,
+) -> Image.Image:
+    """Remapeia cores RGBA exatas em toda a imagem ou dentro de um retângulo (x,y,w,h)."""
+    out = img.copy()
+    px = out.load()
+    x0, y0, w, h = region if region is not None else (0, 0, out.width, out.height)
+    for y in range(y0, y0 + h):
+        for x in range(x0, x0 + w):
+            c = px[x, y]
+            if c in mapping:
+                px[x, y] = mapping[c]
+    return out
+
+
+def build_seasonal_terrains(base_terrain: Image.Image) -> dict[str, Image.Image]:
+    """Gera terrain_<season>.png (64x32 RGBA) para spring, summer, autumn e winter."""
+    terrains: dict[str, Image.Image] = {}
+
+    # Primavera = base vibrante padrão
+    terrains["spring"] = base_terrain.copy()
+
+    # Verão: grama ensolarada, flores douradas/vermelhas, caminho mais quente, água turquesa
+    summer_map: dict[RGBA, RGBA] = {
+        PAL["g"]: hex_rgba("#6bc740"),
+        PAL["h"]: hex_rgba("#8de653"),
+        PAL["m"]: hex_rgba("#58b035"),
+        PAL["d"]: hex_rgba("#46942a"),
+        PAL["w"]: hex_rgba("#ffd95c"),
+        PAL["W"]: hex_rgba("#f0b535"),
+        PAL["p"]: hex_rgba("#ff6f61"),
+        PAL["P"]: hex_rgba("#d94338"),
+        PAL["t"]: hex_rgba("#e3ba84"),
+        PAL["T"]: hex_rgba("#f5d4a4"),
+        PAL["u"]: hex_rgba("#cc9e68"),
+        PAL["a"]: hex_rgba("#48c4e8"),
+        PAL["A"]: hex_rgba("#32a1c7"),
+        PAL["b"]: hex_rgba("#8ef0ff"),
+    }
+    terrains["summer"] = _remap_pixels(base_terrain, summer_map, (0, 0, 64, 16))
+
+    # Outono: grama âmbar/dourada, folhas caídas (no tile de flores), água azul-acinzentada
+    autumn_map: dict[RGBA, RGBA] = {
+        PAL["g"]: hex_rgba("#c99d4a"),
+        PAL["h"]: hex_rgba("#deb65f"),
+        PAL["m"]: hex_rgba("#b08238"),
+        PAL["d"]: hex_rgba("#916729"),
+        PAL["w"]: hex_rgba("#e3673b"),
+        PAL["Y"]: hex_rgba("#b83925"),
+        PAL["p"]: hex_rgba("#f5a642"),
+        PAL["P"]: hex_rgba("#c76224"),
+        PAL["t"]: hex_rgba("#cc9968"),
+        PAL["T"]: hex_rgba("#deae7e"),
+        PAL["u"]: hex_rgba("#b07e52"),
+        PAL["a"]: hex_rgba("#4a95b8"),
+        PAL["A"]: hex_rgba("#387899"),
+        PAL["b"]: hex_rgba("#7fc4de"),
+    }
+    terrains["autumn"] = _remap_pixels(base_terrain, autumn_map, (0, 0, 64, 16))
+
+    # Inverno: grama nevada, detalhes de neve/gelo, caminho nevado, lago gelado, cerca/caixa com neve
+    winter = base_terrain.copy()
+    winter_top_map: dict[RGBA, RGBA] = {
+        PAL["g"]: hex_rgba("#e6f2fa"),
+        PAL["h"]: hex_rgba("#ffffff"),
+        PAL["m"]: hex_rgba("#d2e4f2"),
+        PAL["d"]: hex_rgba("#b8cfe3"),
+        PAL["w"]: hex_rgba("#ffffff"),
+        PAL["Y"]: hex_rgba("#8fb8db"),
+        PAL["p"]: hex_rgba("#c7e1f7"),
+        PAL["P"]: hex_rgba("#7da8cf"),
+        PAL["t"]: hex_rgba("#bfa58c"),
+        PAL["T"]: hex_rgba("#dceaf5"),
+        PAL["u"]: hex_rgba("#a38870"),
+        PAL["U"]: hex_rgba("#856d57"),
+        PAL["a"]: hex_rgba("#8bd0eb"),
+        PAL["A"]: hex_rgba("#67b0d1"),
+        PAL["b"]: hex_rgba("#d4f4ff"),
+        PAL["c"]: hex_rgba("#ffffff"),
+    }
+    winter = _remap_pixels(winter, winter_top_map, (0, 0, 64, 16))
+
+    # Adiciona capa de neve no topo da cerca (32..48, 16..32) e da caixa de venda (48..64, 16..32)
+    winter_px = winter.load()
+    snow_hi = hex_rgba("#ffffff")
+    snow_lo = hex_rgba("#d0e4f5")
+    for x in range(32, 64):
+        for y in range(16, 22):
+            r, g, b, a = winter_px[x, y]
+            if a > 0 and (r, g, b, a) not in (PAL["B"], PAL["k"], PAL["K"]):
+                winter_px[x, y] = snow_hi if y <= 18 else snow_lo
+    # Borda de gelo sutil ao redor do lago (tile 3,0 em x=48..63, y=0..15)
+    for x in range(48, 64):
+        winter_px[x, 0] = snow_lo
+        winter_px[x, 15] = snow_lo
+    for y in range(0, 16):
+        winter_px[48, y] = snow_lo
+        winter_px[63, y] = snow_lo
+
+    terrains["winter"] = winter
+    return terrains
+
+
+def build_seasonal_props(base_props: Image.Image) -> dict[str, Image.Image]:
+    """Gera props_<season>.png (96x64 RGBA) para spring, summer, autumn e winter sem alterar animais/aspersor em y>=32."""
+    props: dict[str, Image.Image] = {}
+
+    # Primavera: base com pequenas flores de cerejeira salpicadas na copa da árvore (32..64, 0..32)
+    spring = base_props.copy()
+    sp_px = spring.load()
+    blossom_coords = [
+        (43, 4), (50, 5), (39, 7), (54, 8), (46, 9), (41, 11), (52, 12), (48, 6),
+    ]
+    for bx, by in blossom_coords:
+        sp_px[bx, by] = PAL["p"]
+        if bx + 1 < 64:
+            sp_px[bx + 1, by] = PAL["w"]
+    props["spring"] = spring
+
+    # Verão: folhagem verde intensa com frutinhas douradas/vermelhas na árvore e arbusto
+    summer_map: dict[RGBA, RGBA] = {
+        PAL["g"]: hex_rgba("#52b53b"),
+        PAL["h"]: hex_rgba("#7be053"),
+        PAL["l"]: hex_rgba("#99eb65"),
+        PAL["L"]: hex_rgba("#bdf582"),
+        PAL["m"]: hex_rgba("#3e942e"),
+        PAL["f"]: hex_rgba("#358027"),
+        PAL["F"]: hex_rgba("#27631d"),
+        PAL["p"]: hex_rgba("#ff6359"),
+        PAL["P"]: hex_rgba("#c9382e"),
+    }
+    summer = _remap_pixels(base_props, summer_map, (32, 0, 64, 32))
+    su_px = summer.load()
+    for fx, fy in [(42, 6), (51, 9), (45, 11), (53, 6), (39, 10)]:
+        su_px[fx, fy] = hex_rgba("#ff6b5e")
+    props["summer"] = summer
+
+    # Outono: copas laranja/ouro/carmesim, arbustos outonais, telhado e floreira quentes
+    autumn_map: dict[RGBA, RGBA] = {
+        PAL["g"]: hex_rgba("#de7535"),
+        PAL["h"]: hex_rgba("#f59c42"),
+        PAL["l"]: hex_rgba("#ffc259"),
+        PAL["L"]: hex_rgba("#ffe07d"),
+        PAL["m"]: hex_rgba("#c25629"),
+        PAL["f"]: hex_rgba("#a84020"),
+        PAL["F"]: hex_rgba("#822c16"),
+        PAL["G"]: hex_rgba("#592216"),
+        PAL["p"]: hex_rgba("#ffd95c"),
+        PAL["P"]: hex_rgba("#d95238"),
+    }
+    autumn = _remap_pixels(base_props, autumn_map, (0, 0, 96, 32))
+    props["autumn"] = autumn
+
+    # Inverno: neve nos telhados (casinha e poço), placa, pedra, arbusto, copa nevada e janelas acesas
+    winter_pal_extra: dict[str, RGBA] = {
+        "S": hex_rgba("#ffffff"),  # neve luz
+        "s": hex_rgba("#d4e6f7"),  # neve sombra
+        "i": hex_rgba("#9dbad4"),  # gelo / sombra fria
+        "t": hex_rgba("#4c6473"),  # pinheiro inverno
+        "T": hex_rgba("#364957"),  # pinheiro escuro
+        "g": hex_rgba("#ffdf6e"),  # janela quente luz
+        "G": hex_rgba("#f0a83a"),  # janela quente brilho
+    }
+    winter = base_props.copy()
+    w_px = winter.load()
+
+    # Telhado nevado na casinha (x=0..31, y=0..15) + janelas quentes acesas (y=19..22)
+    for y in range(0, 14):
+        for x in range(0, 32):
+            c = w_px[x, y]
+            if c in (PAL["r"], PAL["x"]):
+                w_px[x, y] = winter_pal_extra["S"] if y <= 8 else winter_pal_extra["s"]
+            elif c == PAL["X"]:
+                w_px[x, y] = winter_pal_extra["i"]
+    for y in range(19, 22):
+        for x in range(7, 29):
+            if w_px[x, y] in (PAL["a"], PAL["b"], PAL["c"]):
+                w_px[x, y] = winter_pal_extra["g"] if y == 20 else winter_pal_extra["G"]
+
+    # Árvore nevada (32..63, 0..31)
+    tree_winter_map: dict[RGBA, RGBA] = {
+        PAL["G"]: hex_rgba("#324554"),
+        PAL["L"]: hex_rgba("#ffffff"),
+        PAL["l"]: hex_rgba("#f0f7fc"),
+        PAL["h"]: hex_rgba("#dcebf7"),
+        PAL["g"]: hex_rgba("#c3daed"),
+        PAL["m"]: hex_rgba("#6d8fa8"),
+        PAL["f"]: hex_rgba("#517087"),
+        PAL["F"]: hex_rgba("#3c566b"),
+    }
+    winter = _remap_pixels(winter, tree_winter_map, (32, 0, 32, 32))
+
+    # Arbusto nevado (80..95, 0..15)
+    bush_winter_map: dict[RGBA, RGBA] = {
+        PAL["G"]: hex_rgba("#384f61"),
+        PAL["L"]: hex_rgba("#ffffff"),
+        PAL["l"]: hex_rgba("#ffffff"),
+        PAL["h"]: hex_rgba("#e8f4fc"),
+        PAL["g"]: hex_rgba("#cfe3f5"),
+        PAL["m"]: hex_rgba("#799bb5"),
+        PAL["f"]: hex_rgba("#58768f"),
+        PAL["F"]: hex_rgba("#425c73"),
+        PAL["p"]: hex_rgba("#ffffff"),
+        PAL["P"]: hex_rgba("#b8d4eb"),
+    }
+    winter = _remap_pixels(winter, bush_winter_map, (80, 0, 16, 16))
+    w_px = winter.load()
+
+    # Pedra com neve e geada no musgo (64..79, 0..15)
+    for y in range(4, 12):
+        for x in range(64, 80):
+            c = w_px[x, y]
+            if y <= 8 and c in (PAL["I"], PAL["i"]):
+                w_px[x, y] = winter_pal_extra["S"] if y <= 6 else winter_pal_extra["s"]
+            elif c in (PAL["g"], PAL["m"]):
+                w_px[x, y] = winter_pal_extra["i"]
+
+    # Poço (64..79, 16..31) e Placa (80..95, 16..31) com neve no topo
+    for y in range(16, 21):
+        for x in range(64, 96):
+            c = w_px[x, y]
+            if c in (PAL["r"], PAL["x"], PAL["X"], PAL["O"]):
+                w_px[x, y] = winter_pal_extra["S"] if y <= 18 else winter_pal_extra["s"]
+
+    props["winter"] = winter
+    return props
+
+
+def build_turnip_sheet() -> Image.Image:
+    """Gera turnip_sheet.png (80x16 RGBA = 5 estágios de crescimento do Nabo)."""
+    sheet = Image.new("RGBA", (80, 16), TRANSPARENT)
+    extra_pal = {
+        "N": hex_rgba("#9c5cb8"),  # roxo nabo base
+        "U": hex_rgba("#c98ae6"),  # roxo nabo luz
+        "V": hex_rgba("#6d368a"),  # roxo nabo sombra
+        "t": hex_rgba("#5bb07a"),  # folha verde-azulada inverno
+        "T": hex_rgba("#87db9c"),  # folha clara inverno
+        "y": hex_rgba("#397a54"),  # folha escura inverno
+    }
+    stages = [
+        [
+            "................",
+            "................",
+            "................",
+            "................",
+            "................",
+            "................",
+            "................",
+            "................",
+            ".....kk.........",
+            "....kUNk...kk...",
+            ".....kk...kUNk..",
+            "..kk.......kk...",
+            ".kUNk..kk.......",
+            "..kk..kUNk......",
+            ".......kk.......",
+            "................",
+        ],
+        [
+            "................",
+            "................",
+            "................",
+            "................",
+            "................",
+            "................",
+            "................",
+            "................",
+            ".....kk..kk.....",
+            "....kTTkkTTk....",
+            ".....ktkktk.....",
+            "......kttk......",
+            "......kyyk......",
+            ".......kk.......",
+            "................",
+            "................",
+        ],
+        [
+            "................",
+            "................",
+            "................",
+            "................",
+            "................",
+            "....kk....kk....",
+            "...kTTk..kTTk...",
+            "..kkttkkkkttkk..",
+            ".kTTttttttttTTk.",
+            "..kttttttttttk..",
+            "...ktttyytttk...",
+            "....kyyyyyyk....",
+            ".....kkkkkk.....",
+            "................",
+            "................",
+            "................",
+        ],
+        [
+            "................",
+            ".....kkkkkk.....",
+            "...kkTTTTTTkk...",
+            "..kTTttttttTTk..",
+            "..kttttttttttk..",
+            "...ktttyytttk...",
+            "....kkyyyyk.....",
+            "....kUNNNUk.....",
+            "....kNwwwNk.....",
+            ".....kwWWk......",
+            "......kkkk......",
+            "................",
+            "................",
+            "................",
+            "................",
+            "................",
+        ],
+        [
+            "....kk....kk....",
+            "...kTTk..kTTk...",
+            "..kkttkkkkttkk..",
+            ".kTTttttttttTTk.",
+            "..ktttyyyytttk..",
+            "...kkyyyyyykk...",
+            "....kUUNNNUk....",
+            "...kUNNNNNNVk...",
+            "...kNwwwwwwNk...",
+            "...kwwwwwwwWk...",
+            "....kwwWWWwk....",
+            ".....kWWWWk.....",
+            "......kWWk......",
+            ".......kk.......",
+            "................",
+            "................",
+        ],
+    ]
+    for col_idx, grid in enumerate(stages):
+        paste_tile(sheet, render_grid(grid, 16, 16, extra_pal=extra_pal), col_idx * 16, 0)
+    return sheet
+
+
+def build_turnip_icon() -> Image.Image:
+    """Gera turnip_icon.png (16x16 RGBA) no estilo dos pacotes de sementes de ui_icons.png."""
+    extra_pal = {
+        "N": hex_rgba("#9c5cb8"),
+        "U": hex_rgba("#c98ae6"),
+        "t": hex_rgba("#5bb07a"),
+        "T": hex_rgba("#87db9c"),
+    }
+    grid = [
+        "................",
+        "...kkkkkkkkkk...",
+        "..kEEEEEEEEEEk..",
+        "..kOooooooooOk..",
+        "...kkkkkkkkkk...",
+        "..kwwwwwwwwwwk..",
+        "..kwWWkTTkWWwk..",
+        "..kwwktTTtkwwk..",
+        "..kwwkUNNNkwwk..",
+        "..kwwkNwwNkwwk..",
+        "..kwwwkwwkwwwk..",
+        "..kwWWwkkwWWwk..",
+        "..kWWWWWWWWWWk..",
+        "...kkkkkkkkkk...",
+        "................",
+        "................",
+    ]
+    return render_grid(grid, 16, 16, extra_pal=extra_pal)
+
+
+def build_season_icons() -> Image.Image:
+    """Gera season_icons.png (64x16 RGBA = 4 ícones de 16x16: Primavera, Verão, Outono, Inverno)."""
+    sheet = Image.new("RGBA", (64, 16), TRANSPARENT)
+    extra_pal = {
+        "N": hex_rgba("#74c0f0"),  # gelo médio
+        "U": hex_rgba("#b5e6ff"),  # gelo claro
+        "V": hex_rgba("#3d7cb8"),  # contorno gelo
+        "A": hex_rgba("#e35f34"),  # folha outono laranja escuro
+        "Z": hex_rgba("#b03224"),  # folha outono carmesim
+    }
+
+    # Col 0: Primavera (flor rosa de 5 pétalas)
+    spring_icon = [
+        "................",
+        "......kkkk......",
+        ".....kppppk.....",
+        "...kkppwwppkk...",
+        "..kpppkPPkpppk..",
+        "..kppkkyykkppk..",
+        "..kkpkyYYykpk...",
+        "...kPkyyyykPk...",
+        "..kppkkPPkkppk..",
+        "..kpppkkkkpppk..",
+        "...kppkGGkppk...",
+        "....kkkGGkkk....",
+        "......kGhk......",
+        "......kGGk......",
+        ".......kk.......",
+        "................",
+    ]
+
+    # Col 1: Verão (sol dourado brilhante)
+    summer_icon = [
+        "................",
+        ".......kk.......",
+        "...kk.kYYk.kk...",
+        "..kYYkkYYkkYYk..",
+        "...kYkkkkkkYk...",
+        "....kHHHHHHk....",
+        "..kkHyyyyyyHkk..",
+        ".kYYHyywwyyHYYk.",
+        ".kYYHyywwyyHYYk.",
+        "..kkHyyyyyyHkk..",
+        "....kHHHHHHk....",
+        "...kYkkkkkkYk...",
+        "..kYYkkYYkkYYk..",
+        "...kk.kYYk.kk...",
+        ".......kk.......",
+        "................",
+    ]
+
+    # Col 2: Outono (folha alaranjada)
+    autumn_icon = [
+        "................",
+        ".......kk.......",
+        "......k77k......",
+        "....kk7887kk....",
+        "...k78777787k...",
+        "..kA777YY777Ak..",
+        "..kAA77AA77AAk..",
+        "...kAAZAAZAAk...",
+        "...kZZZAAZZZk...",
+        "....kZZZZZZk....",
+        ".....kkZZkk.....",
+        ".......kBk......",
+        ".......kBk......",
+        "......kBBk......",
+        ".......kk.......",
+        "................",
+    ]
+
+    # Col 3: Inverno (floco de neve azul/branco)
+    winter_icon = [
+        "................",
+        ".......VV.......",
+        "......VwwV......",
+        "..VV..VwwV..VV..",
+        ".VwwV.VUUUVVwwV.",
+        "..VwwVUNNUVwwV..",
+        "...VUVNwwNVUV...",
+        ".VVUNNwwwwNNUVV.",
+        ".VwwNNwwwwNNwwV.",
+        "...VUVNwwNVUV...",
+        "..VwwVUNNUVwwV..",
+        ".VwwV.VUUUVVwwV.",
+        "..VV..VwwV..VV..",
+        "......VwwV......",
+        ".......VV.......",
+        "................",
+    ]
+
+    for col_idx, grid in enumerate([spring_icon, summer_icon, autumn_icon, winter_icon]):
+        paste_tile(sheet, render_grid(grid, 16, 16, extra_pal=extra_pal), col_idx * 16, 0)
+    return sheet
+
 
 # ==============================================================================
 # 6. HOUSE INTERIOR (256x160 px = 16 cols x 10 rows de 16x16, assets CC0)
@@ -2679,22 +3144,35 @@ def build_house_interior() -> Image.Image:
 
 def main() -> None:
     SPRITES_DIR.mkdir(parents=True, exist_ok=True)
+    seasons_dir = SPRITES_DIR / "seasons"
+    seasons_dir.mkdir(parents=True, exist_ok=True)
 
-    outputs: list[tuple[str, Image.Image, tuple[int, int]]] = [
-        ("terrain_tileset.png", build_terrain_tileset(), (64, 32)),
-        ("crops_sheet.png", build_crops_sheet(), (80, 96)),
-        ("farmer_sheet.png", build_farmer_sheet(), (64, 64)),
-        ("props_buildings.png", build_props_buildings(), (96, 64)),
-        ("ui_icons.png", build_ui_icons(), (256, 16)),
-        ("v13_props_sheet.png", build_v13_props_sheet(), (112, 32)),
-        ("v13_icons.png", build_v13_icons(), (256, 16)),
-        ("house_interior.png", build_house_interior(), (256, 160)),
+    base_terrain = build_terrain_tileset()
+    base_props = build_props_buildings()
+
+    outputs: list[tuple[Path, Image.Image, tuple[int, int]]] = [
+        (SPRITES_DIR / "terrain_tileset.png", base_terrain, (64, 32)),
+        (SPRITES_DIR / "crops_sheet.png", build_crops_sheet(), (80, 96)),
+        (SPRITES_DIR / "farmer_sheet.png", build_farmer_sheet(), (64, 64)),
+        (SPRITES_DIR / "props_buildings.png", base_props, (96, 64)),
+        (SPRITES_DIR / "ui_icons.png", build_ui_icons(), (256, 16)),
+        (SPRITES_DIR / "v13_props_sheet.png", build_v13_props_sheet(), (112, 32)),
+        (SPRITES_DIR / "v13_icons.png", build_v13_icons(), (256, 16)),
+        (SPRITES_DIR / "house_interior.png", build_house_interior(), (256, 160)),
     ]
 
-    for filename, img, expected_size in outputs:
-        assert img.size == expected_size, f"{filename}: {img.size} != {expected_size}"
+    for season_id, img in build_seasonal_terrains(base_terrain).items():
+        outputs.append((seasons_dir / f"terrain_{season_id}.png", img, (64, 32)))
+    for season_id, img in build_seasonal_props(base_props).items():
+        outputs.append((seasons_dir / f"props_{season_id}.png", img, (96, 64)))
+
+    outputs.append((seasons_dir / "turnip_sheet.png", build_turnip_sheet(), (80, 16)))
+    outputs.append((seasons_dir / "turnip_icon.png", build_turnip_icon(), (16, 16)))
+    outputs.append((seasons_dir / "season_icons.png", build_season_icons(), (64, 16)))
+
+    for out_path, img, expected_size in outputs:
+        assert img.size == expected_size, f"{out_path}: {img.size} != {expected_size}"
         assert img.mode == "RGBA"
-        out_path = SPRITES_DIR / filename
         img.save(out_path, format="PNG")
         print(f"OK: {out_path} -> {img.size[0]}x{img.size[1]} px ({img.mode})")
 

@@ -9,6 +9,21 @@ Todas as alterações relevantes do projeto **Fazendinha 2D** estão documentada
 
 ---
 
+## [v1.6.0] — 2026-11-20
+
+**Sistema das 4 Estações do Ano, Nabo de Inverno, Paletas & Partículas Sazonais**
+- **Release:** [v1.6.0](https://github.com/marlonferreira1800-hue/Fazenda-asclepio-/releases/tag/v1.6.0)
+- **Contribuidor:** [@marlonferreira1800-hue](https://github.com/marlonferreira1800-hue)
+
+### 🔄 Antes vs. Depois
+- **Antes:** Calendário sem estações do ano (apenas Dia 1, 2, 3...), visual fixo de primavera/verão, sem cultivo de inverno e sem bônus sazonal na loja ou colheitas.
+- **Depois:** Ciclo completo das 4 Estações (Primavera, Verão, Outono e Inverno com 28 dias cada), paletas e partículas sazonais, Nabo de Inverno (tecla `=`), Modo Cozy (`+35%` e `-1 dia` na estação ideal) e `+20%` em animais/artesanais no Inverno.
+
+### Bugs Resolvidos e Melhorias
+- **PR [#11](https://github.com/marlonferreira1800-hue/Fazenda-asclepio-/pull/11):** Calendário `SeasonData` (28 dias por estação, 112 por ano), 11 spritesheets sazonais em `assets/sprites/seasons/`, partículas climáticas (`CPUParticles2D` + neve no `WeatherFX`), cultivo de Inverno **Nabo (`turnip`)**, badge e banner de estação na HUD com carrilhão procedural e destaque sazonal na Loja (`B`).
+
+---
+
 ## [v1.5.1] — 2026-11-20
 
 **Corrigir cache do navegador no GitHub Pages (cache-busting do index.pck)**

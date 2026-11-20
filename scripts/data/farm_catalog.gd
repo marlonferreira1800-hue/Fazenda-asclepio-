@@ -218,9 +218,9 @@ const MAX_FARM_ANIMALS: int = 8
 
 const ALBUM_GROUPS: Dictionary = {
 	"crops": {
-		"title": "Botânico (6/6 Cultivos)",
+		"title": "Botânico (7/7 Cultivos)",
 		"bonus_desc": "+15% no valor de venda das colheitas",
-		"items": ["wheat", "carrot", "strawberry", "corn", "tomato", "pumpkin"],
+		"items": ["wheat", "carrot", "strawberry", "corn", "tomato", "pumpkin", "turnip"],
 	},
 	"fish": {
 		"title": "Pescador (4/4 Peixes)",

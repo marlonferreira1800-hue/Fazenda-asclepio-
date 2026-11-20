@@ -2,7 +2,7 @@ class_name VersionData
 extends RefCounted
 ## Metadados de versão, autoria, links do repositório e histórico de atualizações da Fazendinha 2D.
 
-const CURRENT_VERSION := "v1.5.1"
+const CURRENT_VERSION := "v1.6.0"
 const REPO_URL := "https://github.com/marlonferreira1800-hue/Fazenda-asclepio-"
 const RELEASES_URL := "https://github.com/marlonferreira1800-hue/Fazenda-asclepio-/releases"
 const ISSUES_URL := "https://github.com/marlonferreira1800-hue/Fazenda-asclepio-/issues?q=is%3Aissue"
@@ -10,6 +10,21 @@ const CHANGELOG_URL := "https://github.com/marlonferreira1800-hue/Fazenda-asclep
 const AUTHOR := "@marlonferreira1800-hue (Marlon Ferreira)"
 
 const HISTORY: Array[Dictionary] = [
+	{
+		"version": "v1.6.0",
+		"title": "Sistema das 4 Estações do Ano, Nabo de Inverno, Paletas & Partículas Sazonais",
+		"date": "2026-11-20",
+		"author": "@marlonferreira1800-hue",
+		"tag_url": "https://github.com/marlonferreira1800-hue/Fazenda-asclepio-/releases/tag/v1.6.0",
+		"before": "Calendário sem estações do ano (apenas Dia 1, 2, 3...), visual fixo de primavera/verão, sem cultivo de inverno e sem bônus sazonal na loja ou colheitas.",
+		"after": "Ciclo completo das 4 Estações (Primavera, Verão, Outono e Inverno com 28 dias cada), paletas e partículas sazonais, Nabo de Inverno (tecla =), Modo Cozy (+35% e -1 dia na estação ideal) e +20% em animais/artesanais no Inverno.",
+		"highlights": [
+			"Antes -> Depois: Fazenda sem estações do ano -> Ciclo anual de 4 Estações (28 dias cada / 112 por ano) com paletas, partículas e bônus sazonais",
+			"Primavera (Trigo/Morango), Verão (Milho/Tomate), Outono (Cenoura/Abóbora) e Inverno (Nabo +35% e Animais/Artesanais +20%)",
+			"11 novos spritesheets sazonais em assets/sprites/seasons/ (terreno, casinha/árvores nevadas, ícones e Nabo em 5 estágios)",
+			"Badge da estação + Dia X/28 na HUD, banner animado com carrilhão procedural, 12º slot (=) na Hotbar e destaque dourado na Loja (B)",
+		],
+	},
 	{
 		"version": "v1.5.1",
 		"title": "Corrigir cache do navegador no GitHub Pages (cache-busting do index.pck)",

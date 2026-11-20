@@ -17,6 +17,9 @@ Todos os sprites em jogo já estão gerados em estética *cozy pastel* (inspirad
 - `assets/sprites/v13_props_sheet.png` (`112x32 px` — Queijeira, Forno de Pão, Apiário, Quadro de Encomendas, Fertilizante no solo, Boia e Badges)
 - `assets/sprites/v13_icons.png` (`256x16 px` — Vara de Pesca, Fertilizante, Queijo, Pão, Mel, Ovo Azul e peixes com assets CC0)
 - `assets/sprites/house_interior.png` (`256x160 px` — pisos de madeira, paredes, tapetes, cama, fogão/cozinha, lareira com fogo animado, estante, mesa, cadeiras, escrivaninha, guarda-roupa, plantas e luminária para o interior da casa)
+- `assets/sprites/seasons/terrain_<spring|summer|autumn|winter>.png` (`64x32 px` — paletas de terreno, água, cerca e caixa de venda das 4 estações)
+- `assets/sprites/seasons/props_<spring|summer|autumn|winter>.png` (`96x64 px` — casinha, árvores, arbustos, pedras, poço e placa nas 4 estações)
+- `assets/sprites/seasons/turnip_sheet.png` (`80x16 px` — 5 estágios do Nabo de Inverno), `turnip_icon.png` (`16x16 px`) e `season_icons.png` (`64x16 px` — 4 ícones das estações)
 
 Para regenerar todos os arquivos padrão a qualquer momento:
 ```bash
