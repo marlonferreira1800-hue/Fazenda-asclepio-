@@ -2,7 +2,9 @@ extends Node2D
 
 signal demo_mode_changed(active: bool)
 
+const CropDataScript := preload("res://scripts/data/crop_data.gd")
 const FarmCatalogScript := preload("res://scripts/data/farm_catalog.gd")
+const SeasonDataScript := preload("res://scripts/data/season_data.gd")
 
 const TILE_SIZE: int = 16
 const MAP_WIDTH: int = 40
@@ -263,11 +265,8 @@ func _ready() -> void:
 
 	_setup_cursor()
 	_setup_prompt_label()
-<<<<<<< HEAD
 	_setup_season_particles()
-=======
 	_setup_transition_overlay()
->>>>>>> origin/main
 	_setup_weather_fx()
 	_setup_fishing_minigame()
 	_build_farm_map()

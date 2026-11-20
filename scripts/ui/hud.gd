@@ -10,7 +10,7 @@ const CropDataScript := preload("res://scripts/data/crop_data.gd")
 const FarmCatalogScript := preload("res://scripts/data/farm_catalog.gd")
 const SeasonDataScript := preload("res://scripts/data/season_data.gd")
 
-const FALLBACK_VERSION := "v1.6.0"
+const FALLBACK_VERSION := "v1.6.1"
 const FALLBACK_AUTHOR := "@marlonferreira1800-hue (Marlon Ferreira)"
 const FALLBACK_RELEASES_URL := "https://github.com/marlonferreira1800-hue/Fazenda-asclepio-/releases"
 const FALLBACK_ISSUES_URL := "https://github.com/marlonferreira1800-hue/Fazenda-asclepio-/issues"
@@ -517,6 +517,8 @@ func _connect_signals() -> void:
 			gs.toast_message.connect(_on_toast_message)
 		if gs.has_signal("upgrades_changed"):
 			gs.upgrades_changed.connect(_on_upgrades_changed)
+		if gs.has_signal("season_changed"):
+			gs.season_changed.connect(_on_season_changed)
 		if gs.has_signal("weather_changed"):
 			gs.weather_changed.connect(_on_weather_changed)
 		if gs.has_signal("touch_mode_changed"):
@@ -543,6 +545,8 @@ func _connect_signals() -> void:
 func _sync_all_from_state() -> void:
 	var gs := _get_game_state()
 	if gs == null:
+		_refresh_season_badge("spring", 1)
+		_last_banner_season_id = "spring"
 		_on_day_changed(1, 360.0)
 		_on_money_changed(100)
 		_on_stamina_changed(100, 100)
@@ -551,6 +555,12 @@ func _sync_all_from_state() -> void:
 		_on_inventory_changed()
 		_on_tool_changed(0)
 	else:
+		var init_season: String = str(gs.get("current_season")) if gs.get("current_season") != null else "spring"
+		if init_season.is_empty():
+			init_season = "spring"
+		var init_year: int = maxi(1, int(gs.get("year")))
+		_refresh_season_badge(init_season, init_year)
+		_last_banner_season_id = init_season
 		_on_day_changed(gs.day, gs.time_minutes)
 		_on_money_changed(gs.money)
 		_on_stamina_changed(gs.stamina, gs.max_stamina)
@@ -582,6 +592,7 @@ func _build_ui() -> void:
 	_build_journal_modal()
 	_build_changelog_modal()
 	_build_menu_modal()
+	_build_season_banner()
 	_build_toast_panel()
 
 
@@ -597,25 +608,35 @@ func _build_stats_panel() -> void:
 	vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.add_child(vbox)
 
-	# Row 1: Day/Time + Money + Version badge
-	var top_row := HBoxContainer.new()
-	top_row.add_theme_constant_override("separation", 5)
-	top_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	vbox.add_child(top_row)
+	# Row 0: Season badge + Version button
+	var season_row := HBoxContainer.new()
+	season_row.add_theme_constant_override("separation", 4)
+	season_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vbox.add_child(season_row)
 
-	_day_time_label = _make_label("Dia 1 - 06:00", 9, COL_INK)
-	_day_time_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	top_row.add_child(_day_time_label)
+	_season_badge_panel = PanelContainer.new()
+	_season_badge_panel.name = "SeasonBadge"
+	_season_badge_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_season_badge_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_season_badge_panel.add_theme_stylebox_override("panel", _make_flat_style(Color("#e8f6df"), Color("#4d9938"), 1, 4, 1, 2))
+	season_row.add_child(_season_badge_panel)
 
-	var money_row := HBoxContainer.new()
-	money_row.add_theme_constant_override("separation", 2)
-	money_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	top_row.add_child(money_row)
+	var season_hbox := HBoxContainer.new()
+	season_hbox.add_theme_constant_override("separation", 3)
+	season_hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_season_badge_panel.add_child(season_hbox)
 
-	money_row.add_child(_make_icon_rect(5, Vector2(14, 14)))
+	_season_icon_rect = TextureRect.new()
+	_season_icon_rect.custom_minimum_size = Vector2(12, 12)
+	_season_icon_rect.texture = _make_season_icon_texture(0)
+	_season_icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_season_icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_season_icon_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	_season_icon_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	season_hbox.add_child(_season_icon_rect)
 
-	_money_label = _make_label("$100", 9, COL_GOLD_TEXT)
-	money_row.add_child(_money_label)
+	_season_badge_label = _make_label("Primavera · Ano 1", 8, Color("#235c16"))
+	season_hbox.add_child(_season_badge_label)
 
 	_version_button = _make_colored_button(
 		"%s (V)" % _current_version,
@@ -631,7 +652,27 @@ func _build_stats_panel() -> void:
 	_version_button.tooltip_text = "Histórico de versões e links (V)"
 	_version_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_version_button.pressed.connect(_on_version_button_pressed)
-	top_row.add_child(_version_button)
+	season_row.add_child(_version_button)
+
+	# Row 1: Day/Time + Money
+	var top_row := HBoxContainer.new()
+	top_row.add_theme_constant_override("separation", 5)
+	top_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vbox.add_child(top_row)
+
+	_day_time_label = _make_label("Dia 1/28 - 06:00", 9, COL_INK)
+	_day_time_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top_row.add_child(_day_time_label)
+
+	var money_row := HBoxContainer.new()
+	money_row.add_theme_constant_override("separation", 2)
+	money_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	top_row.add_child(money_row)
+
+	money_row.add_child(_make_icon_rect(5, Vector2(14, 14)))
+
+	_money_label = _make_label("$100", 9, COL_GOLD_TEXT)
+	money_row.add_child(_money_label)
 
 	# Row 2: Weather & Forecast
 	var weather_row := HBoxContainer.new()

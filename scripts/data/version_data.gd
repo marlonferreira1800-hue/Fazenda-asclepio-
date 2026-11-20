@@ -2,7 +2,7 @@ class_name VersionData
 extends RefCounted
 ## Metadados de versão, autoria, links do repositório e histórico de atualizações da Fazendinha 2D.
 
-const CURRENT_VERSION := "v1.6.0"
+const CURRENT_VERSION := "v1.6.1"
 const REPO_URL := "https://github.com/marlonferreira1800-hue/Fazenda-asclepio-"
 const RELEASES_URL := "https://github.com/marlonferreira1800-hue/Fazenda-asclepio-/releases"
 const ISSUES_URL := "https://github.com/marlonferreira1800-hue/Fazenda-asclepio-/issues?q=is%3Aissue"
@@ -10,6 +10,19 @@ const CHANGELOG_URL := "https://github.com/marlonferreira1800-hue/Fazenda-asclep
 const AUTHOR := "@marlonferreira1800-hue (Marlon Ferreira)"
 
 const HISTORY: Array[Dictionary] = [
+	{
+		"version": "v1.6.1",
+		"title": "Hotfix: Renderização do Mapa Sazonal e Badge das 4 Estações na HUD",
+		"date": "2026-11-20",
+		"author": "@marlonferreira1800-hue",
+		"tag_url": "https://github.com/marlonferreira1800-hue/Fazenda-asclepio-/releases/tag/v1.6.1",
+		"before": "Conflito de merge em farm_world.gd impedia o carregamento do mapa no navegador (fundo cinza apenas com o jogador e HUD sem o badge da estação).",
+		"after": "Mapa completo 40x24 renderizando com paletas sazonais, partículas climáticas, interior da casa e badge Primavera · Ano 1 na HUD.",
+		"highlights": [
+			"Antes -> Depois: Mapa não carregava por marcador de merge em farm_world.gd -> Mapa sazonal, props, animais, interior da casa e badge da estação funcionando no Web",
+			"Restaurados preloads de SeasonDataScript/CropDataScript em farm_world.gd e badge SeasonBadge no painel superior da HUD",
+		],
+	},
 	{
 		"version": "v1.6.0",
 		"title": "Sistema das 4 Estações do Ano, Nabo de Inverno, Paletas & Partículas Sazonais",

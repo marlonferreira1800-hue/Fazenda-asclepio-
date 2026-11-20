@@ -9,6 +9,21 @@ Todas as alterações relevantes do projeto **Fazendinha 2D** estão documentada
 
 ---
 
+## [v1.6.1] — 2026-11-20
+
+**Hotfix: Renderização do Mapa Sazonal e Badge das 4 Estações na HUD**
+- **Release:** [v1.6.1](https://github.com/marlonferreira1800-hue/Fazenda-asclepio-/releases/tag/v1.6.1)
+- **Contribuidor:** [@marlonferreira1800-hue](https://github.com/marlonferreira1800-hue)
+
+### 🔄 Antes vs. Depois
+- **Antes:** Conflito de merge em `farm_world.gd` impedia o carregamento do mapa no navegador (fundo cinza apenas com o jogador e HUD sem o badge da estação).
+- **Depois:** Mapa completo `40x24` renderizando com paletas sazonais, partículas climáticas, interior da casa e badge `Primavera · Ano 1` na HUD.
+
+### Bugs Resolvidos e Melhorias
+- **Hotfix Web (`index.pck`):** Removido marcador residual de merge em `scripts/world/farm_world.gd`, restaurados preloads `SeasonDataScript`/`CropDataScript` e restaurada a linha `SeasonBadge` no `StatsPanel` de `scripts/ui/hud.gd`.
+
+---
+
 ## [v1.6.0] — 2026-11-20
 
 **Sistema das 4 Estações do Ano, Nabo de Inverno, Paletas & Partículas Sazonais**
