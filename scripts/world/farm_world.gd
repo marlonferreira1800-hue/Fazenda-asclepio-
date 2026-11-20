@@ -522,7 +522,9 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _build_tileset() -> TileSet:
-	var tex: Texture2D = _load_texture_safe("res://assets/sprites/terrain_tileset.png")
+	var tex: Texture2D = _seasonal_terrain_textures.get("spring", null) as Texture2D
+	if tex == null:
+		tex = _load_texture_safe("res://assets/sprites/terrain_tileset.png")
 	var ts := TileSet.new()
 	ts.tile_size = Vector2i(TILE_SIZE, TILE_SIZE)
 	ts.add_physics_layer(0)
@@ -538,6 +540,7 @@ func _build_tileset() -> TileSet:
 			source.create_tile(Vector2i(col, row))
 
 	ts.add_source(source, 0)
+	_shared_atlas_source = source
 
 	var full_box := PackedVector2Array([
 		Vector2(-8, -8),
@@ -591,6 +594,49 @@ func _setup_prompt_label() -> void:
 	_prompt_label.add_theme_color_override("font_outline_color", Color(0.12, 0.08, 0.05, 0.95))
 	_prompt_label.add_theme_constant_override("outline_size", 3)
 	add_child(_prompt_label)
+
+
+func _setup_season_particles() -> void:
+	var map_center := Vector2(MAP_WIDTH * TILE_SIZE * 0.5, MAP_HEIGHT * TILE_SIZE * 0.5)
+	var extents := Vector2(MAP_WIDTH * TILE_SIZE * 0.55, MAP_HEIGHT * TILE_SIZE * 0.55)
+
+	_season_particles = CPUParticles2D.new()
+	_season_particles.name = "SeasonParticles"
+	_season_particles.position = map_center
+	_season_particles.z_index = 18
+	_season_particles.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
+	_season_particles.emission_rect_extents = extents
+	_season_particles.preprocess = 2.5
+	_season_particles.emitting = true
+	add_child(_season_particles)
+
+	_firefly_particles = CPUParticles2D.new()
+	_firefly_particles.name = "SummerFireflies"
+	_firefly_particles.position = map_center
+	_firefly_particles.z_index = 20
+	_firefly_particles.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
+	_firefly_particles.emission_rect_extents = extents
+	_firefly_particles.amount = 20
+	_firefly_particles.lifetime = 2.8
+	_firefly_particles.direction = Vector2(0.0, -1.0)
+	_firefly_particles.spread = 180.0
+	_firefly_particles.gravity = Vector2(0.0, -2.0)
+	_firefly_particles.initial_velocity_min = 3.0
+	_firefly_particles.initial_velocity_max = 9.0
+	_firefly_particles.scale_amount_min = 1.4
+	_firefly_particles.scale_amount_max = 2.2
+	_firefly_particles.color = Color(0.88, 1.0, 0.44, 0.95)
+	var ff_grad := Gradient.new()
+	ff_grad.offsets = PackedFloat32Array([0.0, 0.35, 0.75, 1.0])
+	ff_grad.colors = PackedColorArray([
+		Color(0.88, 1.0, 0.44, 0.0),
+		Color(0.92, 1.0, 0.52, 0.95),
+		Color(0.84, 0.98, 0.38, 0.75),
+		Color(0.84, 0.98, 0.38, 0.0),
+	])
+	_firefly_particles.color_ramp = ff_grad
+	_firefly_particles.emitting = false
+	add_child(_firefly_particles)
 
 
 func _setup_weather_fx() -> void:

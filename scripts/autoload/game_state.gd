@@ -3,6 +3,7 @@ extends Node
 
 const CropDataScript := preload("res://scripts/data/crop_data.gd")
 const FarmCatalogScript := preload("res://scripts/data/farm_catalog.gd")
+const SeasonDataScript := preload("res://scripts/data/season_data.gd")
 
 signal money_changed(new_money: int)
 signal day_changed(day: int, time_minutes: float)
@@ -20,6 +21,7 @@ signal album_changed()
 signal machines_changed()
 signal animal_purchased(animal_type: String)
 signal game_reset()
+signal season_changed(season_id: String, year: int)
 
 const SAVE_PATH := "user://savegame.json"
 const MINUTES_PER_DAY: float = 1440.0
